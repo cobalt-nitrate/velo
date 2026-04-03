@@ -1,0 +1,31 @@
+{
+  "name": "@velo/tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tool functions callable by agents: Sheets, email, OCR, Drive, notifications, bank",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./sheets": "./src/sheets/client.ts",
+    "./email": "./src/email/index.ts",
+    "./notifications": "./src/notifications/index.ts",
+    "./ocr": "./src/ocr/invoice-parser.ts",
+    "./bank": "./src/bank/statement-parser.ts",
+    "./documents": "./src/documents/pdf-generator.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@velo/core": "workspace:*",
+    "googleapis": "^140.0.0",
+    "resend": "^3.0.0",
+    "pdf-parse": "^1.1.1",
+    "tesseract.js": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

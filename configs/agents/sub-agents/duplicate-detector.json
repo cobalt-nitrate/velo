@@ -1,0 +1,24 @@
+{
+  "id": "duplicate-detector",
+  "label": "Duplicate Invoice Detector SubAgent",
+  "description": "Checks if an incoming invoice is a likely duplicate of an existing ap_invoices entry. Uses vendor_id + amount + date proximity (within 7 days) as primary signals. LLM used only for ambiguous cases.",
+  "model": "claude-haiku-4-5-20251001",
+  "system_prompt_file": "configs/prompts/duplicate-detector.md",
+  "sub_agents": [],
+  "tools": [
+    "sheets.ap_invoices.find_by_vendor_amount_date"
+  ],
+  "detection_rules": {
+    "primary_check": "same vendor_id + amount within ±5% + invoice_date within ±7 days",
+    "secondary_check": "same invoice_number for same vendor",
+    "llm_escalation_condition": "primary_check_match_count > 0 AND exact_match == false"
+  },
+  "output": {
+    "is_duplicate": "boolean",
+    "confidence": "number",
+    "matching_invoice_ids": "string[]",
+    "reason": "string"
+  },
+  "max_iterations": 3,
+  "timeout_seconds": 15
+}

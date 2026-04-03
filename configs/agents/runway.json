@@ -1,0 +1,35 @@
+{
+  "id": "runway",
+  "label": "Runway Agent",
+  "description": "Monitors cash, burn rate, and runway continuously. Answers hiring/spend simulation queries. Generates weekly digest content. Triggers alerts on threshold breach.",
+  "model": "claude-sonnet-4-6",
+  "system_prompt_file": "configs/prompts/runway.md",
+  "sub_agents": [],
+  "tools": [
+    "sheets.bank_transactions.get_latest_balance",
+    "sheets.bank_transactions.get_by_date_range",
+    "sheets.payroll_runs.get_committed_salaries",
+    "sheets.ap_invoices.get_pending_payables",
+    "sheets.ar_invoices.get_pending_receivables",
+    "sheets.compliance_calendar.get_upcoming_obligations",
+    "sheets.employees.get_active_headcount",
+    "sheets.hr_tasks.get_pending_hires",
+    "bank.statement_parser.parse",
+    "notifications.send_digest",
+    "notifications.send_alert"
+  ],
+  "confidence_thresholds": {
+    "auto_execute": 0.85,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "schedule": {
+    "continuous_monitoring_interval_minutes": 60,
+    "digest_schedule": "weekly",
+    "digest_day": "monday",
+    "digest_time_ist": "09:00"
+  },
+  "max_iterations": 8,
+  "timeout_seconds": 45
+}

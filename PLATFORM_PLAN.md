@@ -1,687 +1,1323 @@
-# Velo — AI-Powered Back Office Platform
-### *Back Office at Velocity for Lean Teams*
+# Velo — Autonomous Back-Office OS for Startups
+### *Always-on. Agentic. Outcome-driven.*
 
 ---
 
-## 1. What Is Velo?
+## Table of Contents
 
-Velo is a chat-first, AI-powered back office operating system built for lean Indian startups (roughly 3–50 employees). The founder or admin types what they want in plain English — "clear these three invoices", "run payroll for March", "what's my GST due this month" — and Velo figures it out, executes it, and asks for approval only where money actually moves.
-
-Everything that normally lives across government portals, CA inboxes, Excel sheets, and bank dashboards gets unified into one command center. The underlying data stays in Google Sheets (prototype phase), so anyone can open a sheet, audit it, or hand it to their CA without needing a special export.
-
-**No hardcoded business logic anywhere in the app code.** Every tax rate, every expense category, every approval threshold, every payroll rule, every policy template — lives in JSON config files or dedicated Google Sheets config tabs. The application reads config at runtime. Changing a GST rate means editing a cell, not a code deployment.
+1. [Product Vision & Definition](#1-product-vision--definition)
+2. [Non-Negotiable Principles](#2-non-negotiable-principles)
+3. [Target Personas & Jobs-to-be-Done](#3-target-personas--jobs-to-be-done)
+4. [Success Metrics](#4-success-metrics)
+5. [Agent Architecture](#5-agent-architecture)
+6. [ReAct Loop Pattern](#6-react-loop-pattern)
+7. [Confidence Scoring System](#7-confidence-scoring-system)
+8. [Policy Engine](#8-policy-engine)
+9. [User Journeys](#9-user-journeys)
+10. [Core Surfaces & UX](#10-core-surfaces--ux)
+11. [Onboarding Flow](#11-onboarding-flow)
+12. [Module Deep-Dives](#12-module-deep-dives)
+13. [Google Sheets Data Architecture](#13-google-sheets-data-architecture)
+14. [Config Architecture](#14-config-architecture)
+15. [Integration Map](#15-integration-map)
+16. [Privacy & DPDPA Compliance](#16-privacy--dpdpa-compliance)
+17. [Monorepo Structure](#17-monorepo-structure)
+18. [Phase Roadmap](#18-phase-roadmap)
+19. [What I Need From You](#19-what-i-need-from-you)
 
 ---
 
-## 2. Who Is This For?
+## 1. Product Vision & Definition
 
-| Persona | Pain |
+### What Velo Is
+
+An **always-on agentic operating layer** that:
+
+- **Observes** company money and people events in real time — bank, invoices, payroll, hiring pipeline, statutory calendars
+- **Decides** what must happen next (pay, file, notify, remediate) with a quantified confidence score
+- **Executes** safely under policy — auto-executes below thresholds, requests approvals above thresholds, never executes on low confidence
+- **Explains** every decision with evidence snapshots — transactions, documents, regulatory references
+- **Remembers** company-specific patterns — recurring vendors, pay cycles, seasonal revenue — to improve accuracy over time
+
+**This is NOT another HRMS or accounting tool.** Velo is an outcome engine that sits on top of existing systems and takes responsibility for outcomes: payroll run completed, filings submitted, runway visibility maintained. It replaces manual coordination, not the systems of record.
+
+### The Problem It Solves
+
+Early-stage startups (0–100 employees) lose time, money, and confidence across finance + people ops because work is fragmented across:
+- GST portal, IT portal, EPFO portal, ESIC portal, bank portal — all separate
+- Manual Excel / Sheets for payroll computation
+- WhatsApp threads with CA for filing reminders
+- No single view of actual cash runway
+
+This creates two existential risks:
+- **Cash surprises** — "we didn't realise runway collapsed"
+- **Compliance surprises** — GST/TDS/PF/ESI filings missed or incorrect
+
+Velo eliminates both.
+
+### What Velo Guarantees (Outcomes)
+- Salaries paid correctly and on time
+- Taxes never missed
+- Cash runway always clear
+- Hiring decisions made with burn impact visibility
+- Compliance status always "green"
+
+---
+
+## 2. Non-Negotiable Principles
+
+**1. No navigation as the default**
+Users don't "go to payroll" or "go to GST." The OS brings the work to them via notifications, approval cards, and the command feed.
+
+**2. Interfaces are evidence, not workspaces**
+Every surface shows: (a) what happened, (b) what will happen, (c) what needs consent. Nothing is a form for data entry.
+
+**3. Policy-first agency**
+Every execution is gated by an explicit policy rule. No agent executes money-moving or compliance actions without a policy authorizing it. This directly addresses OWASP's "excessive agency" risk category.
+
+**4. Confidence-gated execution**
+Every LLM decision produces a confidence score. Actions below the auto-execute threshold go to approval. Actions below the recommend-only threshold produce no execution — only advice.
+
+**5. Continuous close mentality**
+The OS maintains a live view of cash position, payables, receivables, and obligations — not a monthly batch. Month-end is just another day.
+
+**6. India-first compliance realism**
+Government portals go down. Validation rules change without notice. The OS adapts: treats portal downtime as a known failure mode (tracked separately from missed deadlines), never promises timelines for government-side actions.
+
+**7. No hardcoding — ever**
+Tax rates, expense categories, approval thresholds, payroll components, leave policies, agent prompts, workflow sequences — all live in `/configs`. The application reads config at runtime. Changing a GST rate = editing a JSON cell, not a deployment.
+
+---
+
+## 3. Target Personas & Jobs-to-be-Done
+
+### Personas
+
+| Persona | Role | Primary Pain | Daily Interaction with Velo |
+|---|---|---|---|
+| **Founder / CEO** | Primary buyer, daily approver | Runway clarity, compliance peace of mind, time wasted on ops | Weekly digest, approval cards, "can I hire?" queries |
+| **Finance Lead / CA** | Primary operator | Reconciliation, invoice tracking, filing prep | AP/AR management, compliance calendar, exception queue |
+| **HR Lead / People Ops** | Operator | Onboarding friction, leave tracking, policy management | Employee onboarding workflows, leave approvals, helpdesk |
+| **Employee** | End user | Payslips, tax planning, leave status, HR queries | Self-serve chat, payslip download, tax saving advice |
+
+### Jobs-to-be-Done
+
+Every JTBD is phrased as an **outcome + decision confidence**:
+
+1. "Tell me my runway today and what decisions change it."
+2. "Make sure statutory deadlines are never missed; tell me early when inputs are missing."
+3. "Pay people and vendors correctly; surface only unusual changes."
+4. "If hiring is off-plan, show why and what to change."
+5. "Answer employee questions instantly without creating HR tickets."
+
+---
+
+## 4. Success Metrics
+
+### Outcome Metrics (North Star)
+| Metric | Target |
 |---|---|
-| Founder / Co-founder | Spends 3–4 hrs/week on invoices, payroll, compliance. Doesn't have a CFO. |
-| Office Manager / EA | Manually uploads invoices, chases vendors, fills payroll sheets |
-| Part-time CA / Accountant | Needs clean, structured data — not WhatsApp screenshots |
+| Missed statutory deadlines per quarter | 0 (track portal downtime separately) |
+| Payroll payment success rate | ≥ 99.5% |
+| "Runway surprise" incidents (actual vs predicted beyond tolerance) | ~0 |
 
-**Sweet spot:** Indian startups, 3–50 employees, spending ₹5K–₹15K/month on back-office software or CA retainer. This replaces most of that.
+### Trust & Quality Metrics
+| Metric | What It Measures |
+|---|---|
+| % actions under autopilot vs approval requests | Should rise with trust over time |
+| Confidence calibration | Actions taken at low confidence should trend to 0 |
+| Reconciliation drift | Delta between OS categorization and CA-corrected labels |
 
-**Go-to-market starting point:** Early 6-figure ARR companies, bootstrapped or seed-stage.
+### Retention & Engagement Metrics
+| Metric | Target |
+|---|---|
+| Founder weekly active approvals (not DAU) | At least 1 approval/week |
+| Time-to-first-value (TTFV) | < 10 minutes from signup to first runway view |
+| Weekly digest open/action rate | > 60% |
 
 ---
 
-## 3. Four Core Modules
+## 5. Agent Architecture
+
+### Design Principle
+
+> **Every place where an LLM makes a decision is a separate agent.** Each agent has its own system prompt, its own tool set, its own confidence scoring, and its own input/output schema. Agents can call other agents. No business logic is shared via globals — only via typed interfaces.
+
+### Agent Map
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     VELO PLATFORM                           │
-├──────────────┬──────────────┬──────────────┬────────────────┤
-│   MODULE 1   │   MODULE 2   │   MODULE 3   │   MODULE 4     │
-│     TAX &    │   PAYROLL    │     HR       │   INVOICE &    │
-│  COMPLIANCE  │              │  OPERATIONS  │   FINANCE      │
-│              │              │              │  (AP/AR/Exp)   │
-└──────────────┴──────────────┴──────────────┴────────────────┘
-         │                    │
-    ┌────┴─────────────────────────┐
-    │     AI COMMAND CENTER        │  ← Chat interface (Claude)
-    │     DASHBOARD / CONTROL PANEL│  ← Sheets-linked dashboards
-    └──────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                    USER INPUT (Chat / Notification action)          │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+              ┌────────────────────────┐
+              │   OrchestratorAgent    │  Routes intent → specialist
+              │   (Intent Router)      │
+              └──────┬─────────────────┘
+                     │
+        ┌────────────┼──────────────────────────────────┐
+        │            │                    │              │
+        ▼            ▼                    ▼              ▼
+   ┌─────────┐  ┌──────────┐  ┌──────────────┐  ┌─────────────┐
+   │ Runway  │  │Compliance│  │  PayrollAgent│  │   HRAgent   │
+   │  Agent  │  │  Agent   │  │              │  │             │
+   └─────────┘  └──────────┘  └──────────────┘  └──────┬──────┘
+                                                        │
+                                              ┌─────────▼──────────┐
+                                              │ DocumentGenerator  │
+                                              │     SubAgent       │
+                                              └────────────────────┘
+        │            │
+        ▼            ▼
+   ┌─────────┐  ┌──────────────────────────────────────────────────┐
+   │   AR    │  │              APInvoiceAgent                      │
+   │Collecti-│  │                                                  │
+   │onsAgent │  │  ┌─────────────────┐  ┌──────────────────────┐  │
+   └─────────┘  │  │InvoiceExtractor │  │ ExpenseClassifier    │  │
+                │  │   SubAgent      │  │   SubAgent           │  │
+                │  └─────────────────┘  └──────────────────────┘  │
+                │  ┌─────────────────┐  ┌──────────────────────┐  │
+                │  │ VendorMatcher   │  │ DuplicateDetector    │  │
+                │  │   SubAgent      │  │   SubAgent           │  │
+                │  └─────────────────┘  └──────────────────────┘  │
+                └──────────────────────────────────────────────────┘
+        │
+        ▼
+   ┌──────────────┐    ┌─────────────────┐
+   │HelpdeskAgent │    │ TaxPlanningAgent │
+   │ (Employee    │    │ (Employee tax    │
+   │  self-serve) │    │  optimization)   │
+   └──────────────┘    └─────────────────┘
+
+   ──────────────────────────────────────────
+   CROSS-CUTTING (every agent goes through these):
+   ┌─────────────┐  ┌────────────────┐  ┌──────────────┐
+   │PolicyEngine │  │ConfidenceScorer│  │ AuditLogger  │
+   │ (no LLM)    │  │  (no LLM)      │  │ (append-only)│
+   └─────────────┘  └────────────────┘  └──────────────┘
 ```
 
----
+### Agent Inventory
 
-## 4. Module 1 — Tax & Compliance
+| Agent ID | Role | Parent | Key Tools | LLM? |
+|---|---|---|---|---|
+| `orchestrator` | Routes user intent to specialist agent | — | all agents | Yes |
+| `runway` | Cash/burn/runway analysis + hiring simulation | orchestrator | `bank.*`, `payroll.*`, `hr.*` | Yes |
+| `compliance` | Compliance calendar, filing status, alerts | orchestrator | `compliance.*`, `sheets.*` | Yes |
+| `payroll` | Monthly payroll computation + execution | orchestrator | `payroll.*`, `sheets.*`, `notifications.*` | Yes |
+| `ap-invoice` | End-to-end vendor invoice processing | orchestrator | `sheets.ap_*`, `bank.*` | Yes |
+| `invoice-extractor` | Extract structured fields from raw invoice | ap-invoice | `ocr.*`, `documents.*` | Yes |
+| `expense-classifier` | Classify expense category + ITC eligibility | ap-invoice | `config.expense_categories` | Yes |
+| `vendor-matcher` | Match/identify vendor in vendor master | ap-invoice | `sheets.vendor_master` | Yes |
+| `duplicate-detector` | Detect possible duplicate invoices | ap-invoice | `sheets.ap_invoices` | Yes |
+| `ar-collections` | Raise client invoices + write follow-ups | orchestrator | `sheets.ar_*`, `email.*` | Yes |
+| `hr` | Onboarding, leave, policy management | orchestrator | `sheets.hr_*`, `notifications.*` | Yes |
+| `document-generator` | Generate offer letters, policy docs, payslips | hr / payroll | `documents.*`, `config.policy_templates` | Yes |
+| `helpdesk` | Employee self-serve — payslips, HR queries | orchestrator | `sheets.*`, `notifications.*` | Yes |
+| `tax-planning` | Employee tax optimization advice | helpdesk | `config.tax_config`, `sheets.salary_*` | Yes |
+| `policy-engine` | Evaluate action against autopilot policies | ALL | `config.policies.*` | **No** |
+| `confidence-scorer` | Score confidence of any LLM decision | ALL | — | **No** |
+| `audit-logger` | Write immutable audit entries | ALL | `sheets.audit_trail` | **No** |
 
-### What It Does
-Tracks all employer tax obligations — PT, PF, ESIC, TDS — computes them monthly based on payroll, maintains a compliance calendar, and alerts you before due dates. Also tracks GST input credit from expenses and outputs from sales invoices.
+### Agent Definition Schema (`configs/agents/*.json`)
 
-### Key Concepts
+Every agent is defined by a config file. The code never hardcodes agent behaviour.
 
-**Professional Tax (PT)**
-- Varies by state. PT slabs (salary bands → tax amount) live in `configs/tax_config.json`, keyed by state code.
-- Computed per employee per month. Deducted from salary.
-- Monthly/semi-annual filing depending on state.
-
-**Provident Fund (PF)**
-- Employee contribution: 12% of basic salary
-- Employer contribution: 12% of basic salary (split: 8.33% goes to EPS, 3.67% to EPF)
-- Both rates configurable in `configs/tax_config.json`
-- Monthly challan filing on EPFO portal
-
-**ESIC**
-- Applicable if employee gross salary ≤ ₹21,000/month (threshold configurable)
-- Employee: 0.75% of gross | Employer: 3.25% of gross (rates in config)
-- Monthly filing
-
-**TDS (Tax Deducted at Source)**
-- Deducted from salary based on employee's declared investment proofs and tax slab
-- Configurable tax slabs (old vs new regime) in `configs/tax_config.json`
-- Quarterly returns (24Q)
-
-**GST Input Credit Ledger**
-- Every AP invoice classified by expense category → category maps to GST rate and whether Input Tax Credit (ITC) is claimable
-- Mapping lives in `configs/expense_categories.json`
-- Example: GPU purchase (18% GST, ITC claimable) vs team party at 5-star (18% GST, ITC NOT claimable under F&B)
-- Running ITC balance maintained in `gst_input_ledger` sheet
-
-### Compliance Calendar Logic
-- Due dates for every compliance type stored in `configs/compliance_calendar_rules.json`
-- Rules like: "PF challan due on 15th of following month", "PT due on last day of month" etc.
-- System auto-generates monthly calendar entries in `compliance_calendar` sheet
-- Alerts 7 days and 2 days before each due date (configurable lead time in config)
-
-### Phase 2: Portal Connectors
-- EPFO portal API integration for PF filing
-- TRACES integration for TDS
-- GST portal API for GSTR filing
-- State-specific PT portal integrations where APIs exist
-
----
-
-## 5. Module 2 — Payroll
-
-### What It Does
-Runs monthly payroll for all active employees: computes gross pay, applies all statutory deductions (PF, PT, ESIC, TDS), produces net pay, generates salary slips, and creates entries in compliance module for all tax obligations.
-
-### Key Concepts
-
-**Salary Structure**
-- Every employee has a `salary_structure_id` pointing to a row in the `salary_structures` sheet
-- Salary structure defines: Basic, HRA, Special Allowance, LTA, Medical, and any custom components
-- Component names and their rules (taxable/non-taxable, % of basic or fixed) live in `configs/payroll_config.json`
-- New components can be added by editing config — no code change
-
-**Payroll Run Flow**
-1. Trigger: User says "run payroll for March 2025" in chat
-2. System pulls all `active` employees from `employees` sheet
-3. For each employee:
-   - Fetches salary structure
-   - Fetches attendance/leave data for the month (from `attendance` sheet)
-   - Computes pro-rata if employee joined mid-month (join date from `employees`)
-   - Computes LOP (Loss of Pay) deductions for unpaid leaves
-   - Applies PF, PT, ESIC, TDS deductions (rates from `tax_config.json`)
-   - Computes net pay
-4. Generates a payroll run summary row in `payroll_runs` sheet
-5. Generates one salary slip row per employee in `salary_slips` sheet
-6. Creates compliance obligation entries for PF challan, PT, ESIC, TDS for the month
-7. Shows summary to user in chat for approval
-8. On approval → marks payroll run as `approved`
-9. Salary slip PDFs generated and stored (Phase 2: emailed to employees)
-
-**LOP Logic**
-- `leave_types` config defines which leave types are paid vs unpaid
-- If employee has exhausted paid leave balance, additional leaves become LOP
-- LOP deduction = (Monthly Gross / Working days in month) × LOP days
-
-**Bonus Computation**
-- Bonus rules stored in `configs/payroll_config.json` under `bonus_rules`
-- Example rule: "festival bonus = 8.33% of annual basic, paid in October"
-- One-time bonuses can be triggered via chat: "give Rahul a ₹20,000 performance bonus"
-
-**Payroll Approval Gate**
-- No payroll is final without explicit approval in chat or dashboard
-- Approval logged with timestamp and approver name in `payroll_runs` sheet
-
----
-
-## 6. Module 3 — HR Operations
-
-### What It Does
-Manages the employee lifecycle (onboarding → exit), leave tracking, HR policy document generation, and basic org structure. This is the source of truth for who works here and what their terms are.
-
-### Key Concepts
-
-**Employee Master**
-Each employee record in `employees` sheet stores:
-- Personal: Name, DOB, Gender, PAN, Aadhaar, Address
-- Employment: Employee ID, Designation, Department, DOJ, DOE (exit), Status
-- Compensation: `salary_structure_id`, CTC, effective date
-- Statutory: PF UAN, ESIC IP number, PT applicable (Y/N)
-- Bank: Account number, IFSC, bank name (for salary credit)
-
-Fields are defined in `configs/employee_fields.json` — adding a new field means editing config.
-
-**Leave Management**
-- Leave types (EL, SL, CL, LWP, etc.) and their rules in `configs/leave_types.json`
-  - Annual entitlement per leave type
-  - Carry-forward limit
-  - Whether encashable
-  - Whether paid or unpaid
-- `leave_balances` sheet: one row per (employee, leave_type, year) with opening, used, closing balance
-- `leave_records` sheet: individual leave requests with dates, type, status, approver
-- Leave approval flow: Employee requests (chat or form) → Manager approves (chat or link)
-
-**HR Policy Documents**
-- Policy templates stored in `configs/policy_templates.json` — markdown templates with placeholders
-- Placeholders like `{{company_name}}`, `{{notice_period_days}}`, `{{probation_days}}`
-- Company-specific values stored in `configs/company_config.json`
-- User can say "generate POSH policy" or "generate leave policy" → AI fills template → produces document
-- Generated policies stored in `policy_documents` sheet with version tracking
-
-**Org Chart**
-- `employees` sheet has `reports_to` column (Employee ID of manager)
-- Org chart rendered from this — no separate table needed
-
-**Onboarding Checklist**
-- Onboarding task templates in `configs/onboarding_templates.json`
-- When new employee added → system generates checklist entries in `hr_tasks` sheet
-- AI can guide through: "start onboarding for Priya joining Monday"
-
----
-
-## 7. Module 4 — Invoice & Finance
-
-This is the most complex module. It has three sub-modules: **Accounts Payable (AP)**, **Accounts Receivable (AR)**, and **Expense Management**. All three feed into a unified finance dashboard.
-
----
-
-### 7a. Accounts Payable (AP)
-
-**What It Does:** Manages every invoice you receive from vendors — parsing, classification, approval, payment initiation, and GST input credit capture.
-
-**AP Invoice Flow (Step by Step)**
-
-```
-User uploads invoice (image/PDF/text)
-        │
-        ▼
-AI extracts fields:
-  vendor name, GSTIN, invoice number,
-  invoice date, line items, amounts, GST
-        │
-        ▼
-Vendor lookup in vendor_master sheet
-  ├── Found → pull existing vendor details
-  └── Not found → prompt user to confirm new vendor
-              → add to vendor_master
-        │
-        ▼
-Classify each line item:
-  → look up configs/expense_categories.json
-  → determine: category, GST rate, ITC claimable (Y/N)
-  → if ambiguous → AI asks user to confirm category
-        │
-        ▼
-Create AP invoice entry in ap_invoices sheet:
-  status = PENDING_APPROVAL
-        │
-        ▼
-Update gst_input_ledger (if ITC claimable)
-Update expense_entries sheet
-        │
-        ▼
-Payment workflow:
-  Check vendor in bank_payees sheet
-  ├── Payee exists → schedule payment
-  │     └── Create approval_requests entry
-  │           → Notify user: "₹45,000 to GPU vendor. Approve?"
-  │           → On approval → status = APPROVED, schedule execution
-  │           → D+1: "Payment ready. Initiate?" → User confirms
-  │           → status = INITIATED
-  │           → Phase 2: actual bank API call
-  └── Payee missing → notify user to add payee in bank portal
-        → set reminder (configurable days in workflow_config.json)
-        → once confirmed added → proceed above
-```
-
-**AP Invoice Fields (in ap_invoices sheet)**
-- invoice_id (auto), vendor_id, invoice_number, invoice_date, due_date
-- subtotal, gst_amount, total_amount
-- expense_category, itc_claimable, itc_amount
-- payment_status (PENDING / APPROVED / INITIATED / PAID / OVERDUE)
-- payment_date, bank_reference
-- approver, approved_at, notes
-
-**Vendor Master Fields**
-- vendor_id (auto), vendor_name, GSTIN, PAN
-- bank_account, IFSC, bank_name
-- payment_terms (days), is_payee_added (Y/N)
-- contact_email, contact_phone
-
----
-
-### 7b. Accounts Receivable (AR)
-
-**What It Does:** Tracks money owed to you — raises invoices to clients, auto-follows up, marks payment received.
-
-**AR Invoice Flow**
-
-```
-User: "raise invoice to Acme Corp for ₹2L for dev services for March"
-        │
-        ▼
-AI: pulls client from client_master
-  └── Not found → prompts for client GSTIN, address, email
-        │
-        ▼
-Generates invoice:
-  - auto-increments invoice number (format in company_config.json)
-  - applies GST based on service type + state (inter/intra-state → IGST vs CGST+SGST)
-  - creates ar_invoices entry, status = RAISED
-        │
-        ▼
-Sends invoice PDF to client email (Phase 2: actual email)
-Currently: generates draft, user sends manually
-        │
-        ▼
-Follow-up schedule created:
-  → D+7 reminder, D+14 escalation, D+30 final notice
-  (schedule configurable in configs/workflow_config.json)
-        │
-        ▼
-On payment received:
-  User: "Acme paid invoice #INV-2025-042"
-  → status = PAID, payment_date recorded
-  → updates cash position in finance dashboard
-```
-
-**AR Invoice Fields**
-- invoice_id, client_id, invoice_number, invoice_date, due_date
-- service_description, subtotal, igst/cgst/sgst, total
-- status (RAISED / OVERDUE / PAID / CANCELLED)
-- payment_received_date, bank_reference
-- followup_count, last_followup_date
-
----
-
-### 7c. Expense Management
-
-**What It Does:** Every AP invoice auto-creates an expense entry. Direct expenses (no invoice) can also be logged. Produces monthly expense reports with GST classification.
-
-**Expense Categories Config (`configs/expense_categories.json`)**
 ```json
 {
-  "categories": [
-    {
-      "id": "food_beverages",
-      "label": "Food & Beverages",
-      "gst_rate": 18,
-      "itc_claimable": false,
-      "itc_reason": "Section 17(5)(b) - F&B ITC blocked",
-      "sub_categories": ["team_meals", "client_entertainment", "office_pantry"]
-    },
-    {
-      "id": "it_hardware",
-      "label": "IT Hardware",
-      "gst_rate": 18,
-      "itc_claimable": true,
-      "sub_categories": ["laptops", "gpu", "peripherals", "servers"]
-    },
-    {
-      "id": "travel",
-      "label": "Travel & Conveyance",
-      "gst_rate": 5,
-      "itc_claimable": true,
-      "sub_categories": ["flights", "hotels", "cab", "fuel"]
-    }
-    // ... all categories here, not in code
-  ]
+  "id": "ap-invoice",
+  "label": "AP Invoice Agent",
+  "description": "Processes incoming vendor invoices end-to-end: extract, classify, match, approve, schedule payment.",
+  "model": "claude-opus-4-6",
+  "system_prompt_file": "configs/prompts/ap-invoice.md",
+  "sub_agents": ["invoice-extractor", "expense-classifier", "vendor-matcher", "duplicate-detector"],
+  "tools": [
+    "sheets.ap_invoices.create",
+    "sheets.ap_invoices.update",
+    "sheets.vendor_master.lookup",
+    "sheets.vendor_master.create",
+    "sheets.gst_input_ledger.create",
+    "sheets.expense_entries.create",
+    "sheets.approval_requests.create",
+    "sheets.bank_payees.lookup",
+    "notifications.send_approval_request"
+  ],
+  "confidence_thresholds": {
+    "auto_execute": 0.85,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "input_schema": "schemas/ap-invoice-input.json",
+  "output_schema": "schemas/ap-invoice-output.json",
+  "max_iterations": 10,
+  "timeout_seconds": 60
 }
 ```
 
-**Monthly Expense Sheet**
-- Auto-enriched from AP invoices
-- Columns: Date, Vendor, Category, Sub-category, Amount, GST, ITC Claimable, ITC Amount, Notes
-- User can open this sheet anytime, download, share with CA
-- Dashboard shows: total spend by category, total ITC claimed, top vendors
-
 ---
 
-## 8. AI Command Center
+## 6. ReAct Loop Pattern
 
-### How It Works
-- Single chat interface at the top of the app
-- User types in plain English (or Hinglish — the AI handles it)
-- AI (Claude) interprets intent, extracts entities, maps to one of the four modules, executes the right action
-- For destructive or financial actions → AI always asks for explicit confirmation before executing
-- All AI interactions logged in `chat_log` sheet with timestamp, user message, AI response, action taken
+Every agent follows a **Reason → Act → Observe** loop. No agent executes a tool without reasoning about it first. No agent terminates without a structured output.
 
-### Intent Routing Config (`configs/ai_intents.json`)
-```json
-{
-  "intents": [
-    {
-      "id": "run_payroll",
-      "module": "payroll",
-      "triggers": ["run payroll", "process payroll", "payroll for"],
-      "required_params": ["month", "year"],
-      "confirmation_required": true
-    },
-    {
-      "id": "upload_invoice",
-      "module": "finance_ap",
-      "triggers": ["invoice", "bill", "vendor", "clear payment"],
-      "required_params": [],
-      "confirmation_required": false
-    }
-    // all intents here, not in code
-  ]
-}
+### Pseudocode
+
+```
+agent.run(input, context):
+  iterations = 0
+
+  while iterations < agent.max_iterations:
+    // Reason
+    thought = llm.complete(
+      system_prompt = load_prompt(agent.system_prompt_file),
+      messages = context.messages,
+      tools = resolve_tools(agent.tools),
+      sub_agents = resolve_sub_agents(agent.sub_agents)
+    )
+
+    if thought.type == FINAL_ANSWER:
+      audit_logger.log(agent.id, input, thought.answer, context)
+      return thought.answer
+
+    if thought.type == TOOL_CALL:
+      // Score confidence before acting
+      confidence = confidence_scorer.score(thought, context)
+
+      // Check policy
+      policy_result = policy_engine.evaluate(
+        action = thought.tool_call,
+        confidence = confidence,
+        agent_id = agent.id
+      )
+
+      if policy_result == AUTO_EXECUTE:
+        result = execute_tool(thought.tool_call)
+        context.add_observation(result)
+
+      elif policy_result == REQUEST_APPROVAL:
+        approval_id = create_approval_request(thought.tool_call, confidence, evidence)
+        return PENDING_APPROVAL(approval_id)
+
+      elif policy_result == RECOMMEND_ONLY:
+        return RECOMMENDATION(thought.reasoning, no_action=True)
+
+      elif policy_result == REFUSE:
+        return REFUSED("Confidence too low to act. Please provide more information.")
+
+    if thought.type == SPAWN_SUB_AGENT:
+      sub_result = run_agent(thought.sub_agent_id, thought.sub_agent_input, context)
+      context.add_observation(sub_result)
+
+    iterations++
+
+  return ERROR("Max iterations reached without resolution.")
 ```
 
-### Prompt Templates (`configs/prompts_config.json`)
-- System prompts for each module live in config
-- Extraction prompts (for invoice parsing), classification prompts, summary prompts
-- All editable without code changes
+### Context Object
 
-### Approval Flow
-Every action that moves money or changes final records goes through:
-1. AI proposes action with full details
-2. User types "yes", "approve", "go ahead" or clicks Approve button
-3. Action executes
-4. Confirmation + audit trail created
+The context passed through every agent turn contains:
+- `messages`: full conversation history for this session
+- `company_id`: current workspace
+- `actor_id`: who triggered this (founder, finance_lead, employee, system)
+- `session_id`: for grouping related agent calls
+- `memory`: retrieved company-specific patterns (recurring vendors, past runs)
+- `observations`: accumulated tool results in this run
 
 ---
 
-## 9. Dashboard / Control Panel
+## 7. Confidence Scoring System
 
-### Structure
-Navigation has two top-level items:
-1. **Command Center** — the chat interface (default view)
-2. **My Dashboard** — tabbed view of all module dashboards
+### What Gets Scored
 
-### Dashboard Tabs
+Every LLM decision before tool execution. Not the final answer — the specific action being proposed.
 
-**Finance Overview**
-- Cash position (AR outstanding vs AP outstanding)
-- Top unpaid invoices (AP)
-- Overdue AR invoices
-- Monthly expense trend (chart)
-- ITC balance available
+### Scoring Inputs
 
-**Payroll**
-- Last payroll run status
-- Total payroll cost this month
-- Next payroll due date
-- Headcount breakdown
+The confidence scorer (pure function, no LLM) evaluates:
 
-**Tax & Compliance**
-- Compliance calendar — upcoming dues with days remaining
-- Color-coded: green (>7 days), amber (3–7 days), red (<3 days)
-- GST ITC balance
-
-**HR**
-- Active headcount
-- Pending leave requests
-- Employees on leave today
-- Policy documents list
-
-### Sheets Access
-- Each dashboard tab has a "Open Sheet" button → opens the underlying Google Sheet
-- "Download" button → downloads as CSV/Excel
-- All dashboards are read-only aggregations — data lives in sheets, not in the app's own DB
-
----
-
-## 10. Tech Stack — Prototype
-
-| Layer | Choice | Reason |
+| Signal | Weight | Description |
 |---|---|---|
-| Frontend | Next.js (React) | Fast to build, SSR for sheets data |
-| Styling | Tailwind CSS | Rapid UI |
-| AI | Claude API (Anthropic) | Best instruction-following, handles Hinglish |
-| Backend | Google Sheets via Sheets API v4 | Zero infra, shareable, auditable |
-| Auth | NextAuth.js with Google OAuth | Same Google account = same Sheets access |
-| Config | JSON files in `/configs` directory | No hardcoded logic anywhere in app |
-| Hosting | Vercel (free tier) | Zero-config Next.js deployment |
-| File parsing | pdf-parse + Tesseract OCR | Invoice PDF/image extraction |
+| Extraction completeness | 30% | How many required fields were successfully extracted |
+| Vendor/entity match quality | 20% | Exact match vs fuzzy match vs no match |
+| Category match quality | 20% | Exact category match vs ambiguous |
+| Historical pattern match | 15% | Has this same action been taken before successfully? |
+| Data freshness | 15% | How recent is the source data (bank feed, last sync)? |
 
-### Why Google Sheets as Backend (Prototype)
-- CA/accountant can open it directly — no export needed
-- Founder already lives in Google Workspace
-- Free, zero-ops
-- Easy to migrate to PostgreSQL later: same schema, just swap the data layer
+### Thresholds (configurable in `configs/policies/autopilot.json`)
 
----
+| Score Range | Decision | Action |
+|---|---|---|
+| ≥ 0.85 | AUTO_EXECUTE | Execute immediately, log to audit trail |
+| 0.60–0.84 | REQUEST_APPROVAL | Create approval card, surface to approver |
+| 0.40–0.59 | RECOMMEND_ONLY | Show recommendation, no execution, ask for confirmation |
+| < 0.40 | REFUSE | Return "I'm not confident. Please provide X." |
 
-## 11. Google Sheets Architecture
+### Confidence in Evidence Snapshots
 
-### Spreadsheet Layout
-One Google Spreadsheet per company (one workspace = one company for now).
-
-```
-VELO_[CompanyName]_CONFIG (separate spreadsheet — read-only business rules)
-  ├── Sheet: tax_rates
-  ├── Sheet: expense_categories
-  ├── Sheet: payroll_components
-  ├── Sheet: leave_types
-  ├── Sheet: compliance_rules
-  └── Sheet: company_settings
-
-VELO_[CompanyName]_MASTER (master data)
-  ├── Sheet: employees
-  ├── Sheet: salary_structures
-  ├── Sheet: vendor_master
-  └── Sheet: client_master
-
-VELO_[CompanyName]_TRANSACTIONS (all transactional data)
-  ├── Sheet: payroll_runs
-  ├── Sheet: salary_slips
-  ├── Sheet: ap_invoices
-  ├── Sheet: ar_invoices
-  ├── Sheet: expense_entries
-  ├── Sheet: leave_records
-  ├── Sheet: leave_balances
-  ├── Sheet: attendance
-  ├── Sheet: bank_payees
-  └── Sheet: approval_requests
-
-VELO_[CompanyName]_COMPLIANCE
-  ├── Sheet: tax_obligations
-  ├── Sheet: gst_input_ledger
-  ├── Sheet: gst_output_ledger
-  ├── Sheet: compliance_calendar
-  └── Sheet: tds_records
-
-VELO_[CompanyName]_LOGS
-  ├── Sheet: chat_log
-  ├── Sheet: audit_trail
-  └── Sheet: policy_documents
-```
-
-### Handling Unstructured Data (Invoices, Policy Docs, etc.)
-
-Unstructured inputs (invoice PDFs, images, free-text) are handled at the API layer, never stored raw in sheets. The flow:
-
-1. **Intake:** File uploaded → stored temporarily (Vercel /tmp or base64 in memory)
-2. **Extraction:** AI + OCR extracts structured fields from the unstructured input
-3. **Validation:** Extracted fields shown to user for confirmation if confidence < threshold
-4. **Storage:** Only the structured, confirmed fields go into sheets
-5. **Reference:** Original file stored in Google Drive (auto-created folder per module) — the sheet row contains a `source_file_url` column pointing to Drive
-
-This means sheets stay clean and queryable. The raw files are in Drive, linked from each row.
-
-For policy documents (which are semi-structured text):
-- Templates in `configs/policy_templates.json` (markdown with placeholders)
-- Generated document stored as a new row in `policy_documents` sheet with: doc_type, version, generated_at, content (markdown text), gdrive_url
-- Full text in the sheet column itself (Google Sheets handles long text fine)
+Every approval card shows the confidence score + the evidence used to compute it:
+> "Suggested GL category: SaaS (confidence: 0.86). Based on: vendor name 'Acme Cloud', past 3 invoices categorized identically."
 
 ---
 
-## 12. JSON Config Files (Full List)
+## 8. Policy Engine
 
-All live in `/configs` directory in the repo. Never hardcoded in app logic.
+### What It Does
+
+The Policy Engine is a **pure function** (zero LLM calls) that takes an action + context and returns one of: `AUTO_EXECUTE | REQUEST_APPROVAL | RECOMMEND_ONLY | REFUSE`.
+
+It is the last gate before any tool execution. No agent can bypass it.
+
+### Policy Evaluation Order
 
 ```
-/configs
-  ├── company_config.json          ← company name, GSTIN, state, invoice prefix, etc.
-  ├── tax_config.json              ← PT slabs by state, PF rates, ESIC rates, TDS slabs
-  ├── expense_categories.json      ← all expense categories, GST rates, ITC eligibility
-  ├── payroll_config.json          ← salary components, LOP rules, bonus rules
-  ├── leave_types.json             ← leave types, entitlements, carry-forward rules
-  ├── compliance_calendar_rules.json ← due date rules for each compliance type
-  ├── workflow_config.json         ← approval thresholds, follow-up schedules, reminder lead times
-  ├── ai_intents.json              ← intent routing for AI command center
-  ├── prompts_config.json          ← AI prompt templates for each module action
-  ├── employee_fields.json         ← employee master field definitions
-  ├── onboarding_templates.json    ← onboarding checklist templates
-  └── policy_templates.json        ← HR policy document templates (markdown)
+1. Is the actor authorized for this action type? (RBAC check)
+   → No: REFUSE
+
+2. Is the action type covered by an autopilot policy?
+   → No coverage: REQUEST_APPROVAL (default safe)
+
+3. Does the action meet the policy's condition?
+   (e.g., payment_amount <= autopilot.payment_auto_threshold_inr)
+   → Yes + confidence >= auto_execute_min: AUTO_EXECUTE
+   → Yes + confidence < auto_execute_min: REQUEST_APPROVAL
+
+4. Does the action exceed policy threshold?
+   → Yes: REQUEST_APPROVAL
+
+5. Is confidence below refuse threshold?
+   → Yes: REFUSE
 ```
 
----
+### Policy Config (`configs/policies/autopilot.json`)
 
-## 13. Approval & Workflow Governance
-
-### Approval Threshold Rules (`configs/workflow_config.json`)
 ```json
 {
-  "approval_rules": [
+  "_comment": "Autopilot policy. Edit to change what the OS does automatically vs what it asks for.",
+  "payment_auto_threshold_inr": 25000,
+  "filing_auto_execute": false,
+  "alerts_mode": "balanced",
+  "confidence_thresholds": {
+    "auto_execute_min": 0.85,
+    "recommend_only_min": 0.40
+  },
+  "action_overrides": [
     {
-      "action": "ap_payment",
-      "threshold_inr": 0,
-      "approvers": ["founder"],
-      "requires_confirmation": true
+      "action_type": "terminate_employee",
+      "policy": "NEVER_AUTO_EXECUTE",
+      "reason": "Excessive agency guardrail — termination always requires human action"
     },
     {
-      "action": "payroll_run",
-      "threshold_inr": 0,
-      "approvers": ["founder"],
-      "requires_confirmation": true
+      "action_type": "send_legal_notice",
+      "policy": "NEVER_AUTO_EXECUTE"
     },
     {
-      "action": "new_vendor",
-      "approvers": ["founder"],
-      "requires_confirmation": true
+      "action_type": "file_gst_return",
+      "policy": "REQUEST_APPROVAL",
+      "reason": "Filing is irreversible; always get explicit approval"
     }
   ],
-  "ar_followup_schedule_days": [7, 14, 30],
-  "payment_reminder_lead_days": 3,
-  "compliance_alert_lead_days": [7, 2]
+  "rbac": {
+    "founder": ["*"],
+    "finance_lead": ["ap_*", "ar_*", "compliance_*", "expense_*"],
+    "hr_lead": ["hr_*", "payroll_view"],
+    "employee": ["helpdesk_*", "leave_request", "payslip_download"]
+  }
 }
 ```
 
-Every action with `requires_confirmation: true` creates an entry in `approval_requests` sheet and blocks execution until approved.
+### Approval Request Schema
 
-### Audit Trail
-Every write action creates a row in `audit_trail` sheet:
-- timestamp, actor (user email), action_type, module, record_id, old_value, new_value, status
+When `REQUEST_APPROVAL` is triggered, this record goes into `approval_requests` sheet and surfaces in the Command Center:
 
-This is append-only. Nothing ever gets deleted from this sheet.
-
----
-
-## 14. Phase Roadmap
-
-### Phase 0 — Foundation (Now)
-- [ ] Set up repo, config files structure, Sheets schema
-- [ ] Google Sheets API integration layer
-- [ ] Basic Next.js app shell + chat UI
-- [ ] Claude API integration with intent routing
-
-### Phase 1 — Core Modules (Prototype)
-- [ ] Module 4a: AP invoice upload + classification + expense entry
-- [ ] Module 4b: AR invoice generation + follow-up tracking
-- [ ] Module 2: Payroll run (manual trigger, approval, salary slip)
-- [ ] Module 1: Compliance calendar + tax obligation tracking
-- [ ] Module 3: Employee master + leave management
-- [ ] Dashboard views for all modules
-
-### Phase 2 — Connectors & Automation
-- [ ] Bank portal integrations (payee creation, payment initiation)
-- [ ] Email integration (AR follow-ups, salary slips)
-- [ ] GST portal API connector
-- [ ] EPFO API connector
-- [ ] PDF salary slip generation
-- [ ] Multi-user / role-based access
-
-### Phase 3 — Managed Service Layer
-- [ ] CA/accountant access role (read-only, download)
-- [ ] Service layer: on-demand CA consultation booking
-- [ ] Compliance managed service (Velo + CA handles filings)
+```
+{
+  approval_id: auto
+  agent_id: "ap-invoice"
+  action_type: "schedule_vendor_payment"
+  action_payload: { vendor_id, amount, scheduled_date }
+  confidence_score: 0.72
+  evidence: [
+    { type: "invoice_image", ref: "drive://invoices/INV-2025-042.pdf" },
+    { type: "past_payments", summary: "Last 3 payments to this vendor: ₹1.2L, ₹1.1L, ₹1.3L" },
+    { type: "policy_rule", text: "Payment > ₹25,000 requires approval" }
+  ]
+  proposed_action_text: "Pay ₹1,48,000 to Acme Cloud on 12 Apr 2025"
+  created_at: timestamp
+  expires_at: timestamp + workflow_config.approval_expiry_hours
+  status: "PENDING"
+  approver_role: "founder"
+}
+```
 
 ---
 
-## 15. What I Need From You to Start Executing
+## 9. User Journeys
 
-### One-Time Setup
+### Journey 1 — Founder: "Runway always clear + approve only what matters"
 
-| # | What | How to Get It to Me |
+**Scenario:** Founder wants to know if they can hire two engineers.
+
+```
+Step 1: Founder receives weekly digest notification
+  Surface: mobile push / email card
+  Content: "Runway: 5.2 months ↓0.6 (last 30d). Top drivers: salaries + vendor renewals."
+  CTA: "Open Command Center"
+
+Step 2: Founder asks in chat
+  Input: "Can we hire 2 engineers in May?"
+  → OrchestratorAgent routes to RunwayAgent
+
+Step 3: RunwayAgent responds with decision card
+  "Hiring 2 engineers → burn +₹3.8L/mo → runway drops: 5.2 → 4.1 months."
+  "Recommendation: proceed only if collections improve by ₹X, or defer Vendor A renewal."
+  Buttons: [Simulate alternatives] [Proceed anyway] [Cancel]
+
+Step 4: Founder taps "Simulate alternatives"
+  RunwayAgent offers 3 options:
+  A) "Hire 1 engineer" → runway 4.7 months
+  B) "Hire 2 + defer Vendor A payment 7 days" → runway 4.3 months
+  C) "Hire 2 + start fundraise planning" → (show dilution impact)
+
+Step 5: Founder chooses Option B
+  → PolicyEngine evaluates: defer payment = within policy? amount < threshold? → REQUEST_APPROVAL
+  → Approval card surfaces: "Defer Vendor A payment by 7 days. Impact: +0.2 months runway.
+     No late fees detected (confidence: medium). [Approve] [Edit date] [Reject]"
+
+Step 6: Founder approves
+  → APInvoiceAgent updates payment date
+  → AuditLogger records: actor=founder, action=defer_payment, amount=₹X, new_date=...
+  → Confirmation: "Done. Vendor A payment moved to [date]. Runway now showing 4.3 months."
+```
+
+**Error States**
+- Bank feed stale (>48h): "Runway confidence is LOW. Bank data hasn't updated. Upload statement or re-consent to refresh."
+- Confidence below threshold: OS switches to recommend-only, no action proposed.
+
+---
+
+### Journey 2 — Finance Lead: "Continuous close, no dashboards"
+
+**Scenario:** AP invoice comes in via email forward.
+
+```
+Step 1: Invoice arrives at ap@company.velo.app (or forwarded email)
+  → APInvoiceAgent receives raw email/attachment
+
+Step 2: InvoiceExtractorAgent runs
+  Input: invoice PDF/image
+  Output: { vendor_name, gstin, invoice_number, date, line_items[], subtotal, gst, total }
+  Confidence scored per field.
+
+Step 3: VendorMatcherAgent runs
+  Input: vendor_name + gstin
+  → Exact GSTIN match in vendor_master → confidence: 0.97 → AUTO_EXECUTE lookup
+  → Or: fuzzy name match, different GSTIN → confidence: 0.61 → surface for confirmation
+
+Step 4: ExpenseClassifierAgent runs per line item
+  Input: line item description + amount
+  → "H100 GPU" → category: it_hardware, gst_rate: 18%, itc_claimable: true
+  Confidence: 0.91 → will show label + let user override
+
+Step 5: DuplicateDetectorAgent runs
+  → Checks ap_invoices sheet: same vendor + amount + approximate date?
+  → Match found → surfaces: "Possible duplicate — same amount and vendor as #124. Confirm?"
+
+Step 6: AP entry created (pending duplicate check resolution)
+  → gst_input_ledger updated
+  → expense_entries updated
+
+Step 7: Payment workflow
+  → Amount > autopilot threshold → approval card surfaces
+  "Pay ₹1,48,000 to Acme Cloud on 12 Apr?
+   Evidence: invoice PDF + last 3 payments + contract renewal note.
+   [Approve] [Request info] [Mark duplicate] [Reassign]"
+
+Step 8: Founder approves
+  → bank_payees lookup → payee exists → payment scheduled
+  → If payee missing → "Add Acme Cloud as a payee in your bank portal. I'll remind you in 24h."
+```
+
+**Microcopy**
+- "Invoice detected: Vendor 'Acme Cloud' ₹1,48,000 due 12 Apr."
+- "Suggested GL: SaaS (confidence 0.86)."
+- "Payment failure: Bank transfer failed. Retry scheduled in 2h. Reason: insufficient balance."
+
+---
+
+### Journey 3 — HR Lead: "Onboarding auto-checked, helpdesk deflected"
+
+**Scenario:** New hire being onboarded.
+
+```
+Step 1: HR Lead triggers onboarding
+  Input (chat): "Add hire: Priya, joining 6 May, SDE2, CTC ₹18L"
+  → OrchestratorAgent routes to HRAgent
+
+Step 2: HRAgent creates employee record (status: ONBOARDING)
+  → Pulls onboarding template from configs/business/onboarding_templates.json
+  → Creates checklist entries in hr_tasks sheet
+
+Step 3: DocumentGeneratorAgent runs
+  → Generates offer letter (template from configs/prompts/document-generator.md)
+  → Microcopy: "Offer draft ready. Send for e-sign? [Yes, send] [Edit first]"
+
+Step 4: Employee receives onboarding link / WhatsApp flow
+  → Collects: PAN, Aadhaar, bank account, address
+
+Step 5: HRAgent monitors completion
+  → 48h before joining date: checks hr_tasks for blockers
+  → "Missing: PAN, bank account proof. Priya joins Monday. [Send reminder to Priya]"
+
+Step 6: Doc mismatch detection
+  → "PAN name (PRIYA SHARMA) doesn't match bank account name (P SHARMA). Request clarification?"
+```
+
+**Offer Negotiation Assistant**
+- HR: "Candidate wants +20% hike. What's our band?"
+- HRAgent: "Based on internal parity + runway impact, safe max is +12% (adds ₹0.4L/mo burn). Options: increase variable component, joining bonus, ESOPs." *(Uses only internal data — no hallucinated market benchmarks)*
+
+---
+
+### Journey 4 — Employee: "Self-serve, no HR tickets"
+
+**Scenario:** Employee asks for payslip + tax advice.
+
+```
+Step 1: Employee messages via Slack / WhatsApp / Command Center
+  "Need payslip for March"
+  → HelpdeskAgent receives message
+
+Step 2: Identity verified (SSO-bound channel = verified; open channel = OTP)
+  → Payslip link generated: "Download March payslip (link expires in 24h)"
+
+Step 3: Employee asks: "How can I reduce my tax?"
+  → HelpdeskAgent routes to TaxPlanningAgent
+
+Step 4: TaxPlanningAgent asks minimal clarifiers
+  "Which regime are you on — old or new?"
+  "What investments have you declared so far?"
+
+Step 5: TaxPlanningAgent responds
+  → "Switching to old regime + maxing 80C saves ₹X this year.
+     Submit proofs by [deadline] to avoid higher TDS."
+  → "Upload proofs? [Upload here]"
+```
+
+**Error States**
+- Access control: "You don't have permission to access payroll details for other employees."
+- Expired link: "That payslip link has expired. Request a new one? [Yes]"
+
+---
+
+## 10. Core Surfaces & UX
+
+### Surface Types (where Velo talks to users)
+
+| Surface | Use Case | Frequency |
 |---|---|---|
-| 1 | **Google Cloud Project** | Create a project at console.cloud.google.com → enable Sheets API + Drive API → create a Service Account → download the JSON key → paste it here |
-| 2 | **Company Config** | Tell me: company name, state (for PT), GSTIN (if registered), are you registered for PF/ESIC?, invoice number prefix you want (e.g. INV-2025-) |
-| 3 | **AI API Key** | Anthropic API key (claude.ai/settings/keys) — paste it here or I'll set up .env.local |
-| 4 | **Module Priority** | Which module do you want working first? Recommendation: start with AP invoices (Module 4a) since it's the most painful daily problem |
-| 5 | **Employee List (optional)** | Even a rough CSV: Name, Designation, Monthly CTC, DOJ — we'll onboard them into the sheets |
+| Mobile push notification | Critical alerts, approval requests | As needed |
+| Email digest | Weekly summary, compliance reminders | Weekly |
+| Slack / Teams card | Approval requests, exception alerts | As needed |
+| WhatsApp message | Employee self-serve, approvals where appropriate | As needed |
+| Command Center web app | Audit trail, chat, evidence drawers | On demand |
 
-### One Google Sheet to Create
-Create one Google Spreadsheet, name it `VELO_CONFIG`, share it with the service account email (from step 1 above), and send me the spreadsheet URL. I'll set up all the tabs and populate the config.
+### Component Library
+
+**State Chip** — `GREEN / AMBER / RED` with short label: "Compliance: GREEN"
+
+**Runway Tile** — always visible at top of Command Center:
+```
+Runway: 5.2 months  ↓0.6 (30d)   ● Confidence: HIGH
+```
+
+**Approval Card** (standardized across all agents):
+```
+┌─────────────────────────────────────────────────┐
+│ [Action title]                                   │
+│ "Pay ₹1,48,000 to Acme Cloud on 12 Apr"         │
+├─────────────────────────────────────────────────┤
+│ Impact: Reduces cash by ₹1.48L                  │
+│ Runway impact: −0.08 months                      │
+├─────────────────────────────────────────────────┤
+│ Evidence:                                        │
+│  · Invoice PDF [view]                           │
+│  · Last 3 payments: ₹1.2L, ₹1.1L, ₹1.3L       │
+│  · Policy: Payments > ₹25K require approval      │
+├─────────────────────────────────────────────────┤
+│ Confidence: 0.86 (HIGH)                         │
+│ Expires in: 48h                                 │
+├─────────────────────────────────────────────────┤
+│  [Approve]   [Edit]   [Reject]   [Ask more]     │
+└─────────────────────────────────────────────────┘
+```
+
+**Exception Card** — for anomalies the OS surfaces:
+```
+[What happened] [Why it matters] [Proposed fix] [What's missing]
+```
+
+**Evidence Drawer** — ephemeral right panel when user taps "Evidence":
+- Transaction list snippet
+- Invoice image
+- Statutory reference link
+
+**Policy Banner** — always visible, always editable:
+`"Autopilot: payments < ₹25,000 auto-execute · Filing: always ask · Alerts: balanced  [Edit]"`
+
+**Command Bar** — bottom of Command Center:
+`"Ask anything..." [suggested: "Can I hire..."] [suggested: "What's due this month?"]`
+
+**Audit Trail View** — immutable log:
+- Who approved, what executed, timestamps, external reference IDs (bank refs, GST ARN, EPFO acknowledgement)
+
+### Microcopy Rules
+- No jargon in primary copy; jargon only in evidence drawer (e.g., "GSTR-3B" only in details)
+- Always show rupee amounts in Indian format (₹1,48,000 not ₹148000)
+- Always include "why" in one line: "Delaying this improves runway by 0.2 months."
+- Use plain English: "Your monthly tax payment" not "TDS challan under Section 194J"
 
 ---
 
-## 16. Folder Structure (Repo)
+## 11. Onboarding Flow
+
+**Target:** < 10 minutes from landing to first runway view. Feels like "turning on autopilot", not "setting up accounting."
+
+```
+Screen A — Welcome
+  Header: "Activate your Back-Office OS"
+  Subtext: "Connect your bank to calculate runway and protect deadlines."
+  CTA: [Connect bank]   Secondary: [Upload statement instead]
+
+Screen B — Bank Connection
+  Primary: "Connect via Account Aggregator" (AA framework — consented, reversible)
+  Fallback: "Upload last 6 months statement (PDF / CSV)"
+  Microcopy: "We don't move money without approval."
+
+Screen C — Company Inference Confirmation
+  OS shows inferred values (from bank statement analysis):
+    "Estimated monthly burn: ₹18.4L"
+    "Recurring salaries detected: ~₹12.1L"
+    "GST-like payments detected: yes"
+    "Compliance registrations: PF likely, GST likely"
+  [Looks right]   [Edit]
+
+Screen D — People Import (optional)
+  "Upload employee list (CSV)"   [Skip for now]
+  Microcopy: "You can turn on salary automation later. Runway works immediately."
+
+Screen E — Autopilot Policies (3 choices only)
+  1. Payment approvals: [Always ask] / [Auto-pay under ₹___]
+  2. Filing: [Always ask before filing] / [Auto-file when ready]
+  3. Alerts: [Only critical] / [Balanced] / [Verbose]
+
+Screen F — Activation Complete
+  "Autopilot is ON."
+  "First analysis ready in ~30 seconds."  (no hard promise)
+  [Open Command Center]
+```
+
+---
+
+## 12. Module Deep-Dives
+
+### Module A — Runway & Cash Intelligence
+
+**Always-on background agent.** Runs on schedule (configurable, default: hourly) and on any event that changes cash position.
+
+**Inputs:** Bank balance (AA feed / statement), `payroll_runs` sheet (committed salaries), `ap_invoices` sheet (payables due), `ar_invoices` sheet (receivables), `compliance_calendar` sheet (tax payments due), `hr_tasks` sheet (pending hires with committed CTCs).
+
+**Outputs:** Runway tile update, weekly digest content, alerts on threshold breach.
+
+**Core Logic:**
+```
+runway_months = current_cash / monthly_burn_rate
+
+monthly_burn_rate = confirmed_salaries
+                  + vendor_commitments_this_month
+                  + tax_obligations_this_month
+                  + pending_approved_capex
+
+confidence = f(bank_data_freshness, salary_data_completeness, ar_certainty)
+```
+
+**Alert Triggers** (thresholds in `configs/policies/autopilot.json`):
+- Runway drops below X months → AMBER alert
+- Runway drops below Y months → RED alert + escalation
+- Runway changes >0.5 months week-over-week → digest mention
+
+---
+
+### Module B — Tax & Compliance
+
+**Compliance Calendar Generation** — from `configs/business/compliance_calendar_rules.json`:
+- Rules define: filing type, frequency, due day logic, applicable state, portal
+- System generates monthly calendar entries automatically
+- Alert lead times: 7 days (AMBER), 2 days (RED), overdue (CRITICAL)
+
+**GST Input Credit (ITC) Tracking:**
+- Every AP invoice line item → ExpenseClassifierAgent → ITC eligible? (from `expense_categories.json`)
+- ITC eligible entries → `gst_input_ledger` sheet
+- Monthly ITC balance = sum of eligible credits for the period
+- GSTR-3B prefill prepared from `gst_output_ledger` (AR invoices) + `gst_input_ledger`
+
+**Payroll Compliance (per payroll run):**
+- PF challan amount computed → creates `tax_obligations` entry (due: 15th of next month)
+- ESIC challan amount → `tax_obligations` entry
+- PT deducted per employee → `tax_obligations` entry (per state rule)
+- TDS deducted → `tds_records` entry + quarterly return tracking
+
+---
+
+### Module C — Payroll
+
+**Payroll Run Flow:**
+```
+Trigger → PullActiveEmployees → FetchSalaryStructures
+→ FetchAttendance → ComputeGross → ApplyDeductions
+→ ComputeNet → GeneratePayrollRunRecord
+→ GenerateSalarySlips → CreateTaxObligations
+→ SurfaceApprovalCard → OnApproval → MarkApproved
+→ (Phase 2) InitiateBankPayments
+```
+
+All computation logic reads from:
+- `configs/business/payroll_config.json` — salary components, LOP rules, bonus rules
+- `configs/business/tax_config.json` — PF/ESIC/PT/TDS rates
+
+**No payroll computation logic is hardcoded in any TypeScript file.**
+
+---
+
+### Module D — AP Invoice Processing
+
+**Full flow:** See Journey 2 above.
+
+**Key agent calls within APInvoiceAgent:**
+1. `InvoiceExtractorAgent` — PDF/image → structured fields
+2. `VendorMatcherAgent` — vendor name/GSTIN → vendor_master lookup
+3. `ExpenseClassifierAgent` — line items → categories + ITC
+4. `DuplicateDetectorAgent` — check for duplicates
+5. PolicyEngine — payment amount vs threshold
+6. AuditLogger — every step logged
+
+**Payment State Machine:**
+```
+PENDING_EXTRACTION → EXTRACTED → CLASSIFIED → VENDOR_MATCHED
+→ PENDING_APPROVAL | AUTO_SCHEDULED
+→ APPROVED → PAYMENT_INITIATED → PAID | FAILED
+```
+
+---
+
+### Module E — AR Collections
+
+**Invoice Raising Flow:**
+```
+User input → OrchestratorAgent → ARCollectionsAgent
+→ ClientMasterLookup → InvoiceNumberGeneration
+→ GSTComputation (IGST vs CGST+SGST based on state)
+→ GenerateInvoicePDF → CreateAREntry
+→ ApprovalCard (if amount > threshold)
+→ OnApproval → SendToClientEmail
+→ ScheduleFollowUp (from workflow_config.json: D+7, D+14, D+30)
+```
+
+**Follow-up Email Generation:**
+- `ARCollectionsAgent` generates follow-up email copy based on tone config
+- Tone per follow-up level in `configs/business/workflow_config.json`:
+  - D+7: `gentle_reminder`
+  - D+14: `firm_reminder`
+  - D+30: `final_notice`
+- Agent generates email text matching the tone — no hardcoded templates
+
+---
+
+### Module F — HR Operations
+
+**Onboarding Workflow:**
+```
+"Add hire: [name], [date], [role], [CTC]"
+→ HRAgent creates employee record (status: ONBOARDING)
+→ Pulls onboarding_template from configs
+→ DocumentGeneratorAgent: offer letter
+→ Sends onboarding collection flow to employee (email / WhatsApp)
+→ Monitors completion → alerts HR 48h before joining on blockers
+→ On all docs received: status → ACTIVE
+→ First payroll auto-includes employee (pro-rated)
+```
+
+**Policy Document Generation:**
+```
+"Generate POSH policy"
+→ HRAgent → DocumentGeneratorAgent
+→ Loads template from configs/business/policy_templates.json
+→ Fills placeholders from configs/business/company_config.json
+→ Outputs markdown → stores in policy_documents sheet
+→ (Optional) generates PDF
+```
+
+---
+
+## 13. Google Sheets Data Architecture
+
+### Spreadsheet Layout
+
+One workspace = one Google Spreadsheet set per company.
+
+```
+VELO_CONFIG (business rules — read-only for agents)
+  tabs: tax_rates | expense_categories | payroll_components
+        leave_types | compliance_rules | company_settings
+
+VELO_MASTER (reference data)
+  tabs: employees | salary_structures | vendor_master | client_master | bank_payees
+
+VELO_TRANSACTIONS
+  tabs: payroll_runs | salary_slips | ap_invoices | ar_invoices
+        expense_entries | leave_records | leave_balances
+        attendance | approval_requests | hr_tasks
+
+VELO_COMPLIANCE
+  tabs: tax_obligations | gst_input_ledger | gst_output_ledger
+        compliance_calendar | tds_records | filing_history
+
+VELO_LOGS (immutable)
+  tabs: audit_trail | chat_log | agent_run_log | policy_decisions
+        policy_documents | notification_log
+```
+
+### Handling Unstructured Data
+
+Unstructured inputs (invoice PDFs, images, pasted text) are never stored raw in sheets.
+
+```
+Raw input received
+      │
+      ▼
+Stored temporarily in memory / Vercel /tmp
+      │
+      ▼
+InvoiceExtractorAgent runs: PDF/image → structured fields
+      │
+      ▼
+Confidence scored per field
+      │
+      ▼
+Low-confidence fields surfaced to user for confirmation
+      │
+      ▼
+Confirmed structured data → Sheets row created
+      │
+      ▼
+Raw file uploaded to Google Drive
+(auto-folder: /Velo/invoices/YYYY-MM/)
+      │
+      ▼
+Sheet row gets: source_file_url → Drive link
+```
+
+**Sheets store only structured, confirmed data. Drive stores originals. Each sheet row links to Drive.**
+
+---
+
+## 14. Config Architecture
+
+### Directory Structure
+
+```
+configs/
+├── business/                    ← All business rules (tax, payroll, HR, etc.)
+│   ├── company_config.json      ← Company identity and settings
+│   ├── tax_config.json          ← PT slabs, PF/ESIC rates, TDS slabs
+│   ├── expense_categories.json  ← Categories, GST rates, ITC eligibility
+│   ├── payroll_config.json      ← Salary components, LOP, bonus rules
+│   ├── leave_types.json         ← Leave types, entitlements, carry-forward
+│   ├── compliance_calendar_rules.json ← Filing due date rules
+│   ├── employee_fields.json     ← Employee master field definitions
+│   ├── onboarding_templates.json ← Onboarding checklist templates
+│   └── policy_templates.json   ← HR policy document templates (markdown)
+│
+├── agents/                      ← Agent definitions
+│   ├── orchestrator.json
+│   ├── runway.json
+│   ├── compliance.json
+│   ├── payroll.json
+│   ├── ap-invoice.json
+│   ├── ar-collections.json
+│   ├── hr.json
+│   ├── helpdesk.json
+│   ├── tax-planning.json
+│   └── sub-agents/
+│       ├── invoice-extractor.json
+│       ├── expense-classifier.json
+│       ├── vendor-matcher.json
+│       └── duplicate-detector.json
+│
+├── prompts/                     ← Agent system prompts (markdown files)
+│   ├── orchestrator.md
+│   ├── runway.md
+│   ├── compliance.md
+│   ├── payroll.md
+│   ├── ap-invoice.md
+│   ├── invoice-extractor.md
+│   ├── expense-classifier.md
+│   ├── vendor-matcher.md
+│   ├── duplicate-detector.md
+│   ├── ar-collections.md
+│   ├── hr.md
+│   ├── document-generator.md
+│   ├── helpdesk.md
+│   └── tax-planning.md
+│
+├── policies/                    ← Autopilot + approval policies
+│   ├── autopilot.json           ← Thresholds, RBAC, action overrides
+│   └── approval_rules.json      ← Per-action approval configuration
+│
+└── workflows/                   ← Multi-step agent workflow definitions
+    ├── payroll_run.json
+    ├── ap_invoice_processing.json
+    ├── employee_onboarding.json
+    └── ar_invoice_flow.json
+```
+
+### Workflow Config Format (`configs/workflows/ap_invoice_processing.json`)
+
+Defines the sequence of agent calls for a complex task. Changing the flow = editing JSON.
+
+```json
+{
+  "id": "ap_invoice_processing",
+  "label": "AP Invoice Processing",
+  "trigger": "ap_invoice.received",
+  "steps": [
+    {
+      "step": 1,
+      "agent": "invoice-extractor",
+      "input_from": "trigger.payload",
+      "output_to": "extracted_fields",
+      "on_low_confidence": "surface_for_confirmation"
+    },
+    {
+      "step": 2,
+      "agent": "duplicate-detector",
+      "input_from": "extracted_fields",
+      "output_to": "duplicate_check",
+      "on_duplicate_found": "surface_exception_card",
+      "on_no_duplicate": "continue"
+    },
+    {
+      "step": 3,
+      "agent": "vendor-matcher",
+      "input_from": "extracted_fields.vendor_name + extracted_fields.gstin",
+      "output_to": "vendor_match",
+      "on_no_match": "prompt_user_to_confirm_new_vendor"
+    },
+    {
+      "step": 4,
+      "agent": "expense-classifier",
+      "input_from": "extracted_fields.line_items",
+      "output_to": "classifications",
+      "on_ambiguous": "surface_for_confirmation"
+    },
+    {
+      "step": 5,
+      "action": "create_ap_invoice_entry",
+      "tool": "sheets.ap_invoices.create",
+      "input_from": ["extracted_fields", "vendor_match", "classifications"],
+      "requires_policy_check": true
+    },
+    {
+      "step": 6,
+      "action": "update_gst_input_ledger",
+      "tool": "sheets.gst_input_ledger.create",
+      "condition": "classifications.any.itc_claimable == true"
+    },
+    {
+      "step": 7,
+      "action": "initiate_payment_workflow",
+      "tool": "sheets.approval_requests.create",
+      "requires_policy_check": true,
+      "on_auto_execute": "schedule_payment",
+      "on_request_approval": "surface_approval_card"
+    }
+  ]
+}
+```
+
+---
+
+## 15. Integration Map
+
+### Phase 1 (Prototype — Sheets-backed)
+| Integration | Method | Purpose |
+|---|---|---|
+| Google Sheets | Sheets API v4 (service account) | All data storage |
+| Google Drive | Drive API v3 | Raw file storage (invoices, docs) |
+| Google OAuth | NextAuth.js | User authentication |
+| Claude (Anthropic) | Anthropic SDK | All agent LLM calls |
+| Email | Resend / Nodemailer | AR follow-ups, notifications |
+
+### Phase 2 (Connectors)
+| Integration | Method | Purpose |
+|---|---|---|
+| Bank (read) | Account Aggregator (AA) framework | Real-time bank balance + transactions |
+| Bank (write) | Corporate banking APIs (RBL, ICICI, etc.) | Payment initiation |
+| GST Portal | GSP/ASP APIs | GSTR-1, GSTR-3B prefill + filing |
+| EPFO | EPFO Unified Portal API | PF challan + ECR filing |
+| ESIC | ESIC API | ESIC contribution filing |
+| Income Tax | TRACES/IT portal API | TDS return filing, Form 16 |
+| e-Invoice | NIC e-Invoice API | e-Invoice generation for B2B sales |
+
+### India-Specific Architecture Notes
+
+**Account Aggregator (AA) Framework:**
+- User consents via AA app (NBFC-AA like Finvu, OneMoney)
+- Consent is revocable; OS stores consent artifact, not credentials
+- Fallback: PDF/CSV bank statement upload + parser
+- AA data = always treated as "read-only + ephemeral" — never stored raw, only structured summaries
+
+**GST Portal Realities:**
+- Portal downtime is common; track downtime separately from filing misses
+- GSP (GST Suvidha Provider) intermediary needed for API access
+- Validation strictness changes without notice; always validate locally before API call
+- e-Invoice mandatory for turnover > ₹5 Cr (threshold configurable in `tax_config.json`)
+
+**DPDPA 2023 Alignment:**
+- All employee PII (PAN, Aadhaar, bank) = sensitive personal data
+- Purpose limitation: collected for payroll/compliance only, not analytics
+- Data principal rights: employee can request own data via helpdesk
+- Consent records maintained in `audit_trail`
+- Retention policy: `workflow_config.json` → `audit_trail_retention_months`
+
+---
+
+## 16. Privacy & DPDPA Compliance
+
+| Requirement | Implementation |
+|---|---|
+| Lawful processing | Employer-employee relationship = lawful basis; explicit consent for AA bank access |
+| Purpose limitation | Employee PII used only for payroll/compliance; logged in audit_trail |
+| Data minimization | Collect only fields defined in employee_fields.json; no extra collection |
+| Security safeguards | Service account key in env vars; no PII in logs; encrypted at rest (Google Workspace) |
+| User rights | Employee can request their data via HelpdeskAgent; download via secure link |
+| Retention | Configurable in workflow_config.json; audit_trail_retention_months = 84 (7 years, I-T requirement) |
+| Breach response | Audit trail enables full reconstruction; incident response runbook = docs/ |
+
+---
+
+## 17. Monorepo Structure
+
+### Why Monorepo
+
+Agents, tools, core, and web share types and config loading logic. A monorepo with `pnpm workspaces` + `Turborepo` keeps everything in sync without duplicating packages.
+
+### Full Directory Tree
 
 ```
 velo/
-├── configs/                     ← all JSON business logic configs
-│   ├── company_config.json
-│   ├── tax_config.json
-│   ├── expense_categories.json
-│   ├── payroll_config.json
-│   ├── leave_types.json
-│   ├── compliance_calendar_rules.json
-│   ├── workflow_config.json
-│   ├── ai_intents.json
-│   ├── prompts_config.json
-│   ├── employee_fields.json
-│   ├── onboarding_templates.json
-│   └── policy_templates.json
-├── src/
-│   ├── app/                     ← Next.js app router
-│   │   ├── page.tsx             ← Command center (chat)
-│   │   ├── dashboard/
-│   │   │   └── page.tsx         ← Dashboard tabs
-│   │   └── api/
-│   │       ├── chat/route.ts    ← AI command center API
-│   │       ├── payroll/route.ts
-│   │       ├── invoices/route.ts
-│   │       ├── hr/route.ts
-│   │       └── compliance/route.ts
-│   ├── lib/
-│   │   ├── sheets/              ← Google Sheets read/write layer
-│   │   │   ├── client.ts        ← authenticated Sheets client
-│   │   │   ├── employees.ts
-│   │   │   ├── invoices.ts
-│   │   │   ├── payroll.ts
-│   │   │   └── compliance.ts
-│   │   ├── ai/
-│   │   │   ├── claude.ts        ← Claude API client
-│   │   │   ├── intent-router.ts ← maps user message to module action
-│   │   │   └── extractors/      ← invoice extraction, entity extraction
-│   │   ├── modules/
-│   │   │   ├── payroll.ts       ← payroll computation logic
-│   │   │   ├── tax.ts           ← tax computation
-│   │   │   ├── invoices.ts      ← AP/AR logic
-│   │   │   └── hr.ts            ← HR logic
-│   │   └── config/
-│   │       └── loader.ts        ← loads and validates all JSON configs
-│   └── components/
-│       ├── chat/                ← chat UI components
-│       ├── dashboard/           ← dashboard tab components
-│       └── ui/                  ← shared UI (buttons, modals, etc.)
+├── packages/
+│   │
+│   ├── web/                             ← Next.js Command Center (user-facing app)
+│   │   ├── src/
+│   │   │   ├── app/                    ← Next.js App Router
+│   │   │   │   ├── page.tsx            ← Command Center (chat + runway tile)
+│   │   │   │   ├── dashboard/page.tsx  ← Dashboard tabs
+│   │   │   │   └── api/               ← API routes (thin wrappers → agents package)
+│   │   │   │       ├── chat/route.ts
+│   │   │   │       ├── approvals/route.ts
+│   │   │   │       └── webhooks/route.ts
+│   │   │   ├── components/
+│   │   │   │   ├── chat/              ← Command bar, message bubbles
+│   │   │   │   ├── cards/             ← ApprovalCard, ExceptionCard, RunwayTile
+│   │   │   │   └── dashboard/         ← Module dashboard tabs
+│   │   │   └── lib/
+│   │   │       └── api-client.ts      ← Typed client for API routes
+│   │   └── package.json
+│   │
+│   ├── agents/                          ← All agent runtime code
+│   │   ├── src/
+│   │   │   ├── orchestrator/
+│   │   │   │   └── index.ts           ← OrchestratorAgent
+│   │   │   ├── runway/
+│   │   │   │   └── index.ts           ← RunwayAgent
+│   │   │   ├── compliance/
+│   │   │   │   └── index.ts           ← ComplianceAgent
+│   │   │   ├── payroll/
+│   │   │   │   └── index.ts           ← PayrollAgent
+│   │   │   ├── ap-invoice/
+│   │   │   │   ├── index.ts           ← APInvoiceAgent (parent)
+│   │   │   │   ├── extractor/index.ts ← InvoiceExtractorAgent
+│   │   │   │   ├── classifier/index.ts ← ExpenseClassifierAgent
+│   │   │   │   ├── vendor-matcher/index.ts
+│   │   │   │   └── duplicate-detector/index.ts
+│   │   │   ├── ar-collections/
+│   │   │   │   └── index.ts
+│   │   │   ├── hr/
+│   │   │   │   ├── index.ts           ← HRAgent
+│   │   │   │   └── document-generator/index.ts
+│   │   │   ├── helpdesk/
+│   │   │   │   └── index.ts
+│   │   │   ├── tax-planning/
+│   │   │   │   └── index.ts
+│   │   │   └── runner.ts              ← AgentRunner: loads config, runs ReAct loop
+│   │   ├── __tests__/
+│   │   └── package.json
+│   │
+│   ├── tools/                           ← Tool functions callable by agents
+│   │   ├── src/
+│   │   │   ├── sheets/                ← Google Sheets CRUD, typed per sheet
+│   │   │   │   ├── client.ts          ← Authenticated Sheets client (singleton)
+│   │   │   │   ├── ap-invoices.ts
+│   │   │   │   ├── ar-invoices.ts
+│   │   │   │   ├── employees.ts
+│   │   │   │   ├── payroll.ts
+│   │   │   │   ├── compliance.ts
+│   │   │   │   ├── vendor-master.ts
+│   │   │   │   ├── approval-requests.ts
+│   │   │   │   └── audit-trail.ts
+│   │   │   ├── email/
+│   │   │   │   └── index.ts           ← Send emails (Resend)
+│   │   │   ├── notifications/
+│   │   │   │   ├── slack.ts
+│   │   │   │   ├── push.ts
+│   │   │   │   └── whatsapp.ts
+│   │   │   ├── bank/
+│   │   │   │   ├── aa-framework.ts    ← Account Aggregator connector
+│   │   │   │   └── statement-parser.ts ← PDF/CSV bank statement parser
+│   │   │   ├── documents/
+│   │   │   │   ├── pdf-generator.ts   ← Salary slips, offer letters
+│   │   │   │   └── drive.ts           ← Google Drive upload
+│   │   │   └── ocr/
+│   │   │       └── invoice-parser.ts  ← pdf-parse + Tesseract
+│   │   ├── __tests__/
+│   │   └── package.json
+│   │
+│   └── core/                            ← Shared types, engines, utilities
+│       ├── src/
+│       │   ├── types/                 ← All shared TypeScript interfaces
+│       │   │   ├── agent.ts           ← Agent, AgentConfig, AgentResult
+│       │   │   ├── invoice.ts         ← APInvoice, ARInvoice
+│       │   │   ├── employee.ts        ← Employee, SalaryStructure
+│       │   │   ├── payroll.ts         ← PayrollRun, SalarySlip
+│       │   │   ├── compliance.ts      ← TaxObligation, FilingRecord
+│       │   │   └── policy.ts          ← Policy, PolicyResult
+│       │   ├── policy-engine/
+│       │   │   └── index.ts           ← PolicyEngine (pure function, no LLM)
+│       │   ├── confidence/
+│       │   │   └── index.ts           ← ConfidenceScorer (pure function)
+│       │   ├── audit/
+│       │   │   └── index.ts           ← AuditLogger (append-only writes)
+│       │   ├── memory/
+│       │   │   └── index.ts           ← CompanyMemory (pattern retrieval)
+│       │   └── config/
+│       │       ├── loader.ts          ← Loads + validates all JSON configs
+│       │       └── validator.ts       ← Zod schemas for every config file
+│       ├── __tests__/
+│       └── package.json
+│
+├── configs/                             ← (see Section 14)
+│   ├── business/
+│   ├── agents/
+│   │   └── sub-agents/
+│   ├── prompts/
+│   ├── policies/
+│   └── workflows/
+│
 ├── scripts/
-│   └── setup-sheets.ts          ← one-time script to create all sheet tabs + headers
+│   ├── setup-sheets.ts                 ← Create all sheet tabs + headers
+│   └── seed-config-sheets.ts           ← Populate config Sheets from JSON files
+│
+├── turbo.json                           ← Turborepo pipeline config
+├── pnpm-workspace.yaml                  ← Workspace package declarations
+├── package.json                         ← Root package.json
+├── tsconfig.base.json                   ← Shared TypeScript config
 ├── .env.local.example
-├── PLATFORM_PLAN.md             ← this file
+├── .gitignore
+├── PLATFORM_PLAN.md
 └── README.md
 ```
 
+### Package Dependency Rules
+```
+web → agents, core
+agents → tools, core
+tools → core
+core → (no internal deps)
+```
+
+`core` knows nothing about agents, tools, or web. Tools know nothing about agents or web. This means you can swap the LLM or the web framework without touching everything.
+
 ---
 
-*Last updated: April 2026 | Platform: Velo v0.1 | Status: Planning → Phase 0*
+## 18. Phase Roadmap
+
+### Phase 0 — Foundation (Now)
+- [x] Platform plan + configs scaffold
+- [x] Repo setup (monorepo structure)
+- [ ] `pnpm-workspace.yaml` + `turbo.json` setup
+- [ ] `core` package: types, policy engine, confidence scorer, audit logger, config loader
+- [ ] `tools/sheets` package: authenticated Sheets client + all CRUD operations
+- [ ] Sheets setup script (`scripts/setup-sheets.ts`)
+- [ ] Google Sheets — all tabs created with correct headers
+
+### Phase 1 — Core Agents (Prototype)
+- [ ] AgentRunner: loads config, runs ReAct loop, calls tools
+- [ ] OrchestratorAgent: intent routing from user message to specialist
+- [ ] APInvoiceAgent + all 4 sub-agents
+- [ ] RunwayAgent: basic cash/burn calculation
+- [ ] Next.js Command Center: chat UI + approval cards
+- [ ] AR CollectionsAgent: invoice generation + follow-up
+- [ ] PayrollAgent: monthly payroll run
+- [ ] ComplianceAgent: calendar + alerts
+- [ ] HRAgent: onboarding + leave
+- [ ] HelpdeskAgent + TaxPlanningAgent
+- [ ] Email notifications (Resend)
+- [ ] Onboarding flow (5 screens)
+
+### Phase 2 — Connectors & Intelligence
+- [ ] Account Aggregator integration (real bank data)
+- [ ] GSP/ASP connector (GST portal API)
+- [ ] EPFO API connector
+- [ ] Bank payment initiation API
+- [ ] PDF generation (salary slips, offer letters)
+- [ ] Slack / WhatsApp approval surfaces
+- [ ] Company memory (pattern learning from past actions)
+- [ ] Weekly digest email automation
+
+### Phase 3 — Managed Service Layer
+- [ ] CA/accountant read-only access role
+- [ ] Multi-company workspace support
+- [ ] On-demand CA consultation booking
+- [ ] Board pack auto-generation
+- [ ] Cost leak detection agent
+
+---
+
+## 19. What I Need From You
+
+### One-Time Setup (to start executing Phase 1)
+
+| # | What | How to get it to me |
+|---|---|---|
+| 1 | **Google Cloud service account** | console.cloud.google.com → new project → enable Sheets API + Drive API → create Service Account → download JSON key → paste here |
+| 2 | **Company config** | Your company name, state (for PT slabs), GSTIN (if any), PF/ESIC registration status, invoice prefix (e.g. INV-2025-) |
+| 3 | **Anthropic API key** | claude.ai → API keys → create key → paste here |
+| 4 | **One blank Google Sheet** | Create it, name it `VELO_CONFIG`, share with service account email (from step 1), send me the URL — I'll build all 5 spreadsheets |
+| 5 | **Notification channel** | Slack workspace URL + bot token, OR just email for now? |
+| 6 | **Module priority** | I recommend starting with **AP Invoices** (Module D): most visible daily pain, best demo |
+
+### Decisions to Make Before I Build
+
+| Decision | Options | Recommendation |
+|---|---|---|
+| Package manager | npm / yarn / pnpm | **pnpm** (fastest, disk-efficient with monorepo) |
+| LLM for agents | Claude Opus / Sonnet / Haiku | **Sonnet 4.6** for most agents, Haiku for classifiers |
+| Email provider | Resend / Nodemailer + SMTP | **Resend** (dead simple, good free tier) |
+| First notification surface | Email / Slack / WhatsApp | **Email** first (no infra), then Slack |
+| Bank data Phase 1 | AA Framework / Statement upload | **Statement upload** first (no AA setup needed) |
+
+---
+
+*Last updated: April 2026 | Velo v0.2 | Status: Phase 0 → Phase 1*

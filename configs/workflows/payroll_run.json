@@ -1,0 +1,83 @@
+{
+  "id": "payroll_run",
+  "label": "Monthly Payroll Run",
+  "description": "Full payroll computation and approval flow for a given month.",
+  "trigger": "payroll.run_requested",
+  "required_params": ["month", "year"],
+  "steps": [
+    {
+      "step": 1,
+      "id": "fetch_employees",
+      "action": "tool_call",
+      "tool": "sheets.employees.get_active",
+      "output_to": "active_employees"
+    },
+    {
+      "step": 2,
+      "id": "fetch_salary_structures",
+      "action": "tool_call",
+      "tool": "sheets.salary_structures.get_by_ids",
+      "input_from": "active_employees.salary_structure_ids",
+      "output_to": "salary_structures"
+    },
+    {
+      "step": 3,
+      "id": "fetch_attendance_leave",
+      "action": "tool_call",
+      "tool": "sheets.attendance.get_by_month",
+      "input_from": ["month", "year"],
+      "output_to": "attendance_data",
+      "also": "sheets.leave_records.get_by_month"
+    },
+    {
+      "step": 4,
+      "id": "compute_payroll",
+      "agent": "payroll",
+      "input_from": ["active_employees", "salary_structures", "attendance_data"],
+      "config_dependencies": ["configs/business/payroll_config.json", "configs/business/tax_config.json"],
+      "output_to": "payroll_computation"
+    },
+    {
+      "step": 5,
+      "id": "surface_approval",
+      "action": "create_approval_request",
+      "requires_policy_check": true,
+      "approval_card": {
+        "title": "Run payroll for {month} {year}",
+        "summary": "{employee_count} employees · Total net payout: ₹{total_net}",
+        "evidence": ["payroll_computation.summary_table", "employee_change_delta"]
+      },
+      "on_approved": "continue_to_step_6",
+      "on_rejected": "abort_and_notify"
+    },
+    {
+      "step": 6,
+      "id": "create_payroll_run_record",
+      "action": "tool_call",
+      "tool": "sheets.payroll_runs.create",
+      "input_from": "payroll_computation"
+    },
+    {
+      "step": 7,
+      "id": "create_salary_slips",
+      "agent": "document-generator",
+      "action": "generate_salary_slips",
+      "input_from": "payroll_computation",
+      "output_to": "salary_slip_records",
+      "also": "sheets.salary_slips.create_batch"
+    },
+    {
+      "step": 8,
+      "id": "create_tax_obligations",
+      "action": "tool_call",
+      "tool": "sheets.tax_obligations.create_batch",
+      "input_from": "payroll_computation.tax_summary",
+      "entries": [
+        { "type": "pf_challan", "due_rule": "compliance_calendar_rules.pf_challan" },
+        { "type": "esic_challan", "due_rule": "compliance_calendar_rules.esic_challan" },
+        { "type": "pt_payment", "due_rule": "compliance_calendar_rules.pt_{state_code}" },
+        { "type": "tds_payment", "due_rule": "compliance_calendar_rules.tds_payment" }
+      ]
+    }
+  ]
+}

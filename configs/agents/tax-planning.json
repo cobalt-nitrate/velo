@@ -1,0 +1,26 @@
+{
+  "id": "tax-planning",
+  "label": "Tax Planning Agent",
+  "description": "Advises individual employees on tax optimization — regime comparison, 80C investments, HRA exemption, perquisites. Uses only internal salary + declaration data. Never hallucinates market benchmarks.",
+  "model": "claude-haiku-4-5-20251001",
+  "system_prompt_file": "configs/prompts/tax-planning.md",
+  "sub_agents": [],
+  "tools": [
+    "sheets.salary_slips.get_ytd_by_employee",
+    "sheets.employees.get_own_salary_structure",
+    "sheets.tds_records.get_by_employee_year"
+  ],
+  "confidence_thresholds": {
+    "auto_execute": 0.85,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "safety_rules": [
+    "Only use internal salary and declaration data — never external market data",
+    "Always caveat advice with 'consult your CA for final decisions'",
+    "Never advise on illegal tax avoidance"
+  ],
+  "max_iterations": 6,
+  "timeout_seconds": 30
+}

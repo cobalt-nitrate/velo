@@ -1,0 +1,72 @@
+{
+  "id": "ar_invoice_flow",
+  "label": "AR Invoice Flow",
+  "description": "Raise client invoice, compute GST, get approval, send to client, schedule follow-ups, mark paid.",
+  "trigger": "ar_invoice.raise_requested",
+  "required_params": ["client_name", "amount", "description"],
+  "steps": [
+    {
+      "step": 1,
+      "id": "match_client",
+      "action": "tool_call",
+      "tool": "sheets.client_master.lookup",
+      "input_from": "trigger.params.client_name",
+      "on_no_match": {
+        "action": "prompt_client_details",
+        "required": ["gstin", "billing_address", "contact_email", "state"]
+      }
+    },
+    {
+      "step": 2,
+      "id": "compute_gst",
+      "action": "inline_logic",
+      "logic": "if client.state == company.state then CGST+SGST else IGST",
+      "config_dependency": "configs/business/tax_config.json",
+      "output_to": "gst_breakdown"
+    },
+    {
+      "step": 3,
+      "id": "generate_invoice_number",
+      "action": "inline_logic",
+      "logic": "last_ar_invoice_number + 1, formatted per company_config.invoice_prefix",
+      "config_dependency": "configs/business/company_config.json"
+    },
+    {
+      "step": 4,
+      "id": "generate_invoice_pdf",
+      "agent": "document-generator",
+      "action": "generate_ar_invoice",
+      "input_from": ["trigger.params", "client_match", "gst_breakdown", "invoice_number"],
+      "output_to": "invoice_pdf_url"
+    },
+    {
+      "step": 5,
+      "id": "create_ar_entry",
+      "action": "tool_call",
+      "tool": "sheets.ar_invoices.create",
+      "also": "sheets.gst_output_ledger.create",
+      "status": "RAISED"
+    },
+    {
+      "step": 6,
+      "id": "approval_and_send",
+      "action": "create_approval_request",
+      "approval_card": {
+        "title": "Send invoice to {client_name}?",
+        "summary": "₹{total_amount} due in {payment_terms_days} days"
+      },
+      "on_approved": "email.send_invoice",
+      "on_rejected": "ar_status = DRAFT"
+    },
+    {
+      "step": 7,
+      "id": "schedule_followups",
+      "action": "scheduled_sequence",
+      "config_dependency": "configs/business/workflow_config.json",
+      "followup_days_key": "ar_followup_schedule_days",
+      "tone_key": "ar_followup_escalation_tone",
+      "agent_for_email_copy": "ar-collections",
+      "cancel_on": "ar_status == PAID"
+    }
+  ]
+}

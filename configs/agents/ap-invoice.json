@@ -1,0 +1,47 @@
+{
+  "id": "ap-invoice",
+  "label": "AP Invoice Agent",
+  "description": "End-to-end vendor invoice processing: receives raw invoice → extracts fields → matches vendor → classifies expense → detects duplicates → creates sheet entry → initiates payment workflow.",
+  "model": "claude-sonnet-4-6",
+  "system_prompt_file": "configs/prompts/ap-invoice.md",
+  "sub_agents": [
+    "invoice-extractor",
+    "expense-classifier",
+    "vendor-matcher",
+    "duplicate-detector"
+  ],
+  "tools": [
+    "sheets.ap_invoices.create",
+    "sheets.ap_invoices.update",
+    "sheets.ap_invoices.find_by_vendor_amount_date",
+    "sheets.vendor_master.lookup_by_gstin",
+    "sheets.vendor_master.lookup_by_name_fuzzy",
+    "sheets.vendor_master.create",
+    "sheets.gst_input_ledger.create",
+    "sheets.expense_entries.create",
+    "sheets.approval_requests.create",
+    "sheets.bank_payees.lookup",
+    "notifications.send_approval_request",
+    "documents.drive.upload_invoice"
+  ],
+  "confidence_thresholds": {
+    "auto_execute": 0.85,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "payment_state_machine": [
+    "PENDING_EXTRACTION",
+    "EXTRACTED",
+    "CLASSIFIED",
+    "VENDOR_MATCHED",
+    "PENDING_APPROVAL",
+    "AUTO_SCHEDULED",
+    "APPROVED",
+    "PAYMENT_INITIATED",
+    "PAID",
+    "FAILED"
+  ],
+  "max_iterations": 15,
+  "timeout_seconds": 90
+}

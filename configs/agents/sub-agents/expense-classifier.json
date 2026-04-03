@@ -1,0 +1,28 @@
+{
+  "id": "expense-classifier",
+  "label": "Expense Classifier SubAgent",
+  "description": "Classifies each invoice line item into an expense category from configs/business/expense_categories.json. Determines ITC eligibility and applicable GST rate. Returns category_id, sub_category, itc_claimable, confidence per line item.",
+  "model": "claude-haiku-4-5-20251001",
+  "system_prompt_file": "configs/prompts/expense-classifier.md",
+  "sub_agents": [],
+  "tools": [],
+  "config_dependencies": ["configs/business/expense_categories.json"],
+  "output_schema": {
+    "classifications": {
+      "type": "array",
+      "items": {
+        "line_item_index": { "type": "number" },
+        "category_id": { "type": "string" },
+        "sub_category": { "type": "string" },
+        "gst_rate": { "type": "number" },
+        "itc_claimable": { "type": "boolean" },
+        "itc_block_reason": { "type": "string", "optional": true },
+        "confidence": { "type": "number" },
+        "reasoning": { "type": "string" }
+      }
+    }
+  },
+  "max_iterations": 3,
+  "timeout_seconds": 20,
+  "notes": "Uses Haiku since classification from a known category list is simple. Falls back to Sonnet if confidence < 0.6."
+}

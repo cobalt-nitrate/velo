@@ -1,0 +1,31 @@
+{
+  "name": "@velo/agents",
+  "version": "0.1.0",
+  "private": true,
+  "description": "All agent runtime code — OrchestratorAgent and all specialist agents",
+  "main": "./src/runner.ts",
+  "exports": {
+    ".": "./src/runner.ts",
+    "./orchestrator": "./src/orchestrator/index.ts",
+    "./runway": "./src/runway/index.ts",
+    "./compliance": "./src/compliance/index.ts",
+    "./payroll": "./src/payroll/index.ts",
+    "./ap-invoice": "./src/ap-invoice/index.ts",
+    "./ar-collections": "./src/ar-collections/index.ts",
+    "./hr": "./src/hr/index.ts",
+    "./helpdesk": "./src/helpdesk/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@velo/core": "workspace:*",
+    "@velo/tools": "workspace:*",
+    "@anthropic-ai/sdk": "^0.27.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

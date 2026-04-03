@@ -1,0 +1,78 @@
+{
+  "_comment": "Autopilot policy. Edit to change what Velo executes automatically vs what it asks approval for. No code changes needed.",
+  "payment_auto_threshold_inr": 25000,
+  "filing_auto_execute": false,
+  "alerts_mode": "balanced",
+  "confidence_thresholds": {
+    "auto_execute_min": 0.85,
+    "request_approval_min": 0.60,
+    "recommend_only_min": 0.40,
+    "refuse_below": 0.40
+  },
+  "action_overrides": [
+    {
+      "action_type": "terminate_employee",
+      "policy": "NEVER_AUTO_EXECUTE",
+      "reason": "Excessive agency guardrail — termination always requires human action"
+    },
+    {
+      "action_type": "send_legal_notice",
+      "policy": "NEVER_AUTO_EXECUTE",
+      "reason": "Legal actions require human judgment regardless of confidence"
+    },
+    {
+      "action_type": "file_gst_return",
+      "policy": "REQUEST_APPROVAL",
+      "reason": "GST filing is irreversible; always get explicit approval before submitting"
+    },
+    {
+      "action_type": "file_pf_challan",
+      "policy": "REQUEST_APPROVAL",
+      "reason": "Statutory filing — always confirm before executing"
+    },
+    {
+      "action_type": "send_ar_invoice",
+      "policy": "REQUEST_APPROVAL",
+      "reason": "Client-facing document — always confirm before sending"
+    },
+    {
+      "action_type": "run_payroll",
+      "policy": "REQUEST_APPROVAL",
+      "reason": "High-impact financial action — always confirm"
+    }
+  ],
+  "rbac": {
+    "_comment": "Role-based action permissions. '*' means all actions allowed.",
+    "founder": ["*"],
+    "finance_lead": [
+      "ap_invoice.*",
+      "ar_invoice.*",
+      "compliance.*",
+      "expense.*",
+      "payroll.view",
+      "vendor.*",
+      "approval.resolve"
+    ],
+    "hr_lead": [
+      "hr.*",
+      "employee.*",
+      "leave.*",
+      "payroll.view",
+      "policy_document.*"
+    ],
+    "employee": [
+      "helpdesk.*",
+      "leave.request",
+      "payslip.download_own",
+      "tax_planning.self"
+    ]
+  },
+  "runway_alert_thresholds_months": {
+    "amber": 4,
+    "red": 2,
+    "critical": 1
+  },
+  "runway_change_alert_threshold_pct": 10,
+  "weekly_digest_day": "monday",
+  "weekly_digest_time_ist": "09:00"
+}

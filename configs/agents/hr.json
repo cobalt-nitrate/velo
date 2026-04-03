@@ -1,0 +1,33 @@
+{
+  "id": "hr",
+  "label": "HR Agent",
+  "description": "Manages employee onboarding (create record, generate offer, collect docs, monitor checklist), leave requests and approvals, and policy document generation.",
+  "model": "claude-sonnet-4-6",
+  "system_prompt_file": "configs/prompts/hr.md",
+  "sub_agents": ["document-generator"],
+  "tools": [
+    "sheets.employees.create",
+    "sheets.employees.update",
+    "sheets.employees.get_by_id",
+    "sheets.hr_tasks.create_batch",
+    "sheets.hr_tasks.update_status",
+    "sheets.hr_tasks.get_blockers",
+    "sheets.leave_records.create",
+    "sheets.leave_records.update_status",
+    "sheets.leave_balances.get_by_employee",
+    "sheets.leave_balances.update",
+    "sheets.policy_documents.create",
+    "sheets.approval_requests.create",
+    "notifications.send_onboarding_link",
+    "notifications.send_leave_notification",
+    "email.send_offer_letter"
+  ],
+  "confidence_thresholds": {
+    "auto_execute": 0.85,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "max_iterations": 12,
+  "timeout_seconds": 60
+}

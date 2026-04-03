@@ -1,0 +1,65 @@
+{
+  "id": "employee_onboarding",
+  "label": "Employee Onboarding",
+  "description": "Full onboarding flow from HR input to employee being active in the system.",
+  "trigger": "hr.add_employee_requested",
+  "required_params": ["full_name", "designation", "doj", "ctc_annual_inr"],
+  "steps": [
+    {
+      "step": 1,
+      "id": "create_employee_draft",
+      "action": "tool_call",
+      "tool": "sheets.employees.create",
+      "input_from": "trigger.params",
+      "initial_status": "ONBOARDING",
+      "output_to": "employee_id"
+    },
+    {
+      "step": 2,
+      "id": "generate_onboarding_checklist",
+      "action": "tool_call",
+      "tool": "sheets.hr_tasks.create_batch",
+      "config_dependency": "configs/business/onboarding_templates.json",
+      "input_from": "employee_id"
+    },
+    {
+      "step": 3,
+      "id": "generate_offer_letter",
+      "agent": "document-generator",
+      "action": "generate_offer_letter",
+      "input_from": ["employee_id", "trigger.params"],
+      "config_dependency": "configs/business/policy_templates.json",
+      "output_to": "offer_letter_draft",
+      "approval_card": {
+        "title": "Offer letter draft ready for {full_name}",
+        "actions": ["send_for_esign", "edit_first", "skip"]
+      }
+    },
+    {
+      "step": 4,
+      "id": "send_onboarding_collection_flow",
+      "action": "tool_call",
+      "tool": "notifications.send_onboarding_link",
+      "input_from": "employee_id",
+      "collects": ["pan", "aadhaar", "bank_account_number", "bank_ifsc", "address"]
+    },
+    {
+      "step": 5,
+      "id": "monitor_doc_completion",
+      "action": "scheduled_check",
+      "schedule": "daily_until_doj",
+      "check": "sheets.hr_tasks.get_blockers",
+      "alert_at_hours_before_doj": 48,
+      "alert_message": "Missing docs for {full_name} joining {doj}: {missing_items}. Send reminder?",
+      "alert_actions": ["send_reminder", "mark_deferred"]
+    },
+    {
+      "step": 6,
+      "id": "activate_employee",
+      "condition": "all required hr_tasks complete",
+      "action": "tool_call",
+      "tool": "sheets.employees.update",
+      "update": { "status": "Active" }
+    }
+  ]
+}

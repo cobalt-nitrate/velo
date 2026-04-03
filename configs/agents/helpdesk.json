@@ -1,0 +1,34 @@
+{
+  "id": "helpdesk",
+  "label": "Employee Helpdesk Agent",
+  "description": "Self-serve for employees: payslip delivery, leave balance check, HR policy lookup, and hand-off to TaxPlanningAgent for tax optimization. Never exposes other employees' data.",
+  "model": "claude-haiku-4-5-20251001",
+  "system_prompt_file": "configs/prompts/helpdesk.md",
+  "sub_agents": ["tax-planning"],
+  "tools": [
+    "sheets.salary_slips.get_by_employee_month",
+    "sheets.leave_balances.get_by_employee",
+    "sheets.leave_records.get_by_employee",
+    "sheets.policy_documents.get_by_type",
+    "sheets.employees.get_own_record",
+    "documents.drive.generate_secure_link",
+    "notifications.send_secure_link"
+  ],
+  "confidence_thresholds": {
+    "auto_execute": 0.80,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "identity_verification": {
+    "sso_bound_channels": ["slack", "teams"],
+    "otp_required_channels": ["whatsapp", "email", "web_unauthenticated"]
+  },
+  "access_control": {
+    "employee_can_access_own_data_only": true,
+    "payslip_link_expiry_hours": 24
+  },
+  "max_iterations": 6,
+  "timeout_seconds": 30,
+  "notes": "Uses Haiku (cheaper/faster) since helpdesk queries are simple and high-frequency."
+}

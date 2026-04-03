@@ -1,0 +1,30 @@
+{
+  "id": "ar-collections",
+  "label": "AR Collections Agent",
+  "description": "Raises client invoices, computes GST (IGST vs CGST+SGST), generates PDF, sends to client on approval, schedules follow-up emails, marks payment received.",
+  "model": "claude-sonnet-4-6",
+  "system_prompt_file": "configs/prompts/ar-collections.md",
+  "sub_agents": ["document-generator"],
+  "tools": [
+    "sheets.ar_invoices.create",
+    "sheets.ar_invoices.update_status",
+    "sheets.ar_invoices.get_overdue",
+    "sheets.client_master.lookup",
+    "sheets.client_master.create",
+    "sheets.gst_output_ledger.create",
+    "sheets.approval_requests.create",
+    "documents.pdf_generator.generate_invoice",
+    "documents.drive.upload_invoice",
+    "email.send_invoice",
+    "email.send_followup",
+    "notifications.send_approval_request"
+  ],
+  "confidence_thresholds": {
+    "auto_execute": 0.85,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "max_iterations": 10,
+  "timeout_seconds": 60
+}

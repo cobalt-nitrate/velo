@@ -1,0 +1,19 @@
+{
+  "id": "vendor-matcher",
+  "label": "Vendor Matcher SubAgent",
+  "description": "Matches extracted vendor name + GSTIN against the vendor_master sheet. Returns exact match (confidence: 0.97+), fuzzy match with flag, or 'new vendor' with suggested record to confirm.",
+  "model": "claude-haiku-4-5-20251001",
+  "system_prompt_file": "configs/prompts/vendor-matcher.md",
+  "sub_agents": [],
+  "tools": [
+    "sheets.vendor_master.lookup_by_gstin",
+    "sheets.vendor_master.lookup_by_name_fuzzy"
+  ],
+  "match_strategy": [
+    { "step": 1, "method": "exact_gstin_match", "confidence_if_matched": 0.97 },
+    { "step": 2, "method": "fuzzy_name_match_threshold_0.85", "confidence_if_matched": 0.72 },
+    { "step": 3, "method": "no_match", "action": "propose_new_vendor_record" }
+  ],
+  "max_iterations": 3,
+  "timeout_seconds": 15
+}

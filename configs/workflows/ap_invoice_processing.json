@@ -1,0 +1,110 @@
+{
+  "id": "ap_invoice_processing",
+  "label": "AP Invoice Processing",
+  "description": "Full flow from raw invoice receipt to payment execution.",
+  "trigger": "ap_invoice.received",
+  "steps": [
+    {
+      "step": 1,
+      "id": "extract_fields",
+      "agent": "invoice-extractor",
+      "input_from": "trigger.payload",
+      "output_to": "extracted_fields",
+      "on_confidence_below_threshold": "surface_fields_for_confirmation",
+      "required_fields_before_continue": ["vendor_name", "total_amount", "invoice_date"]
+    },
+    {
+      "step": 2,
+      "id": "detect_duplicate",
+      "agent": "duplicate-detector",
+      "input_from": "extracted_fields",
+      "output_to": "duplicate_check",
+      "on_duplicate_found": {
+        "action": "surface_exception_card",
+        "message": "Possible duplicate — same amount and vendor as invoice #{matching_invoice_ids}. Confirm?",
+        "user_choices": ["confirm_not_duplicate", "mark_as_duplicate_and_stop"]
+      },
+      "on_no_duplicate": "continue"
+    },
+    {
+      "step": 3,
+      "id": "match_vendor",
+      "agent": "vendor-matcher",
+      "input_from": "extracted_fields",
+      "output_to": "vendor_match",
+      "on_no_match": {
+        "action": "prompt_confirm_new_vendor",
+        "message": "New vendor detected: {vendor_name} (GSTIN: {gstin}). Add to vendor master?",
+        "user_choices": ["confirm_and_add", "edit_details_then_add", "reject"]
+      },
+      "on_fuzzy_match": {
+        "action": "surface_for_confirmation",
+        "message": "Did you mean {matched_vendor_name}? (confidence: {confidence})"
+      }
+    },
+    {
+      "step": 4,
+      "id": "classify_expenses",
+      "agent": "expense-classifier",
+      "input_from": "extracted_fields.line_items",
+      "output_to": "classifications",
+      "on_ambiguous_classification": {
+        "action": "surface_for_confirmation",
+        "message": "How should I classify '{line_item_description}'?"
+      }
+    },
+    {
+      "step": 5,
+      "id": "create_ap_entry",
+      "action": "tool_call",
+      "tool": "sheets.ap_invoices.create",
+      "input_from": ["extracted_fields", "vendor_match", "classifications"],
+      "output_to": "ap_invoice_id",
+      "requires_policy_check": true
+    },
+    {
+      "step": 6,
+      "id": "update_gst_ledger",
+      "action": "tool_call",
+      "tool": "sheets.gst_input_ledger.create",
+      "condition": "classifications.any.itc_claimable == true",
+      "input_from": ["ap_invoice_id", "classifications"]
+    },
+    {
+      "step": 7,
+      "id": "update_expense_entries",
+      "action": "tool_call",
+      "tool": "sheets.expense_entries.create",
+      "input_from": ["ap_invoice_id", "classifications", "extracted_fields"]
+    },
+    {
+      "step": 8,
+      "id": "upload_source_file",
+      "action": "tool_call",
+      "tool": "documents.drive.upload_invoice",
+      "input_from": "trigger.payload.raw_file",
+      "output_to": "source_file_url",
+      "then": "sheets.ap_invoices.update({ap_invoice_id, source_file_url})"
+    },
+    {
+      "step": 9,
+      "id": "initiate_payment_workflow",
+      "action": "tool_call",
+      "tool": "sheets.bank_payees.lookup",
+      "input_from": "vendor_match.vendor_id",
+      "on_payee_exists": {
+        "action": "create_approval_request",
+        "tool": "sheets.approval_requests.create",
+        "requires_policy_check": true,
+        "on_auto_execute": "schedule_payment",
+        "on_request_approval": "surface_approval_card"
+      },
+      "on_payee_missing": {
+        "action": "surface_exception_card",
+        "message": "Add {vendor_name} as a payee in your bank portal first. I'll remind you in {reminder_days} day(s).",
+        "set_reminder": true,
+        "reminder_config_key": "workflow_config.bank_payee_creation_reminder_days"
+      }
+    }
+  ]
+}

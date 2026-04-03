@@ -1,0 +1,26 @@
+{
+  "id": "orchestrator",
+  "label": "Orchestrator Agent",
+  "description": "Routes user intent to the appropriate specialist agent. Maintains conversation context. Handles multi-turn clarification before routing.",
+  "model": "claude-sonnet-4-6",
+  "system_prompt_file": "configs/prompts/orchestrator.md",
+  "sub_agents": [
+    "runway",
+    "compliance",
+    "payroll",
+    "ap-invoice",
+    "ar-collections",
+    "hr",
+    "helpdesk"
+  ],
+  "tools": [],
+  "confidence_thresholds": {
+    "auto_execute": 0.85,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "max_iterations": 5,
+  "timeout_seconds": 30,
+  "notes": "Orchestrator itself does not execute tools — it only routes. All execution happens in specialist agents."
+}

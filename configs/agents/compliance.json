@@ -1,0 +1,33 @@
+{
+  "id": "compliance",
+  "label": "Compliance Agent",
+  "description": "Manages the statutory compliance calendar. Generates due dates from rules. Tracks filing status. Sends reminders. Prefills returns from available data.",
+  "model": "claude-sonnet-4-6",
+  "system_prompt_file": "configs/prompts/compliance.md",
+  "sub_agents": [],
+  "tools": [
+    "sheets.compliance_calendar.get_upcoming",
+    "sheets.compliance_calendar.mark_done",
+    "sheets.tax_obligations.create",
+    "sheets.tax_obligations.get_by_period",
+    "sheets.gst_input_ledger.get_balance",
+    "sheets.gst_output_ledger.get_by_period",
+    "sheets.tds_records.get_by_quarter",
+    "sheets.filing_history.create",
+    "sheets.payroll_runs.get_by_period",
+    "notifications.send_compliance_alert",
+    "notifications.send_digest"
+  ],
+  "confidence_thresholds": {
+    "auto_execute": 0.85,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "schedule": {
+    "calendar_generation": "monthly",
+    "alert_check_interval_hours": 12
+  },
+  "max_iterations": 8,
+  "timeout_seconds": 45
+}
