@@ -2,7 +2,7 @@
   "id": "ar-collections",
   "label": "AR Collections Agent",
   "description": "Raises client invoices, computes GST (IGST vs CGST+SGST), generates PDF, sends to client on approval, schedules follow-up emails, marks payment received.",
-  "model": "claude-sonnet-4-6",
+  "model": "${LLM_MODEL_AR_COLLECTIONS}",
   "system_prompt_file": "configs/prompts/ar-collections.md",
   "sub_agents": ["document-generator"],
   "tools": [

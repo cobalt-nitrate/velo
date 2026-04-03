@@ -2,7 +2,7 @@
   "id": "helpdesk",
   "label": "Employee Helpdesk Agent",
   "description": "Self-serve for employees: payslip delivery, leave balance check, HR policy lookup, and hand-off to TaxPlanningAgent for tax optimization. Never exposes other employees' data.",
-  "model": "claude-haiku-4-5-20251001",
+  "model": "${LLM_MODEL_HELPDESK}",
   "system_prompt_file": "configs/prompts/helpdesk.md",
   "sub_agents": ["tax-planning"],
   "tools": [

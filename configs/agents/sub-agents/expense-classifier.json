@@ -2,7 +2,7 @@
   "id": "expense-classifier",
   "label": "Expense Classifier SubAgent",
   "description": "Classifies each invoice line item into an expense category from configs/business/expense_categories.json. Determines ITC eligibility and applicable GST rate. Returns category_id, sub_category, itc_claimable, confidence per line item.",
-  "model": "claude-haiku-4-5-20251001",
+  "model": "${LLM_MODEL_EXPENSE_CLASSIFIER}",
   "system_prompt_file": "configs/prompts/expense-classifier.md",
   "sub_agents": [],
   "tools": [],

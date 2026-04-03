@@ -2,7 +2,7 @@
   "id": "hr",
   "label": "HR Agent",
   "description": "Manages employee onboarding (create record, generate offer, collect docs, monitor checklist), leave requests and approvals, and policy document generation.",
-  "model": "claude-sonnet-4-6",
+  "model": "${LLM_MODEL_HR}",
   "system_prompt_file": "configs/prompts/hr.md",
   "sub_agents": ["document-generator"],
   "tools": [

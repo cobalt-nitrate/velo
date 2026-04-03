@@ -2,7 +2,7 @@
   "id": "orchestrator",
   "label": "Orchestrator Agent",
   "description": "Routes user intent to the appropriate specialist agent. Maintains conversation context. Handles multi-turn clarification before routing.",
-  "model": "claude-sonnet-4-6",
+  "model": "${LLM_MODEL_ORCHESTRATOR}",
   "system_prompt_file": "configs/prompts/orchestrator.md",
   "sub_agents": [
     "runway",

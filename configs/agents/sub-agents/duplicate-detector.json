@@ -2,7 +2,7 @@
   "id": "duplicate-detector",
   "label": "Duplicate Invoice Detector SubAgent",
   "description": "Checks if an incoming invoice is a likely duplicate of an existing ap_invoices entry. Uses vendor_id + amount + date proximity (within 7 days) as primary signals. LLM used only for ambiguous cases.",
-  "model": "claude-haiku-4-5-20251001",
+  "model": "${LLM_MODEL_DUPLICATE_DETECTOR}",
   "system_prompt_file": "configs/prompts/duplicate-detector.md",
   "sub_agents": [],
   "tools": [

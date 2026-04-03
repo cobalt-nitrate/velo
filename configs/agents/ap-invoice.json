@@ -2,7 +2,7 @@
   "id": "ap-invoice",
   "label": "AP Invoice Agent",
   "description": "End-to-end vendor invoice processing: receives raw invoice → extracts fields → matches vendor → classifies expense → detects duplicates → creates sheet entry → initiates payment workflow.",
-  "model": "claude-sonnet-4-6",
+  "model": "${LLM_MODEL_AP_INVOICE}",
   "system_prompt_file": "configs/prompts/ap-invoice.md",
   "sub_agents": [
     "invoice-extractor",

@@ -2,7 +2,7 @@
   "id": "compliance",
   "label": "Compliance Agent",
   "description": "Manages the statutory compliance calendar. Generates due dates from rules. Tracks filing status. Sends reminders. Prefills returns from available data.",
-  "model": "claude-sonnet-4-6",
+  "model": "${LLM_MODEL_COMPLIANCE}",
   "system_prompt_file": "configs/prompts/compliance.md",
   "sub_agents": [],
   "tools": [

@@ -2,7 +2,7 @@
   "id": "tax-planning",
   "label": "Tax Planning Agent",
   "description": "Advises individual employees on tax optimization — regime comparison, 80C investments, HRA exemption, perquisites. Uses only internal salary + declaration data. Never hallucinates market benchmarks.",
-  "model": "claude-haiku-4-5-20251001",
+  "model": "${LLM_MODEL_TAX_PLANNING}",
   "system_prompt_file": "configs/prompts/tax-planning.md",
   "sub_agents": [],
   "tools": [

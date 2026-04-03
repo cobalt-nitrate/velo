@@ -2,7 +2,7 @@
   "id": "vendor-matcher",
   "label": "Vendor Matcher SubAgent",
   "description": "Matches extracted vendor name + GSTIN against the vendor_master sheet. Returns exact match (confidence: 0.97+), fuzzy match with flag, or 'new vendor' with suggested record to confirm.",
-  "model": "claude-haiku-4-5-20251001",
+  "model": "${LLM_MODEL_VENDOR_MATCHER}",
   "system_prompt_file": "configs/prompts/vendor-matcher.md",
   "sub_agents": [],
   "tools": [

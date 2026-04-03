@@ -2,7 +2,7 @@
   "id": "payroll",
   "label": "Payroll Agent",
   "description": "Runs monthly payroll: fetches active employees, computes gross + deductions, generates payroll run record + salary slips, creates compliance obligations, surfaces approval card.",
-  "model": "claude-sonnet-4-6",
+  "model": "${LLM_MODEL_PAYROLL}",
   "system_prompt_file": "configs/prompts/payroll.md",
   "sub_agents": ["document-generator"],
   "tools": [

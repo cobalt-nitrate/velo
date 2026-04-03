@@ -2,7 +2,7 @@
   "id": "invoice-extractor",
   "label": "Invoice Extractor SubAgent",
   "description": "Extracts structured fields from raw invoice inputs: PDF, image, or pasted text. Scores confidence per field. Returns partially-filled fields if some cannot be extracted — never fabricates missing values.",
-  "model": "claude-sonnet-4-6",
+  "model": "${LLM_MODEL_INVOICE_EXTRACTOR}",
   "system_prompt_file": "configs/prompts/invoice-extractor.md",
   "sub_agents": [],
   "tools": [

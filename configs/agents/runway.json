@@ -2,7 +2,7 @@
   "id": "runway",
   "label": "Runway Agent",
   "description": "Monitors cash, burn rate, and runway continuously. Answers hiring/spend simulation queries. Generates weekly digest content. Triggers alerts on threshold breach.",
-  "model": "claude-sonnet-4-6",
+  "model": "${LLM_MODEL_RUNWAY}",
   "system_prompt_file": "configs/prompts/runway.md",
   "sub_agents": [],
   "tools": [
