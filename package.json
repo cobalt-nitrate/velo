@@ -11,9 +11,10 @@
     "setup-sheets": "tsx scripts/setup-sheets.ts"
   },
   "devDependencies": {
+    "googleapis": "^171.4.0",
+    "tsx": "^4.0.0",
     "turbo": "^2.0.0",
-    "typescript": "^5.4.0",
-    "tsx": "^4.0.0"
+    "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=20.0.0",
