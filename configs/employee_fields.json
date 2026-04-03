@@ -1,0 +1,31 @@
+{
+  "_comment": "Employee master field definitions. Add/remove fields here — the sheet schema + onboarding form follow this.",
+  "fields": [
+    { "id": "employee_id", "label": "Employee ID", "type": "auto", "required": true },
+    { "id": "full_name", "label": "Full Name", "type": "string", "required": true },
+    { "id": "email", "label": "Work Email", "type": "email", "required": true },
+    { "id": "personal_email", "label": "Personal Email", "type": "email", "required": false },
+    { "id": "phone", "label": "Phone Number", "type": "string", "required": true },
+    { "id": "dob", "label": "Date of Birth", "type": "date", "required": true },
+    { "id": "gender", "label": "Gender", "type": "enum", "options": ["Male", "Female", "Other"], "required": true },
+    { "id": "pan", "label": "PAN Number", "type": "string", "required": true },
+    { "id": "aadhaar", "label": "Aadhaar Number", "type": "string", "required": true },
+    { "id": "address", "label": "Current Address", "type": "text", "required": true },
+    { "id": "designation", "label": "Designation / Job Title", "type": "string", "required": true },
+    { "id": "department", "label": "Department", "type": "string", "required": true },
+    { "id": "reports_to", "label": "Reports To (Employee ID)", "type": "ref:employee_id", "required": false },
+    { "id": "doj", "label": "Date of Joining", "type": "date", "required": true },
+    { "id": "doe", "label": "Date of Exit", "type": "date", "required": false },
+    { "id": "status", "label": "Status", "type": "enum", "options": ["Active", "On Notice", "Exited"], "required": true, "default": "Active" },
+    { "id": "employment_type", "label": "Employment Type", "type": "enum", "options": ["Full-time", "Part-time", "Contractor", "Intern"], "required": true },
+    { "id": "salary_structure_id", "label": "Salary Structure ID", "type": "ref:salary_structure_id", "required": true },
+    { "id": "ctc_annual_inr", "label": "Annual CTC (INR)", "type": "number", "required": true },
+    { "id": "pf_uan", "label": "PF UAN", "type": "string", "required": false },
+    { "id": "esic_ip_number", "label": "ESIC IP Number", "type": "string", "required": false },
+    { "id": "pt_applicable", "label": "PT Applicable", "type": "boolean", "required": true, "default": true },
+    { "id": "tds_regime", "label": "TDS Regime", "type": "enum", "options": ["new", "old"], "required": true, "default": "new" },
+    { "id": "bank_account_number", "label": "Bank Account Number", "type": "string", "required": true },
+    { "id": "bank_ifsc", "label": "Bank IFSC Code", "type": "string", "required": true },
+    { "id": "bank_name", "label": "Bank Name", "type": "string", "required": true }
+  ]
+}

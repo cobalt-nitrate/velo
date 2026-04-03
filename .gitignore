@@ -1,0 +1,31 @@
+# env
+.env
+.env.local
+.env.*.local
+
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+
+# build
+dist/
+build/
+
+# misc
+.DS_Store
+*.pem
+*.log
+
+# service account key files — NEVER commit these
+*service_account*.json
+*credentials*.json
+*key*.json
+
+# IDE
+.vscode/
+.idea/

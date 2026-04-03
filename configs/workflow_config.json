@@ -1,0 +1,49 @@
+{
+  "_comment": "Approval thresholds, follow-up schedules, reminder windows. Edit freely.",
+  "approval_rules": [
+    {
+      "action": "ap_payment",
+      "label": "Vendor Payment",
+      "requires_confirmation": true,
+      "approvers": ["founder"],
+      "threshold_inr": 0,
+      "notes": "All vendor payments need founder approval regardless of amount"
+    },
+    {
+      "action": "new_vendor",
+      "label": "Add New Vendor",
+      "requires_confirmation": true,
+      "approvers": ["founder"]
+    },
+    {
+      "action": "payroll_run",
+      "label": "Payroll Run",
+      "requires_confirmation": true,
+      "approvers": ["founder"]
+    },
+    {
+      "action": "ar_invoice_send",
+      "label": "Send AR Invoice to Client",
+      "requires_confirmation": true,
+      "approvers": ["founder"]
+    },
+    {
+      "action": "leave_approval",
+      "label": "Employee Leave Request",
+      "requires_confirmation": true,
+      "approvers": ["manager", "founder"]
+    }
+  ],
+  "ar_followup_schedule_days": [7, 14, 30],
+  "ar_followup_escalation_tone": {
+    "7": "gentle_reminder",
+    "14": "firm_reminder",
+    "30": "final_notice"
+  },
+  "payment_reminder_lead_days": 3,
+  "compliance_alert_lead_days": [7, 2],
+  "bank_payee_creation_reminder_days": 1,
+  "invoice_payment_default_due_days": 30,
+  "approval_expiry_hours": 72,
+  "audit_trail_retention_months": 84
+}

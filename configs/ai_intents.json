@@ -1,0 +1,102 @@
+{
+  "_comment": "Intent routing config. All AI command patterns live here — not in code.",
+  "intents": [
+    {
+      "id": "run_payroll",
+      "module": "payroll",
+      "label": "Run Payroll",
+      "triggers": ["run payroll", "process payroll", "payroll for", "payroll process", "salary this month"],
+      "required_params": ["month", "year"],
+      "param_extraction": true,
+      "confirmation_required": true,
+      "confirmation_message": "About to run payroll for {{month}} {{year}} for {{employee_count}} employees. Total estimated payout: ₹{{total}}. Proceed?"
+    },
+    {
+      "id": "upload_ap_invoice",
+      "module": "finance_ap",
+      "label": "Upload / Process Vendor Invoice",
+      "triggers": ["invoice", "bill", "vendor payment", "clear payment", "pay vendor", "received invoice", "got an invoice"],
+      "required_params": [],
+      "param_extraction": true,
+      "confirmation_required": false
+    },
+    {
+      "id": "raise_ar_invoice",
+      "module": "finance_ar",
+      "label": "Raise Client Invoice",
+      "triggers": ["raise invoice", "send invoice to", "invoice to client", "bill the client", "create invoice for"],
+      "required_params": ["client_name", "amount"],
+      "param_extraction": true,
+      "confirmation_required": true
+    },
+    {
+      "id": "check_compliance",
+      "module": "compliance",
+      "label": "Check Compliance Calendar",
+      "triggers": ["what's due", "compliance due", "pending filings", "gst due", "pf due", "what do i owe", "tax dues"],
+      "required_params": [],
+      "confirmation_required": false
+    },
+    {
+      "id": "add_employee",
+      "module": "hr",
+      "label": "Add New Employee",
+      "triggers": ["add employee", "new employee", "onboard", "joining", "new hire", "new joiner"],
+      "required_params": ["name", "designation", "doj", "ctc"],
+      "param_extraction": true,
+      "confirmation_required": true
+    },
+    {
+      "id": "leave_request",
+      "module": "hr",
+      "label": "Employee Leave Request",
+      "triggers": ["apply leave", "take leave", "leave request", "out of office", "on leave"],
+      "required_params": ["employee", "from_date", "to_date", "leave_type"],
+      "param_extraction": true,
+      "confirmation_required": true
+    },
+    {
+      "id": "expense_summary",
+      "module": "finance_expense",
+      "label": "Expense Summary",
+      "triggers": ["expense summary", "how much did we spend", "spending this month", "expense report"],
+      "required_params": [],
+      "confirmation_required": false
+    },
+    {
+      "id": "gst_itc_balance",
+      "module": "compliance",
+      "label": "Check ITC Balance",
+      "triggers": ["itc balance", "input credit", "gst credit", "how much itc", "input tax credit"],
+      "required_params": [],
+      "confirmation_required": false
+    },
+    {
+      "id": "generate_policy",
+      "module": "hr",
+      "label": "Generate HR Policy Document",
+      "triggers": ["generate policy", "create policy", "policy document", "hr policy", "posh policy", "leave policy"],
+      "required_params": ["policy_type"],
+      "param_extraction": true,
+      "confirmation_required": false
+    },
+    {
+      "id": "approve_action",
+      "module": "workflow",
+      "label": "Approve Pending Action",
+      "triggers": ["yes", "approve", "go ahead", "confirm", "proceed", "done", "okay do it", "haan", "kar do"],
+      "required_params": [],
+      "confirmation_required": false,
+      "context_dependent": true
+    },
+    {
+      "id": "reject_action",
+      "module": "workflow",
+      "label": "Reject Pending Action",
+      "triggers": ["no", "cancel", "don't", "stop", "reject", "nahi", "ruk"],
+      "required_params": [],
+      "confirmation_required": false,
+      "context_dependent": true
+    }
+  ]
+}

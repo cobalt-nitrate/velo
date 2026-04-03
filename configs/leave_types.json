@@ -1,0 +1,83 @@
+{
+  "_comment": "Define all leave types, entitlements, and rules here. No code changes needed to add a new leave type.",
+  "leave_types": [
+    {
+      "id": "EL",
+      "label": "Earned Leave",
+      "annual_entitlement_days": 15,
+      "carry_forward_max_days": 30,
+      "encashable": true,
+      "paid": true,
+      "accrual": "monthly",
+      "accrual_days_per_month": 1.25,
+      "min_notice_days": 2
+    },
+    {
+      "id": "SL",
+      "label": "Sick Leave",
+      "annual_entitlement_days": 12,
+      "carry_forward_max_days": 0,
+      "encashable": false,
+      "paid": true,
+      "accrual": "annual",
+      "requires_medical_certificate_after_days": 3,
+      "min_notice_days": 0
+    },
+    {
+      "id": "CL",
+      "label": "Casual Leave",
+      "annual_entitlement_days": 12,
+      "carry_forward_max_days": 0,
+      "encashable": false,
+      "paid": true,
+      "accrual": "annual",
+      "max_continuous_days": 3,
+      "min_notice_days": 1
+    },
+    {
+      "id": "ML",
+      "label": "Maternity Leave",
+      "entitlement_days": 182,
+      "carry_forward_max_days": 0,
+      "encashable": false,
+      "paid": true,
+      "accrual": "none",
+      "eligibility": "female_employees_with_80_days_service",
+      "min_notice_days": 0
+    },
+    {
+      "id": "PL",
+      "label": "Paternity Leave",
+      "entitlement_days": 15,
+      "carry_forward_max_days": 0,
+      "encashable": false,
+      "paid": true,
+      "accrual": "none",
+      "min_notice_days": 0
+    },
+    {
+      "id": "LWP",
+      "label": "Leave Without Pay",
+      "annual_entitlement_days": 999,
+      "carry_forward_max_days": 0,
+      "encashable": false,
+      "paid": false,
+      "accrual": "none",
+      "triggers_lop_deduction": true,
+      "min_notice_days": 0
+    },
+    {
+      "id": "WFH",
+      "label": "Work From Home",
+      "annual_entitlement_days": 999,
+      "carry_forward_max_days": 0,
+      "encashable": false,
+      "paid": true,
+      "accrual": "none",
+      "counts_as_leave": false,
+      "min_notice_days": 0
+    }
+  ],
+  "public_holidays": "DEFINED_IN_ATTENDANCE_SHEET",
+  "weekend_policy": "saturday_sunday_off"
+}

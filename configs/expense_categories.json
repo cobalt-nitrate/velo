@@ -1,0 +1,110 @@
+{
+  "_comment": "All expense categories, GST rates, and ITC eligibility rules. Add/edit categories here freely.",
+  "categories": [
+    {
+      "id": "it_hardware",
+      "label": "IT Hardware",
+      "gst_rate": 18,
+      "itc_claimable": true,
+      "itc_section": "Section 16",
+      "sub_categories": ["laptops", "gpu", "servers", "peripherals", "networking"]
+    },
+    {
+      "id": "it_software",
+      "label": "Software & Subscriptions",
+      "gst_rate": 18,
+      "itc_claimable": true,
+      "itc_section": "Section 16",
+      "sub_categories": ["saas_tools", "cloud_services", "licenses", "apis"]
+    },
+    {
+      "id": "food_beverages",
+      "label": "Food & Beverages",
+      "gst_rate": 18,
+      "itc_claimable": false,
+      "itc_block_reason": "Section 17(5)(b) — F&B ITC blocked for team meals and entertainment",
+      "sub_categories": ["team_meals", "client_entertainment", "office_pantry", "team_party"]
+    },
+    {
+      "id": "travel_domestic",
+      "label": "Travel — Domestic",
+      "gst_rate": 5,
+      "itc_claimable": true,
+      "itc_section": "Section 16",
+      "sub_categories": ["flights", "trains", "intercity_cab"]
+    },
+    {
+      "id": "hotels",
+      "label": "Hotels & Accommodation",
+      "gst_rate": 18,
+      "itc_claimable": true,
+      "itc_section": "Section 16",
+      "notes": "ITC claimable only if for business purpose, not personal travel",
+      "sub_categories": ["hotel_stay", "serviced_apartments"]
+    },
+    {
+      "id": "local_conveyance",
+      "label": "Local Conveyance",
+      "gst_rate": 5,
+      "itc_claimable": false,
+      "itc_block_reason": "Section 17(5)(b) — cab/taxi ITC blocked",
+      "sub_categories": ["cabs", "auto", "fuel_reimbursement"]
+    },
+    {
+      "id": "office_rent",
+      "label": "Office Rent",
+      "gst_rate": 18,
+      "itc_claimable": true,
+      "itc_section": "Section 16",
+      "sub_categories": ["office_space", "coworking", "warehouse"]
+    },
+    {
+      "id": "professional_services",
+      "label": "Professional Services",
+      "gst_rate": 18,
+      "itc_claimable": true,
+      "itc_section": "Section 16",
+      "sub_categories": ["ca_fees", "legal_fees", "consulting", "design", "marketing_agency"]
+    },
+    {
+      "id": "office_supplies",
+      "label": "Office Supplies & Equipment",
+      "gst_rate": 18,
+      "itc_claimable": true,
+      "itc_section": "Section 16",
+      "sub_categories": ["stationery", "furniture", "appliances", "printing"]
+    },
+    {
+      "id": "marketing",
+      "label": "Marketing & Advertising",
+      "gst_rate": 18,
+      "itc_claimable": true,
+      "itc_section": "Section 16",
+      "sub_categories": ["digital_ads", "events", "branding", "pr"]
+    },
+    {
+      "id": "utilities",
+      "label": "Utilities",
+      "gst_rate": 18,
+      "itc_claimable": true,
+      "itc_section": "Section 16",
+      "sub_categories": ["electricity", "internet", "phone", "water"]
+    },
+    {
+      "id": "insurance",
+      "label": "Insurance",
+      "gst_rate": 18,
+      "itc_claimable": false,
+      "itc_block_reason": "Health/life insurance ITC generally not claimable",
+      "sub_categories": ["health_insurance", "general_insurance", "vehicle_insurance"]
+    },
+    {
+      "id": "miscellaneous",
+      "label": "Miscellaneous",
+      "gst_rate": 18,
+      "itc_claimable": false,
+      "itc_block_reason": "Unclassified — review manually",
+      "sub_categories": ["other"]
+    }
+  ]
+}

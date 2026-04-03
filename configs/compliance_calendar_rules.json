@@ -1,0 +1,88 @@
+{
+  "_comment": "Rules for generating compliance due dates. Dates auto-generated from these rules monthly.",
+  "rules": [
+    {
+      "id": "pf_challan",
+      "label": "PF Challan Payment",
+      "frequency": "monthly",
+      "due_day_of_following_month": 15,
+      "module": "compliance",
+      "portal": "EPFO",
+      "portal_url": "https://unifiedportal-emp.epfindia.gov.in",
+      "penalty_per_day": "12% p.a. on delayed amount"
+    },
+    {
+      "id": "esic_challan",
+      "label": "ESIC Challan Payment",
+      "frequency": "monthly",
+      "due_day_of_following_month": 15,
+      "module": "compliance",
+      "portal": "ESIC",
+      "portal_url": "https://esic.in"
+    },
+    {
+      "id": "pt_maharashtra",
+      "label": "Professional Tax — Maharashtra",
+      "frequency": "monthly",
+      "due_day_of_same_month": 31,
+      "applicable_states": ["MH"],
+      "module": "compliance",
+      "portal": "Maharashtra PT Portal"
+    },
+    {
+      "id": "gstr1",
+      "label": "GSTR-1 Filing",
+      "frequency": "monthly",
+      "due_day_of_following_month": 11,
+      "module": "compliance",
+      "portal": "GST Portal",
+      "portal_url": "https://gst.gov.in",
+      "notes": "For taxpayers with turnover > 5 Cr. Others: quarterly."
+    },
+    {
+      "id": "gstr3b",
+      "label": "GSTR-3B Filing + Payment",
+      "frequency": "monthly",
+      "due_day_of_following_month": 20,
+      "module": "compliance",
+      "portal": "GST Portal"
+    },
+    {
+      "id": "tds_payment",
+      "label": "TDS Payment",
+      "frequency": "monthly",
+      "due_day_of_following_month": 7,
+      "module": "compliance",
+      "portal": "Income Tax Portal",
+      "notes": "March TDS due on 30th April"
+    },
+    {
+      "id": "tds_return_q1",
+      "label": "TDS Return Q1 (Apr-Jun) — Form 24Q",
+      "frequency": "quarterly",
+      "due_date": "31st July",
+      "module": "compliance"
+    },
+    {
+      "id": "tds_return_q2",
+      "label": "TDS Return Q2 (Jul-Sep) — Form 24Q",
+      "frequency": "quarterly",
+      "due_date": "31st October",
+      "module": "compliance"
+    },
+    {
+      "id": "tds_return_q3",
+      "label": "TDS Return Q3 (Oct-Dec) — Form 24Q",
+      "frequency": "quarterly",
+      "due_date": "31st January",
+      "module": "compliance"
+    },
+    {
+      "id": "tds_return_q4",
+      "label": "TDS Return Q4 (Jan-Mar) — Form 24Q",
+      "frequency": "quarterly",
+      "due_date": "31st May",
+      "module": "compliance"
+    }
+  ]
+}

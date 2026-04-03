@@ -1,0 +1,20 @@
+{
+  "_comment": "Edit this file for your company. Do not hardcode any of this in app code.",
+  "company_name": "YOUR_COMPANY_NAME",
+  "gstin": "YOUR_GSTIN",
+  "pan": "YOUR_PAN",
+  "state_code": "MH",
+  "state_name": "Maharashtra",
+  "address": "YOUR_ADDRESS",
+  "invoice_prefix": "INV",
+  "invoice_year_format": "YYYY",
+  "invoice_number_padding": 3,
+  "financial_year_start_month": 4,
+  "default_payment_terms_days": 30,
+  "currency": "INR",
+  "working_days_per_month": 26,
+  "pf_registered": true,
+  "esic_registered": true,
+  "gst_registered": true,
+  "pt_applicable": true
+}

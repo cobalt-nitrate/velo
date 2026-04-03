@@ -1,0 +1,93 @@
+{
+  "_comment": "All payroll structure rules. Add salary components, bonus rules, LOP logic here.",
+  "salary_components": [
+    {
+      "id": "basic",
+      "label": "Basic Salary",
+      "type": "fixed_pct_of_ctc",
+      "pct_of_ctc": 40,
+      "taxable": true,
+      "pf_applicable": true
+    },
+    {
+      "id": "hra",
+      "label": "House Rent Allowance",
+      "type": "pct_of_basic",
+      "pct_of_basic": 50,
+      "taxable": true,
+      "hra_exemption_applicable": true,
+      "pf_applicable": false
+    },
+    {
+      "id": "special_allowance",
+      "label": "Special Allowance",
+      "type": "residual",
+      "taxable": true,
+      "pf_applicable": false,
+      "notes": "Whatever is left after all other components"
+    },
+    {
+      "id": "lta",
+      "label": "Leave Travel Allowance",
+      "type": "fixed_pct_of_ctc",
+      "pct_of_ctc": 5,
+      "taxable": false,
+      "exemption_limit_per_year_inr": 50000,
+      "pf_applicable": false
+    }
+  ],
+  "deductions": [
+    {
+      "id": "pf_employee",
+      "label": "PF (Employee)",
+      "source": "tax_config.pf.employee_contribution_pct",
+      "apply_on": "basic",
+      "pre_tax": true
+    },
+    {
+      "id": "esic_employee",
+      "label": "ESIC (Employee)",
+      "source": "tax_config.esic.employee_pct",
+      "apply_on": "gross",
+      "pre_tax": true,
+      "condition": "gross <= tax_config.esic.gross_salary_threshold_inr"
+    },
+    {
+      "id": "pt",
+      "label": "Professional Tax",
+      "source": "tax_config.pt_slabs_by_state",
+      "apply_on": "gross",
+      "pre_tax": false
+    },
+    {
+      "id": "tds",
+      "label": "TDS",
+      "source": "tax_config.tds_new_regime_slabs",
+      "apply_on": "taxable_income",
+      "pre_tax": false,
+      "notes": "Divided equally across 12 months"
+    }
+  ],
+  "lop_rules": {
+    "divisor": "working_days_in_month",
+    "working_days_source": "company_config.working_days_per_month",
+    "apply_on": "gross_salary"
+  },
+  "bonus_rules": [
+    {
+      "id": "statutory_bonus",
+      "label": "Statutory Bonus",
+      "rate_pct": 8.33,
+      "apply_on": "basic",
+      "frequency": "annual",
+      "typical_month": 10,
+      "eligibility_min_salary_inr": 0,
+      "eligibility_max_salary_inr": 21000
+    }
+  ],
+  "pro_rata_rules": {
+    "applicable": true,
+    "method": "calendar_days",
+    "notes": "If employee joins mid-month, salary prorated on calendar days"
+  }
+}
