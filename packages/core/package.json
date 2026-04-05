@@ -10,7 +10,8 @@
     "./policy-engine": "./src/policy-engine/index.ts",
     "./confidence": "./src/confidence/index.ts",
     "./audit": "./src/audit/index.ts",
-    "./config": "./src/config/loader.ts"
+    "./config": "./src/config/loader.ts",
+    "./workflow": "./src/workflow/index.ts"
   },
   "scripts": {
     "build": "tsc",
@@ -20,6 +21,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   }

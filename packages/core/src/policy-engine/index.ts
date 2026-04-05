@@ -2,7 +2,7 @@
 // Loads policy config at startup. Evaluates every proposed action.
 // This is the last gate before any tool execution.
 
-import type { PolicyResult, ToolCall } from '../types/agent.js';
+import type { PolicyResult, ToolActionMetadata, ToolCall } from '../types/agent.js';
 
 interface AutopilotPolicy {
   payment_auto_threshold_inr: number;
@@ -33,8 +33,9 @@ export class PolicyEngine {
     confidence: number;
     actor_role: string;
     agent_id: string;
+    metadata?: ToolActionMetadata;
   }): PolicyResult {
-    const { action, confidence, actor_role, agent_id } = params;
+    const { action, confidence, actor_role, agent_id, metadata } = params;
     const actionType = this.resolveActionType(action.tool_id, agent_id);
 
     // Step 1: RBAC check
@@ -61,7 +62,25 @@ export class PolicyEngine {
       }
     }
 
-    // Step 4: Confidence-based routing (no override)
+    // Step 4: Domain-specific hard rules from config
+    if (metadata?.is_filing_action && !this.policy.filing_auto_execute) {
+      return 'REQUEST_APPROVAL';
+    }
+    if (
+      typeof metadata?.amount_inr === 'number' &&
+      metadata.amount_inr > this.policy.payment_auto_threshold_inr
+    ) {
+      return 'REQUEST_APPROVAL';
+    }
+
+    // Step 5: Default safe policy for uncovered high-impact actions
+    if (this.isHighImpactAction(actionType) && !override) {
+      if (confidence >= this.policy.confidence_thresholds.auto_execute_min) {
+        return 'REQUEST_APPROVAL';
+      }
+    }
+
+    // Step 6: Confidence-based routing (no override)
     if (confidence >= this.policy.confidence_thresholds.auto_execute_min) {
       return 'AUTO_EXECUTE';
     }
@@ -90,5 +109,10 @@ export class PolicyEngine {
     const parts = tool_id.split('.');
     if (parts.length >= 2) return `${parts[1]}.${parts[2] ?? '*'}`;
     return tool_id;
+  }
+
+  private isHighImpactAction(actionType: string): boolean {
+    const highImpactPrefixes = ['payroll.', 'compliance.', 'bank.', 'employee.'];
+    return highImpactPrefixes.some((prefix) => actionType.startsWith(prefix));
   }
 }

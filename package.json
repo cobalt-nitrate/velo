@@ -2,13 +2,19 @@
   "name": "velo",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "workspaces": [
+    "packages/*"
+  ],
   "description": "Autonomous Back-Office OS for Startups",
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
-    "test": "turbo run test",
-    "lint": "turbo run lint",
-    "setup-sheets": "tsx scripts/setup-sheets.ts"
+    "dev:web": "npx --yes pnpm@9.15.0 --filter @velo/web dev",
+    "build": "npx --yes pnpm@9.15.0 -r run build",
+    "build:turbo": "turbo run build",
+    "test": "npx --yes pnpm@9.15.0 -r run test",
+    "lint": "npx --yes pnpm@9.15.0 -r run lint",
+    "setup-sheets": "node scripts/setup-sheets-run.js"
   },
   "devDependencies": {
     "googleapis": "^171.4.0",

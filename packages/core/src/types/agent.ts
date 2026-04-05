@@ -64,10 +64,28 @@ export interface ToolCall {
   parameters: Record<string, unknown>;
 }
 
+export interface ToolActionMetadata {
+  amount_inr?: number;
+  action_type?: string;
+  is_filing_action?: boolean;
+  module?: string;
+}
+
+export interface ToolSchema {
+  id: string;
+  description: string;
+  input_schema: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
 export interface AgentResult {
   status: 'COMPLETED' | 'PENDING_APPROVAL' | 'PENDING_CONFIRMATION' | 'FAILED' | 'REFUSED';
   output?: unknown;
   approval_id?: string;
+  approval_request?: ApprovalRequest;
   confirmation_request?: ConfirmationRequest;
   error?: string;
   audit_entry_id: string;
@@ -109,4 +127,44 @@ export interface ConfidenceScore {
     historical_pattern_match: number;
     data_freshness: number;
   };
+}
+
+export interface WorkflowStep {
+  step: number;
+  id: string;
+  action?: string;
+  agent?: string;
+  tool?: string;
+  input_from?: unknown;
+  output_to?: string;
+  requires_policy_check?: boolean;
+  condition?: string;
+  [key: string]: unknown;
+}
+
+export interface WorkflowDefinition {
+  id: string;
+  label: string;
+  description?: string;
+  trigger: string;
+  required_params?: string[];
+  steps: WorkflowStep[];
+}
+
+export type WorkflowRunStatus =
+  | 'RUNNING'
+  | 'PAUSED'
+  | 'WAITING_FOR_APPROVAL'
+  | 'COMPLETED'
+  | 'FAILED';
+
+export interface WorkflowRunState {
+  workflow_id: string;
+  run_id: string;
+  status: WorkflowRunStatus;
+  current_step: number;
+  context: Record<string, unknown>;
+  started_at: string;
+  updated_at: string;
+  error?: string;
 }

@@ -13,7 +13,8 @@
     "./ap-invoice": "./src/ap-invoice/index.ts",
     "./ar-collections": "./src/ar-collections/index.ts",
     "./hr": "./src/hr/index.ts",
-    "./helpdesk": "./src/helpdesk/index.ts"
+    "./helpdesk": "./src/helpdesk/index.ts",
+    "./workflow": "./src/workflow/executor.ts"
   },
   "scripts": {
     "build": "tsc",
@@ -22,7 +23,7 @@
   "dependencies": {
     "@velo/core": "workspace:*",
     "@velo/tools": "workspace:*",
-    "@anthropic-ai/sdk": "^0.27.0"
+    "openai": "^4.77.0"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

@@ -33,6 +33,39 @@ export interface ScoringInputs {
   data_freshness: number;
 }
 
+export interface ConfidenceSignals {
+  required_fields?: string[];
+  extracted_fields?: Record<string, unknown>;
+  entity_match_confidence?: number;
+  category_match_confidence?: number;
+  historical_match_confidence?: number;
+  data_age_hours?: number;
+}
+
+export function deriveScoringInputs(signals: ConfidenceSignals): ScoringInputs {
+  const required = signals.required_fields ?? [];
+  const extracted = signals.extracted_fields ?? {};
+  const extractedCount = required.filter((field) => {
+    const value = extracted[field];
+    return value !== undefined && value !== null && value !== '';
+  }).length;
+
+  const completeness =
+    required.length === 0 ? 0.9 : extractedCount / required.length;
+
+  const hours = signals.data_age_hours ?? 6;
+  const freshness =
+    hours <= 1 ? 1 : hours <= 24 ? 0.7 : hours <= 72 ? 0.4 : 0.2;
+
+  return {
+    extraction_completeness: completeness,
+    entity_match_quality: signals.entity_match_confidence ?? 0.65,
+    category_match_quality: signals.category_match_confidence ?? 0.65,
+    historical_pattern_match: signals.historical_match_confidence ?? 0.55,
+    data_freshness: freshness,
+  };
+}
+
 export function scoreConfidence(
   inputs: ScoringInputs,
   weights: ScoringWeights = DEFAULT_WEIGHTS
