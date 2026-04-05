@@ -1,169 +1,96 @@
-# Velo — Autonomous Back-Office OS for Startups
+# Velo
 
-> Policy-first agents, Google Sheets as the system of record, and a Command Center for chat, approvals, and operations.
+**The back office that runs like a team — not another spreadsheet dashboard.**
 
-Velo is an **agentic back-office stack** for Indian startups: payroll, compliance, AP/AR, runway, HR workflows, and employee helpdesk — gated by **policy**, **confidence scoring**, and **human approvals** where it matters.
+Velo is built for **early and growing startups in India** (roughly 0–100 people) that are tired of losing money and time to scattered tools, missed deadlines, and “someone should have caught that.” It connects **money** (cash, vendors, customers), **people** (payroll, HR, helpdesk), and **obligations** (GST, TDS, PF, ESIC, and the rest) in one place — with **you** still in charge where it matters.
 
----
-
-## How It Works (End-to-End)
-
-1. **User** talks to the **Command Center** (`/chat`) or hits **APIs** (`/api/chat`, streaming `messages/stream`).
-2. **Orchestrator** (or a specialist agent) runs a **ReAct-style loop** in `@velo/agents`: the LLM proposes tool calls → each call is evaluated by **`PolicyEngine`** (`@velo/core`) and **confidence** → auto-execute, request approval, recommend-only, or refuse.
-3. **Tools** (`@velo/tools`) read/write **Google Sheets** (and optionally **Drive**, email, OCR). Sheet tabs map to domains (transactions, master, compliance, logs, config).
-4. **Approvals** are persisted to the `approval_requests` tab and surfaced in the UI (`/approvals/[id]`). High-impact actions (payroll, filings, large payments) route to **REQUEST_APPROVAL** per `configs/policies/autopilot.json`.
-5. **Audit** events record agent starts, tool proposals, policy decisions, and executions (`@velo/core/audit`).
-
-```text
-User → Next.js API → runAgent() → OpenAI-compatible LLM
-                    ↓
-              PolicyEngine + confidence
-                    ↓
-         Tool registry (Sheets, Drive, notifications, …)
-                    ↓
-         Google Sheets / Drive / Resend / Slack
-```
+Your operational truth lives in **Google Sheets** Velo already knows how to read and update; the **Command Center** is where you chat, approve, and see what needs attention. Under the hood, a **team of AI agents** works like specialist functions in a finance and people org — coordinated, audited, and bounded by **policy** so nothing critical ships without the right approval.
 
 ---
 
-## What’s Implemented
+## Who Velo Is For
 
-### Command Center (`packages/web`)
+Velo is not generic “business software.” It is aimed at **Indian startup operating reality**: INR, April–March financial year, GST and statutory calendars, founder-led decisions, and small teams wearing many hats.
 
-- **App shell**: primary sidebar (Overview, Chat, Files, Uploads, Settings) with **SVG icons**, **expand/collapse** rail, preference saved in `localStorage`.
-- **Home (`/`)**: runway tile, approval card, weekly narrative, policy copilot, **platform health** card (`GET /api/health`), links into chat and uploads.
-- **Chat (`/chat`)**:
-  - Multi-session sidebar, attachments, agent picker.
-  - **Streaming runs**: `POST /api/chat/sessions/:id/messages/stream` (NDJSON) with live **Mission control** panel (tool timeline, sub-agents, auto-detected **tables** from tool JSON).
-  - Assistant replies rendered as **Markdown** (headings, lists, code, links).
-- **Files / uploads**: browse and upload flows wired to APIs.
-- **Settings / config**: app configuration surface.
-- **Approvals**: review pages for pending decisions.
-- **Auth**: NextAuth with Google provider (`/api/auth/[...nextauth]`); optional domain allowlists via env.
+| Who | What they’re trying to do | What Velo helps with |
+|-----|---------------------------|----------------------|
+| **Founder / CEO** | See runway, sleep at night, approve big moves once | One place for cash picture, exceptions, and **approve / reject** on payroll, filings, and large payments — without digging through ten tabs |
+| **Finance lead / CA tie-in** | Pay vendors on time, collect receivables, stay compliant | **AP** (bills, vendors), **AR** (invoices, ageing), **compliance calendar**, and hooks for notifications |
+| **HR / people ops** | Onboard people, run payroll, close the month | **Payroll** runs, **HR tasks**, employee master — with approvals where your policy says so |
+| **Employees** | Payslips, leave, “how does this tax thing work?” | **Helpdesk-style** answers and self-serve flows (within what you enable) |
 
-### Agents (`packages/agents`)
-
-- **`runAgent(agentId, input, context, options?)`**: configurable **max iterations**, tool loop, **sub-agent delegation** (`internal.sub_agent.invoke`), nested depth limit.
-- **Streaming hooks**: optional `onEvent` callback emits structured events (`run.start`, `iteration`, `assistant.delta`, `tool.proposed` / `executing` / `result`, `sub_agent.*`, `run.blocked`, `run.complete`) for the web UI.
-- **Workflow executor** (`workflow/executor.ts`): linear workflows from config calling agents and tools.
-- Agent definitions: `configs/agents/*.json` (prompt file, model env placeholder, tools, sub-agents, thresholds).
-
-### Tools (`packages/tools`)
-
-- **Google Sheets**: `executeSheetTool` + table map (CONFIG, MASTER, TRANSACTIONS, COMPLIANCE, LOGS workbooks). CRUD and domain reads (e.g. pending AP payables, AR overdue, compliance calendar window, bank balance, headcount, HR blockers, approvals).
-- **Platform health** (`platform-health.ts` + `internal.platform.healthcheck`):
-  - **Integration probes**: service account, LLM env, each `SHEETS_*_ID` workbook reachability, optional Drive folder, NextAuth in production, Resend, pending approval count.
-  - **Operational snapshot** (live data): detailed **pending approvals**, upcoming **compliance_calendar** rows, AP/AR aggregates, **bank** balance/transaction count, **employees** headcount, **HR task** blockers, **`attention_items`** for the LLM to summarize.
-- **Documents**: PDF generation, Drive folder layout, uploads; **OCR** (e.g. invoices); **bank statement** parsing; **notifications** (e.g. Slack approval blocks).
-
-### Core (`packages/core`)
-
-- **Types** for agents, tools, policy results.
-- **PolicyEngine**: RBAC from `configs/policies/autopilot.json`, confidence floors, payment threshold, filing flags, action overrides; **`internal.platform.healthcheck`** auto-executes when allowed (read-only probe).
-- **Confidence** scoring helpers and **tool-confidence** hints in agents.
-- **Audit** logger for traceability.
-
-### HTTP APIs (selected)
-
-| Route | Purpose |
-|--------|---------|
-| `GET /api/health` | Same structured report as `internal.platform.healthcheck` (503 if `overall === fail`). |
-| `POST /api/chat` | Stateless agent run with body (message, agentId, companyId, actor…). |
-| `GET/POST /api/chat/sessions` | List/create chat sessions. |
-| `GET /api/chat/sessions/:id` | Load session + messages. |
-| `POST /api/chat/sessions/:id/messages` | Send message (full run, JSON response). |
-| `POST /api/chat/sessions/:id/messages/stream` | NDJSON event stream + final session. |
-| `POST /api/upload` | Upload file for chat attachments. |
-| `GET /api/uploads/:id` | Download stored upload. |
-| `GET /api/files` | File listing (Drive-aware when configured). |
-| `POST /api/bank-statement` | Parse bank statement (Sheets integration path). |
-| `POST /api/policy/simulate` | Evaluate policy for a proposed action. |
-| `GET/PATCH …/api/approvals` | Approvals listing / resolution paths. |
-| `POST /api/workflow` | Trigger configured workflows. |
-| `GET /api/config` | Server config probe for UI. |
+Velo **augments** your team; it does **not** replace legal sign-off, your CA, or statutory liability. It **surfaces** work, **drafts** and **routes** actions, and **executes** only what your rules allow.
 
 ---
 
-## Tech Stack (Actual)
+## What Velo Does (In Business Terms)
 
-| Layer | Choice |
-|--------|--------|
-| UI | **Next.js 14** (App Router), **Tailwind CSS**, client components for chat/shell. |
-| LLM | **OpenAI SDK** against **`LLM_BASE_URL`** (e.g. **NVIDIA NIM** or any OpenAI-compatible API); per-agent models via env (`LLM_MODEL_ORCHESTRATOR`, etc.). |
-| Data | **Google Sheets API** (primary); **Google Drive** optional (`VELO_DRIVE_FOLDER_ID`). |
-| Auth | **NextAuth.js** + Google OAuth. |
-| Email / chat ops | **Resend**, **Slack** (optional; env-driven). |
-| Repo | **pnpm** workspaces; **Turbo** optional for `dev`/`build`. |
-
----
-
-## Monorepo Layout
-
-```text
-packages/
-├── web/       Next.js Command Center, APIs under app/api/
-├── agents/    runAgent, workflows, OpenAI tool loop
-├── tools/     Sheet tools, healthcheck, documents, OCR, notifications
-└── core/      types, PolicyEngine, confidence, audit, config loader
-
-configs/
-├── agents/        Agent JSON (model, tools, prompts file, sub-agents)
-├── prompts/       System prompts (markdown)
-├── policies/      autopilot.json — thresholds, RBAC, overrides
-├── workflows/     Multi-step definitions
-└── business/      Tax, payroll, expense metadata (as present)
-```
-
-**Dependency direction:** `web` → `agents`, `core`; `agents` → `tools`, `core`; `tools` → `core`; `core` → (no internal packages).
+- **Runway and cash** — Uses bank and transaction data you keep in Sheets to reason about balance, burn, and “what if we hire / defer a payment?” style questions (via the **runway** agent and related tools).
+- **Compliance awareness** — Tracks what’s on your **compliance calendar**, what’s due soon, and what’s still open — so “what’s filing this month?” has an answer tied to **your** data (via the **compliance** agent).
+- **Vendor money (AP)** — Ingests and processes **vendor invoices**, ties them to **vendor master**, expense categories, and ITC context; escalates payments and anomalies for **approval** (via **ap-invoice** and sub-agents like extraction and matching).
+- **Customer money (AR)** — Surfaces **receivables**, **overdue** items, and collections-oriented context (via **ar-collections**).
+- **Payroll and people** — Supports **payroll runs**, salary-related data, and **HR workflows** (via **payroll** and **hr**).
+- **Employee desk** — Day-to-day **employee questions** (payslips, leave, light guidance) through **helpdesk** — scoped by role and policy.
+- **Health of operations** — A **health check** is not only “is Google connected?” It also summarizes **live** queues: pending **approvals**, upcoming **obligations**, open **payables/receivables**, **bank** activity signals, **headcount**, and **HR blockers** — so “how are we doing?” is grounded in **your** sheets.
 
 ---
 
-## Configuration
+## How the Agent Team Is Organized (Business Hierarchy)
 
-- **Change behavior without code deploys**: edit JSON/markdown under `configs/`; agents load prompts and tool lists at runtime.
-- **Autopilot**: `configs/policies/autopilot.json` — `payment_auto_threshold_inr`, `filing_auto_execute`, confidence cutoffs, `rbac` roles → allowed action patterns, `action_overrides` per action type.
-- **Secrets**: see `.env.local.example` — LLM keys, Google service account, five `SHEETS_*_ID` values, NextAuth, Resend, Slack, optional `VELO_DRIVE_FOLDER_ID`, role email lists.
+Think of Velo’s agents like reporting lines in a tight ops org — not a bag of anonymous APIs.
 
----
+### 1. Orchestrator — the “front door”
 
-## Local Setup
+**Orchestrator** is who users talk to first. In business terms it acts like a **chief of staff**: it understands intent, explains which part of the business is involved, and hands work to the right **specialist**. It also runs a **full operational health** view (integrations **and** what your data says is waiting on someone). It is **not** supposed to quietly run every risky tool itself; execution belongs to the people and agents responsible for that domain.
 
-```bash
-cd "Back Office Ops"   # or your clone path
-cp .env.local.example .env.local
-# Fill LLM_API_KEY, LLM_MODEL_*, GOOGLE_* , SHEETS_*_ID at minimum.
+### 2. Specialist agents — the “function heads”
 
-pnpm install
-pnpm run setup-sheets          # scaffold spreadsheets / tabs (see script)
-pnpm run dev:web               # Next dev for @velo/web (from repo root)
-```
+Each specialist owns a **slice of the business**, similar to how you’d split ownership between finance, payroll, compliance, and HR:
 
-Other root scripts: `ensure-bank-tab`, `ensure-file-links`, `audit-sheet-locations`, `seed-mock-data`, `seed-compliance`.
+| Agent | Business role (analogy) | Typical concerns |
+|-------|-------------------------|------------------|
+| **Runway** | FP&A / cash discipline | Runway months, burn, scenarios (“can we afford X?”) |
+| **Compliance** | Company secretary + indirect tax rhythm | Filing calendar, due dates, statutory tracking |
+| **Payroll** | Payroll ops | Monthly run, salaries, deductions, slips |
+| **AP invoice** | Accounts payable | Vendor bills, matching, payment readiness |
+| **AR collections** | Accounts receivable | Invoices, dues, follow-up context |
+| **HR** | People operations | Onboarding tasks, employee records, HR workflows |
+| **Helpdesk** | Internal HR help line | Employee questions, light guidance |
 
----
+They use **tools** that map to real work: updating the right **tabs** in your Velo workbooks, sending **notifications**, attaching **documents**, and creating **approval requests** when policy says a human must sign off.
 
-## Agent Landscape
+### 3. Sub-agents — “specialists inside specialists”
 
-| Agent id | Role (high level) |
-|----------|-------------------|
-| **orchestrator** | First contact; routes to specialists; calls **`internal.platform.healthcheck`** for holistic health + ops snapshot. |
-| **runway** | Cash, burn, runway scenarios. |
-| **compliance** | GST/TDS/PF/ESIC calendar and filings context. |
-| **payroll** | Payroll runs and related sheet operations. |
-| **ap-invoice** | Vendor invoices, masters, approvals, Drive upload. |
-| **ar-collections** | Receivables, collections. |
-| **hr** | HR tasks, employees. |
-| **helpdesk** | Employee-facing Q&A flows. |
-| Sub-agents (e.g. invoice-extractor) | Invoked via **`internal.sub_agent.invoke`** when wired in config. |
+Some jobs are **narrow but fiddly** (e.g. “read this PDF invoice,” “classify this line item,” “is this a duplicate?”). **Sub-agents** are smaller, focused helpers that a specialist can call in — like asking a **senior analyst** to pull in a **researcher** for one step. That keeps the main agent coordinated while the detail work stays reliable and testable.
 
-Exact **tool lists** per agent live in `configs/agents/<id>.json`.
+### 4. Policy, confidence, and approvals — “the governance layer”
+
+Not every suggestion becomes a bank transfer or a filed return. **Policy** encodes who may do what, payment thresholds, and when filings must get explicit sign-off. **Confidence** scores borderline model judgment. **Approvals** land in a **queue** you can open in the product — tied to audit and your Sheet data — so “who decided what, when” is clear.
 
 ---
 
-## Product Docs
+## What You Use Day to Day (Product Surfaces)
 
-- **`docs/v1/ux-contracts.md`** — UI primitives and interaction expectations.
-- **`PLATFORM_PLAN.md`** (if present) — broader product/architecture narrative.
+- **Overview** — At-a-glance runway-style signals, what’s blocked, and links into chat and health.
+- **Chat** — Conversation with the orchestrator or a chosen specialist; attachments; optional **live mission** sidebar on large screens (tools and data updating as the run progresses).
+- **Approvals** — Clear **approve / reject** paths for gated actions.
+- **Files & uploads** — Bring documents into flows Velo can use (invoices, statements, etc.).
+- **Settings** — Configuration and access aligned to how you deploy Velo.
+
+---
+
+## For Builders: Technical Overview
+
+Velo is a **monorepo**: **`packages/web`** (Next.js Command Center + APIs), **`packages/agents`** (agent runtime, streaming events, workflows), **`packages/tools`** (Sheets, Drive, healthcheck, documents, OCR, notifications), **`packages/core`** (policy, confidence, audit, types). Behavior is **config-driven** under **`configs/`** (agents, prompts, policies, workflows). The LLM uses an **OpenAI-compatible API** (`LLM_BASE_URL`; e.g. NVIDIA NIM). The primary **system of record** is **Google Sheets** (five workbooks: config, master, transactions, compliance, logs).
+
+**Quick start:** `cp .env.local.example .env.local` → add LLM + Google + `SHEETS_*_ID` → `pnpm install` → `pnpm run setup-sheets` → `pnpm run dev:web`. Optional: `ensure-bank-tab`, `ensure-file-links`, `seed-mock-data`, `seed-compliance`. REST routes under `packages/web/app/api` (chat + **streaming**, health, uploads, approvals, policy simulate, workflows, bank-statement, files, config).
+
+---
+
+## Further Reading
+
+- **`PLATFORM_PLAN.md`** — Deeper product and architecture narrative.
+- **`docs/v1/ux-contracts.md`** — How key UI patterns should behave.
 
 ---
 
