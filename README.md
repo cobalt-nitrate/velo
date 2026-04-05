@@ -75,15 +75,50 @@ Not every suggestion becomes a bank transfer or a filed return. **Policy** encod
 - **Chat** — Conversation with the orchestrator or a chosen specialist; attachments; optional **live mission** sidebar on large screens (tools and data updating as the run progresses).
 - **Approvals** — Clear **approve / reject** paths for gated actions.
 - **Files & uploads** — Bring documents into flows Velo can use (invoices, statements, etc.).
-- **Settings** — Configuration and access aligned to how you deploy Velo.
+- **Settings** — Workspace preferences, read-only **company_settings** from Sheets, **connector status** (which env vars are set), and API hints for workflows and cron.
+- **Operations** — Live snapshot from the same data the agents use: **approvals** (with module filters and review links), compliance, AP/AR, bank, team, HR — plus triage helpers.
 
 ---
 
 ## For Builders: Technical Overview
 
-Velo is a **monorepo**: **`packages/web`** (Next.js Command Center + APIs), **`packages/agents`** (agent runtime, streaming events, workflows), **`packages/tools`** (Sheets, Drive, healthcheck, documents, OCR, notifications), **`packages/core`** (policy, confidence, audit, types). Behavior is **config-driven** under **`configs/`** (agents, prompts, policies, workflows). The LLM uses an **OpenAI-compatible API** (`LLM_BASE_URL`; e.g. NVIDIA NIM). The primary **system of record** is **Google Sheets** (five workbooks: config, master, transactions, compliance, logs).
+Velo is a **monorepo**: **`packages/web`** (Next.js Command Center + APIs), **`packages/agents`** (agent runtime, streaming events, **config-driven workflows** with **pause/resume after approval**), **`packages/tools`** (Sheets, Drive, healthcheck, documents, OCR, email via Resend, Slack notifications), **`packages/core`** (policy, confidence, audit, workflow persistence, **connector-kit** TypeScript seams for your own HTTP ledger/notification adapters). Behavior is **config-driven** under **`configs/`** (agents, prompts, policies, workflows). The LLM uses an **OpenAI-compatible API** (`LLM_BASE_URL`; e.g. NVIDIA NIM). The default **system of record** is **Google Sheets** (workbooks keyed by `SHEETS_*_ID` in `.env.local`; see `.env.local.example`).
 
-**Quick start:** `cp .env.local.example .env.local` → add LLM + Google + `SHEETS_*_ID` → `pnpm install` → `pnpm run setup-sheets` → `pnpm run dev:web`. Optional: `ensure-bank-tab`, `ensure-file-links`, `seed-mock-data`, `seed-compliance`. REST routes under `packages/web/app/api` (chat + **streaming**, health, uploads, approvals, policy simulate, workflows, bank-statement, files, config).
+### Quick start
+
+1. `cp .env.local.example .env.local` and fill LLM, Google service account, and spreadsheet IDs.
+2. `pnpm install` → `pnpm run setup-sheets` → `pnpm run dev:web`.
+3. Optional: `ensure-bank-tab`, `ensure-file-links`, `seed-mock-data`, `seed-compliance`, `pnpm e2e:modules` (one tool + approval path per module).
+
+### CI and config validation
+
+- **`pnpm validate-configs`** — Zod-checks `configs/business`, `configs/policies`, `configs/workflows`, and all agent JSON.
+- **`pnpm verify:ci`** — Validates configs plus `tsc --noEmit` on **core**, **agents**, **tools**, **web** (used by **GitHub Actions** in `.github/workflows/ci.yml`).
+
+### Workflow and approval APIs (HTTP)
+
+| Method | Route | Purpose |
+|--------|--------|--------|
+| `POST` | `/api/workflows/run` | Start a linear workflow (`workflowKey` + optional `context` + actor fields). May return **`WAITING_FOR_APPROVAL`** and a **`run_id`**. |
+| `POST` | `/api/workflows/resume` | After an approval is **APPROVED** in Sheets/UI, continue the deferred tool and remaining steps (`run_id` + same actor context as run). |
+| `GET` | `/api/workflows/runs?status=WAITING_FOR_APPROVAL` | List persisted runs (backed by **`.velo/workflow-runs.json`** under the repo root unless `VELO_STATE_DIR` is set). |
+
+Agent runs surface **policy + confidence** (including deterministic risk caps for large amounts / filing-shaped tools), **audit events** (start, tool proposed, policy decision, approval requested, completion/failure), and **Slack + optional email** when a new approval row is created (`VELO_APPROVAL_EMAIL_TO`, Resend).
+
+### Scheduled jobs (cron)
+
+Protected by **`VELO_CRON_SECRET`**: send header **`x-velo-cron-secret`** or **`Authorization: Bearer <secret>`**.
+
+| Route | Purpose |
+|--------|--------|
+| `POST /api/cron/digest` | Slack digest from **platform health** + optional email (`VELO_DIGEST_EMAIL_TO`). |
+| `POST /api/cron/escalate-approvals` | Mark **PENDING** approvals past **`expires_at`** as **EXPIRED**, then alert Slack (and optional email). |
+
+Use your host’s scheduler (Vercel Cron, GitHub Actions, etc.) to hit these endpoints.
+
+### Other useful API areas
+
+Chat (**streaming** where enabled), health, uploads, **`PATCH /api/approvals/[id]`**, policy simulate, operations snapshot and related **`/api/operations/*`** routes, bank-statement and files, **`GET /api/config/integrations`** (boolean “configured” flags only — never secrets).
 
 ---
 
