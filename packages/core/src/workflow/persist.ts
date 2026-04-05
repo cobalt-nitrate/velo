@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { getRepoRoot } from '../config/loader.js';
 import type { WorkflowRunState } from '../types/agent.js';
 
 function storePath(): { dir: string; file: string } {
-  const dir = process.env.VELO_STATE_DIR ?? join(process.cwd(), '.velo');
+  const dir = process.env.VELO_STATE_DIR ?? join(getRepoRoot(), '.velo');
   return { dir, file: join(dir, 'workflow-runs.json') };
 }
 
@@ -29,5 +30,20 @@ export function persistWorkflowRuns(from: Map<string, WorkflowRunState>): void {
     writeFileSync(file, JSON.stringify(Object.fromEntries(from), null, 2), 'utf-8');
   } catch {
     /* ignore */
+  }
+}
+
+/** Read persisted runs from disk (for API routes / multi-process). */
+export function readWorkflowRunsSnapshot(): Record<string, WorkflowRunState> {
+  try {
+    const { file } = storePath();
+    if (!existsSync(file)) return {};
+    const data = JSON.parse(readFileSync(file, 'utf-8')) as Record<
+      string,
+      WorkflowRunState
+    >;
+    return data && typeof data === 'object' ? data : {};
+  } catch {
+    return {};
   }
 }

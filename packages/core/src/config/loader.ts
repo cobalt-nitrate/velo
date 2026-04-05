@@ -2,7 +2,7 @@
 // Config is loaded once at startup and cached.
 // Application code never imports JSON directly — always goes through this.
 
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readdirSync, readFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { z } from 'zod';
 
@@ -39,6 +39,13 @@ type ConfigKey =
 
 const cache = new Map<string, unknown>();
 
+const confidenceThresholdsSchema = z.object({
+  auto_execute: z.number(),
+  request_approval: z.number(),
+  recommend_only: z.number(),
+  refuse: z.number(),
+});
+
 const agentConfigSchema = z
   .object({
     id: z.string(),
@@ -48,15 +55,16 @@ const agentConfigSchema = z
     system_prompt_file: z.string(),
     sub_agents: z.array(z.string()),
     tools: z.array(z.string()),
-    confidence_thresholds: z.object({
-      auto_execute: z.number(),
-      request_approval: z.number(),
-      recommend_only: z.number(),
-      refuse: z.number(),
-    }),
+    confidence_thresholds: confidenceThresholdsSchema,
     max_iterations: z.number().int().positive(),
     timeout_seconds: z.number().int().positive(),
   })
+  .passthrough();
+
+/** Sub-agents use the same shape but often omit thresholds (inherited at orchestration time). */
+const subAgentConfigSchema = agentConfigSchema
+  .omit({ confidence_thresholds: true })
+  .extend({ confidence_thresholds: confidenceThresholdsSchema.optional() })
   .passthrough();
 
 const autopilotPolicySchema = z
@@ -89,6 +97,59 @@ const workflowSchema = z.object({
   required_params: z.array(z.string()).optional(),
   steps: z.array(z.record(z.unknown())),
 });
+
+/** Business JSON under configs/business — structure-checked, unknown keys allowed. */
+const companyConfigSchema = z
+  .object({
+    company_name: z.string().min(1),
+    gstin: z.string().min(1),
+    pan: z.string().min(1),
+    state_code: z.string().min(1),
+    currency: z.string().min(1),
+  })
+  .passthrough();
+
+const workflowConfigSchema = z
+  .object({
+    approval_rules: z.array(z.record(z.unknown())).min(1),
+  })
+  .passthrough();
+
+const expenseCategoriesSchema = z
+  .object({
+    categories: z.array(z.record(z.unknown())).min(1),
+  })
+  .passthrough();
+
+const taxConfigSchema = z
+  .object({
+    pf: z.record(z.unknown()),
+  })
+  .passthrough();
+
+const payrollConfigSchema = z
+  .object({
+    salary_components: z.array(z.record(z.unknown())).min(1),
+  })
+  .passthrough();
+
+const leaveTypesBusinessSchema = z
+  .object({
+    leave_types: z.array(z.record(z.unknown())).min(1),
+  })
+  .passthrough();
+
+const complianceCalendarRulesSchema = z
+  .object({
+    rules: z.array(z.record(z.unknown())).min(1),
+  })
+  .passthrough();
+
+const employeeFieldsSchema = z
+  .object({
+    fields: z.array(z.record(z.unknown())).min(1),
+  })
+  .passthrough();
 
 export function loadConfig<T = unknown>(key: ConfigKey): T {
   if (cache.has(key)) return cache.get(key) as T;
@@ -125,6 +186,9 @@ export function loadAgentConfig(agentId: string) {
 
 function validateConfig(key: string, value: unknown): unknown {
   if (key.startsWith('agents/')) {
+    if (key.includes('/sub-agents/')) {
+      return subAgentConfigSchema.parse(value);
+    }
     return agentConfigSchema.parse(value);
   }
   if (key === 'policies/autopilot') {
@@ -132,6 +196,30 @@ function validateConfig(key: string, value: unknown): unknown {
   }
   if (key.startsWith('workflows/')) {
     return workflowSchema.parse(value);
+  }
+  if (key === 'business/company_config') {
+    return companyConfigSchema.parse(value);
+  }
+  if (key === 'business/workflow_config') {
+    return workflowConfigSchema.parse(value);
+  }
+  if (key === 'business/expense_categories') {
+    return expenseCategoriesSchema.parse(value);
+  }
+  if (key === 'business/tax_config') {
+    return taxConfigSchema.parse(value);
+  }
+  if (key === 'business/payroll_config') {
+    return payrollConfigSchema.parse(value);
+  }
+  if (key === 'business/leave_types') {
+    return leaveTypesBusinessSchema.parse(value);
+  }
+  if (key === 'business/compliance_calendar_rules') {
+    return complianceCalendarRulesSchema.parse(value);
+  }
+  if (key === 'business/employee_fields') {
+    return employeeFieldsSchema.parse(value);
   }
   return value;
 }
@@ -156,4 +244,79 @@ function sanitizeAutopilot(raw: unknown): unknown {
 // Clear cache (useful in tests)
 export function clearConfigCache(): void {
   cache.clear();
+}
+
+/**
+ * Validate every configs/business/*.json, policies/autopilot.json, workflows/*.json,
+ * and agents (including sub-agents) without polluting the loadConfig cache.
+ * Use in CI and `pnpm validate-configs`.
+ */
+export function validateAllVeloConfigs(): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  const businessDir = resolve(CONFIG_ROOT, 'business');
+  if (existsSync(businessDir)) {
+    for (const name of readdirSync(businessDir)) {
+      if (!name.endsWith('.json')) continue;
+      const key = `business/${name.replace(/\.json$/, '')}` as ConfigKey;
+      try {
+        const filePath = resolve(businessDir, name);
+        const parsed = JSON.parse(readFileSync(filePath, 'utf-8'));
+        validateConfig(key, parsed);
+      } catch (e) {
+        errors.push(`${key}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+  }
+
+  try {
+    const autopilotPath = resolve(CONFIG_ROOT, 'policies/autopilot.json');
+    const parsed = JSON.parse(readFileSync(autopilotPath, 'utf-8'));
+    validateConfig('policies/autopilot', parsed);
+  } catch (e) {
+    errors.push(`policies/autopilot: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  const workflowsDir = resolve(CONFIG_ROOT, 'workflows');
+  if (existsSync(workflowsDir)) {
+    for (const name of readdirSync(workflowsDir)) {
+      if (!name.endsWith('.json')) continue;
+      const key = `workflows/${name.replace(/\.json$/, '')}` as ConfigKey;
+      try {
+        const parsed = JSON.parse(readFileSync(resolve(workflowsDir, name), 'utf-8'));
+        validateConfig(key, parsed);
+      } catch (e) {
+        errors.push(`${key}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+  }
+
+  const agentsDir = resolve(CONFIG_ROOT, 'agents');
+  const validateAgentFile = (subdir: string, name: string) => {
+    const rel = subdir ? `agents/${subdir}/${name.replace(/\.json$/, '')}` : `agents/${name.replace(/\.json$/, '')}`;
+    const key = rel as ConfigKey;
+    try {
+      const base = subdir ? resolve(agentsDir, subdir) : agentsDir;
+      const parsed = JSON.parse(readFileSync(resolve(base, name), 'utf-8'));
+      validateConfig(key, parsed);
+    } catch (e) {
+      errors.push(`${key}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  if (existsSync(agentsDir)) {
+    for (const name of readdirSync(agentsDir)) {
+      if (!name.endsWith('.json')) continue;
+      validateAgentFile('', name);
+    }
+    const sub = resolve(agentsDir, 'sub-agents');
+    if (existsSync(sub)) {
+      for (const name of readdirSync(sub)) {
+        if (!name.endsWith('.json')) continue;
+        validateAgentFile('sub-agents', name);
+      }
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
 }

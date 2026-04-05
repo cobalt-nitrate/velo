@@ -68,7 +68,7 @@ export function CommandBar() {
               onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                 setAgentId(e.target.value)
               }
-              className="ml-1 rounded-md border border-white/10 bg-black/20 px-2 py-1 text-sm text-velo-text"
+              className="ml-1 rounded-md border border-velo-line bg-velo-inset px-2 py-1 text-sm text-velo-text"
             >
               {AGENTS.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -85,13 +85,13 @@ export function CommandBar() {
             setText(e.currentTarget.value)
           }
           placeholder="Ask Velo: What changed runway this week?"
-          className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none"
+          className="w-full rounded-md border border-velo-line bg-velo-panel px-3 py-2 text-sm outline-none ring-offset-velo-bg focus:ring-2 focus:ring-velo-accent/25"
         />
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="submit"
             disabled={loading}
-            className="rounded-md bg-velo-accent px-3 py-1.5 text-sm font-medium text-black disabled:opacity-50"
+            className="rounded-md bg-velo-accent px-3 py-1.5 text-sm font-medium text-white shadow-soft hover:bg-velo-accent-hover disabled:opacity-50"
           >
             {loading ? 'Running…' : 'Run agent'}
           </button>
@@ -101,17 +101,17 @@ export function CommandBar() {
         </div>
       </form>
       <div className="mt-2 flex gap-2 text-xs text-velo-muted">
-        <span className="rounded bg-white/5 px-2 py-1">Runway simulation</span>
-        <span className="rounded bg-white/5 px-2 py-1">Payroll exceptions</span>
-        <span className="rounded bg-white/5 px-2 py-1">Compliance checklist</span>
+        <span className="rounded bg-velo-inset px-2 py-1">Runway simulation</span>
+        <span className="rounded bg-velo-inset px-2 py-1">Payroll exceptions</span>
+        <span className="rounded bg-velo-inset px-2 py-1">Compliance checklist</span>
       </div>
       {error && (
-        <p className="mt-3 whitespace-pre-wrap rounded-md bg-rose-500/10 p-2 text-xs text-rose-200">
+        <p className="mt-3 whitespace-pre-wrap rounded-md border border-rose-200 bg-rose-50 p-2 text-xs text-rose-900">
           {error}
         </p>
       )}
       {result && (
-        <div className="mt-3 max-h-96 overflow-auto rounded-xl border border-velo-line bg-black/25 p-3">
+        <div className="mt-3 max-h-96 overflow-auto rounded-xl border border-velo-line bg-velo-inset p-3">
           <MarkdownBody text={result} />
         </div>
       )}

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Append rich mock rows from data/mock/velo-demo-seed.json into your Velo Google Sheets.
+// Regenerate that file first: pnpm run seed-mock:generate   (scripts/gen-velo-demo-seed.js)
 // Requires .env.local with GOOGLE_* and all SHEETS_*_ID values.
 //
 //   node scripts/seed-mock-velo-data.js           # append all tables
@@ -55,11 +56,33 @@ function parseArgs(argv) {
   return { dryRun, only };
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function withQuotaRetry(label, fn, maxAttempts = 8) {
+  let delay = 2500;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      const retry = /quota|429|503|rate limit|RESOURCE_EXHAUSTED|ECONNRESET/i.test(msg);
+      if (!retry || attempt === maxAttempts) throw e;
+      console.warn(`[seed-retry] ${label} attempt ${attempt}/${maxAttempts} — wait ${delay}ms`);
+      await sleep(delay);
+      delay = Math.min(delay * 2, 120000);
+    }
+  }
+}
+
 async function sheetTitles(sheets, spreadsheetId) {
-  const meta = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: 'sheets.properties.title',
-  });
+  const meta = await withQuotaRetry(`spreadsheets.get ${String(spreadsheetId).slice(0, 10)}…`, () =>
+    sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'sheets.properties.title',
+    })
+  );
   return new Set(
     (meta.data.sheets ?? []).map((s) => s.properties?.title).filter(Boolean)
   );
@@ -68,13 +91,15 @@ async function sheetTitles(sheets, spreadsheetId) {
 async function appendRows(sheets, spreadsheetId, sheetName, headers, rowObjects) {
   const values = rowObjects.map((obj) => headers.map((h) => String(obj[h] ?? '')));
   const endCol = columnLetter(headers.length);
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `${sheetName}!A:${endCol}`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values },
-  });
+  await withQuotaRetry(`append ${sheetName}`, () =>
+    sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `${sheetName}!A:${endCol}`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values },
+    })
+  );
 }
 
 async function main() {
@@ -108,6 +133,8 @@ async function main() {
   const sheets = google.sheets({ version: 'v4', auth: client });
 
   let totalRows = 0;
+  /** One spreadsheets.get per workbook — avoids per-tab read quota bursts. */
+  const titlesCache = new Map();
 
   for (const t of tables) {
     const { envKey, sheet, headers, rows } = t;
@@ -120,7 +147,11 @@ async function main() {
       continue;
     }
 
-    const titles = await sheetTitles(sheets, spreadsheetId);
+    let titles = titlesCache.get(spreadsheetId);
+    if (!titles) {
+      titles = await sheetTitles(sheets, spreadsheetId);
+      titlesCache.set(spreadsheetId, titles);
+    }
     if (!titles.has(sheet)) {
       console.warn(`Skip ${sheet}: tab not in spreadsheet ${spreadsheetId} (run ensure-* scripts or add tab)`);
       continue;
@@ -135,6 +166,7 @@ async function main() {
     await appendRows(sheets, spreadsheetId, sheet, headers, rows);
     console.log(`✓ ${sheet}: appended ${rows.length} rows → ${spreadsheetId}`);
     totalRows += rows.length;
+    await sleep(400);
   }
 
   console.log(dryRun ? `\nDry run: ${totalRows} rows would be appended.` : `\nDone: ${totalRows} rows appended.`);

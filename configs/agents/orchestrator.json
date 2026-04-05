@@ -14,7 +14,16 @@
     "helpdesk"
   ],
   "tools": [
-    "internal.platform.healthcheck"
+    "internal.platform.healthcheck",
+    "sheets.ap_invoices.get_pending_payables",
+    "sheets.ar_invoices.get_pending_receivables",
+    "sheets.ar_invoices.get_overdue",
+    "sheets.hr_tasks.get_blockers",
+    "sheets.hr_tasks.get_pending_hires",
+    "sheets.compliance_calendar.get_upcoming_obligations",
+    "sheets.employees.get_active_headcount",
+    "sheets.employees.get_active",
+    "sheets.bank_transactions.get_recent"
   ],
   "confidence_thresholds": {
     "auto_execute": 0.85,

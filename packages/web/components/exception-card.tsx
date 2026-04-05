@@ -16,9 +16,12 @@ export function ExceptionCard({ title, reason, severity }: ExceptionCardProps) {
     <article
       className={`rounded-xl border bg-velo-panel p-4 ${severityTone}`}
     >
-      <h3 className="text-base font-semibold">{title}</h3>
+      <h3 className="text-base font-semibold text-velo-text">{title}</h3>
       <p className="mt-2 text-sm text-velo-muted">{reason}</p>
-      <button className="mt-4 rounded-md bg-white/10 px-3 py-1.5 text-sm">
+      <button
+        type="button"
+        className="mt-4 rounded-md border border-velo-line bg-velo-inset px-3 py-1.5 text-sm font-medium text-velo-text shadow-sm hover:bg-velo-inset-deep"
+      >
         View evidence
       </button>
     </article>

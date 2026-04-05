@@ -1,7 +1,7 @@
 // AuditLogger — append-only event trail.
 // Events are stored in-memory for fast access within a session.
-// Separately flushed to VELO_LOGS.audit_trail via the Sheets client.
-// The Sheets flush is fire-and-forget (never blocks agent execution).
+// Flush to VELO_LOGS.audit_trail via @velo/tools `appendAuditRow`: serialized queue +
+// exponential backoff on Google quota errors (still fire-and-forget from this module).
 
 export interface AuditEvent {
   id: string;

@@ -3,5 +3,14 @@
 @tailwind utilities;
 
 body {
-  @apply bg-velo-bg text-velo-text antialiased;
+  background-color: theme('colors.velo.bg');
+  color: theme('colors.velo.text');
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+
+::selection {
+  background-color: rgba(15, 118, 110, 0.18);
+  color: inherit;
 }

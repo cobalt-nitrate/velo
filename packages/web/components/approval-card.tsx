@@ -27,7 +27,7 @@ export function ApprovalCard({
         {approvalId ? (
           <Link
             href={`/approvals/${encodeURIComponent(approvalId)}`}
-            className="rounded-md bg-velo-accent px-3 py-1.5 text-sm font-medium text-black"
+            className="rounded-md bg-velo-accent px-3 py-1.5 text-sm font-medium text-white shadow-soft hover:bg-velo-accent-hover"
           >
             Review
           </Link>

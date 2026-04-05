@@ -1,6 +1,6 @@
 // PolicyEngine — pure function, zero LLM calls.
 // Loads policy config at startup. Evaluates every proposed action.
-// This is the last gate before any tool execution.
+// This is the last gate before tool execution.
 
 import type { PolicyResult, ToolActionMetadata, ToolCall } from '../types/agent.js';
 
@@ -19,6 +19,32 @@ interface AutopilotPolicy {
     reason?: string;
   }>;
   rbac: Record<string, string[]>;
+}
+
+/** Matches sheet tools that only read data (aligned with tool-confidence read heuristic). */
+function isReadOnlySheetsTool(toolId: string): boolean {
+  if (!toolId.startsWith('sheets.')) return false;
+  if (
+    toolId.includes('.create') ||
+    toolId.includes('.update') ||
+    toolId.includes('mark_done') ||
+    toolId.includes('.delete')
+  ) {
+    return false;
+  }
+  return (
+    /\.(get_|lookup|find_)/.test(toolId) ||
+    toolId.includes('.get_active') ||
+    toolId.includes('get_recent') ||
+    toolId.includes('get_pending') ||
+    toolId.includes('get_latest') ||
+    toolId.includes('get_by_') ||
+    toolId.includes('get_ytd') ||
+    toolId.includes('get_blockers') ||
+    toolId.includes('get_committed') ||
+    toolId.includes('get_outstanding') ||
+    toolId.includes('get_overdue')
+  );
 }
 
 export class PolicyEngine {
@@ -48,6 +74,11 @@ export class PolicyEngine {
 
     // Read-only platform probes — always auto-execute if authorized
     if (action.tool_id === 'internal.platform.healthcheck') {
+      return 'AUTO_EXECUTE';
+    }
+
+    // Sheets reads (list/get/lookup) — no mutation; safe to auto-run when RBAC passes
+    if (isReadOnlySheetsTool(action.tool_id)) {
       return 'AUTO_EXECUTE';
     }
 
@@ -117,9 +148,6 @@ export class PolicyEngine {
   }
 
   private resolveActionType(tool_id: string, _agent_id: string): string {
-    // Map tool_id to action_type for policy matching.
-    // sheets.* → drop the sheets namespace (e.g. ap_invoices.create, bank_transactions.get_latest_balance).
-    // Other dotted ids → domain.verb (e.g. bank.transfer.initiate → bank.transfer).
     const parts = tool_id.split('.');
     if (parts[0] === 'sheets' && parts.length >= 2) {
       return parts.slice(1).join('.');

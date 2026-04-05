@@ -1,0 +1,134 @@
+NOVAFORGE LABS PVT LTD  (SHIP TO)
+GSTIN 27AABCNova1Z5   Invoice: CSI-APR-2042
+Vendor: CloudScale Infra Solutions LLP   GSTIN 29AABCUCS01Z2
+
+LINE ITEMS
+========================================================================
+
+  1.  Cloud hosting tier-1  Qty 1  Rate INR 148900.00  GST 18%
+  2.  Cloud hosting tier-2  Qty 1  Rate INR 149440.00  GST 18%
+  3.  Cloud hosting tier-3  Qty 1  Rate INR 149980.00  GST 18%
+  4.  Cloud hosting tier-4  Qty 1  Rate INR 150520.00  GST 18%
+  5.  Cloud hosting tier-5  Qty 1  Rate INR 151060.00  GST 18%
+  6.  Cloud hosting tier-1  Qty 1  Rate INR 151600.00  GST 18%
+  7.  Cloud hosting tier-2  Qty 1  Rate INR 152140.00  GST 18%
+  8.  Cloud hosting tier-3  Qty 1  Rate INR 149789.00  GST 18%
+  9.  Cloud hosting tier-4  Qty 1  Rate INR 150329.00  GST 18%
+  10.  Cloud hosting tier-5  Qty 1  Rate INR 150869.00  GST 18%
+  11.  Cloud hosting tier-1  Qty 1  Rate INR 151409.00  GST 18%
+  12.  Cloud hosting tier-2  Qty 1  Rate INR 151949.00  GST 18%
+  13.  Cloud hosting tier-3  Qty 1  Rate INR 152489.00  GST 18%
+  14.  Cloud hosting tier-4  Qty 1  Rate INR 153029.00  GST 18%
+  15.  Cloud hosting tier-5  Qty 1  Rate INR 150678.00  GST 18%
+  16.  Cloud hosting tier-1  Qty 1  Rate INR 151218.00  GST 18%
+  17.  Cloud hosting tier-2  Qty 1  Rate INR 151758.00  GST 18%
+  18.  Cloud hosting tier-3  Qty 1  Rate INR 152298.00  GST 18%
+  19.  Cloud hosting tier-4  Qty 1  Rate INR 152838.00  GST 18%
+  20.  Cloud hosting tier-5  Qty 1  Rate INR 153378.00  GST 18%
+  21.  Cloud hosting tier-1  Qty 1  Rate INR 153918.00  GST 18%
+  22.  Cloud hosting tier-2  Qty 1  Rate INR 151567.00  GST 18%
+  23.  Cloud hosting tier-3  Qty 1  Rate INR 152107.00  GST 18%
+  24.  Cloud hosting tier-4  Qty 1  Rate INR 152647.00  GST 18%
+  25.  Cloud hosting tier-5  Qty 1  Rate INR 153187.00  GST 18%
+  26.  Cloud hosting tier-1  Qty 1  Rate INR 153727.00  GST 18%
+  27.  Cloud hosting tier-2  Qty 1  Rate INR 154267.00  GST 18%
+  28.  Cloud hosting tier-3  Qty 1  Rate INR 154807.00  GST 18%
+  29.  Cloud hosting tier-4  Qty 1  Rate INR 152456.00  GST 18%
+  30.  Cloud hosting tier-5  Qty 1  Rate INR 152996.00  GST 18%
+  31.  Cloud hosting tier-1  Qty 1  Rate INR 153536.00  GST 18%
+  32.  Cloud hosting tier-2  Qty 1  Rate INR 154076.00  GST 18%
+  33.  Cloud hosting tier-3  Qty 1  Rate INR 154616.00  GST 18%
+  34.  Cloud hosting tier-4  Qty 1  Rate INR 155156.00  GST 18%
+  35.  Cloud hosting tier-5  Qty 1  Rate INR 155696.00  GST 18%
+  36.  Cloud hosting tier-1  Qty 1  Rate INR 153345.00  GST 18%
+  37.  Cloud hosting tier-2  Qty 1  Rate INR 153885.00  GST 18%
+  38.  Cloud hosting tier-3  Qty 1  Rate INR 154425.00  GST 18%
+  39.  Cloud hosting tier-4  Qty 1  Rate INR 154965.00  GST 18%
+  40.  Cloud hosting tier-5  Qty 1  Rate INR 155505.00  GST 18%
+  41.  Cloud hosting tier-1  Qty 1  Rate INR 156045.00  GST 18%
+  42.  Cloud hosting tier-2  Qty 1  Rate INR 156585.00  GST 18%
+  43.  Cloud hosting tier-3  Qty 1  Rate INR 154234.00  GST 18%
+  44.  Cloud hosting tier-4  Qty 1  Rate INR 154774.00  GST 18%
+  45.  Cloud hosting tier-5  Qty 1  Rate INR 155314.00  GST 18%
+  46.  Cloud hosting tier-1  Qty 1  Rate INR 155854.00  GST 18%
+  47.  Cloud hosting tier-2  Qty 1  Rate INR 156394.00  GST 18%
+  48.  Cloud hosting tier-3  Qty 1  Rate INR 156934.00  GST 18%
+  49.  Cloud hosting tier-4  Qty 1  Rate INR 157474.00  GST 18%
+  50.  Cloud hosting tier-5  Qty 1  Rate INR 155123.00  GST 18%
+  51.  Cloud hosting tier-1  Qty 1  Rate INR 155663.00  GST 18%
+  52.  Cloud hosting tier-2  Qty 1  Rate INR 156203.00  GST 18%
+  53.  Cloud hosting tier-3  Qty 1  Rate INR 156743.00  GST 18%
+  54.  Cloud hosting tier-4  Qty 1  Rate INR 157283.00  GST 18%
+  55.  Cloud hosting tier-5  Qty 1  Rate INR 157823.00  GST 18%
+  56.  Cloud hosting tier-1  Qty 1  Rate INR 158363.00  GST 18%
+  57.  Cloud hosting tier-2  Qty 1  Rate INR 156012.00  GST 18%
+  58.  Cloud hosting tier-3  Qty 1  Rate INR 156552.00  GST 18%
+  59.  Cloud hosting tier-4  Qty 1  Rate INR 157092.00  GST 18%
+  60.  Cloud hosting tier-5  Qty 1  Rate INR 157632.00  GST 18%
+  61.  Cloud hosting tier-1  Qty 1  Rate INR 158172.00  GST 18%
+  62.  Cloud hosting tier-2  Qty 1  Rate INR 158712.00  GST 18%
+  63.  Cloud hosting tier-3  Qty 1  Rate INR 159252.00  GST 18%
+  64.  Cloud hosting tier-4  Qty 1  Rate INR 156901.00  GST 18%
+  65.  Cloud hosting tier-5  Qty 1  Rate INR 157441.00  GST 18%
+  66.  Cloud hosting tier-1  Qty 1  Rate INR 157981.00  GST 18%
+  67.  Cloud hosting tier-2  Qty 1  Rate INR 158521.00  GST 18%
+  68.  Cloud hosting tier-3  Qty 1  Rate INR 159061.00  GST 18%
+  69.  Cloud hosting tier-4  Qty 1  Rate INR 159601.00  GST 18%
+  70.  Cloud hosting tier-5  Qty 1  Rate INR 160141.00  GST 18%
+  71.  Cloud hosting tier-1  Qty 1  Rate INR 157790.00  GST 18%
+  72.  Cloud hosting tier-2  Qty 1  Rate INR 158330.00  GST 18%
+  73.  Cloud hosting tier-3  Qty 1  Rate INR 158870.00  GST 18%
+  74.  Cloud hosting tier-4  Qty 1  Rate INR 159410.00  GST 18%
+  75.  Cloud hosting tier-5  Qty 1  Rate INR 159950.00  GST 18%
+  76.  Cloud hosting tier-1  Qty 1  Rate INR 160490.00  GST 18%
+  77.  Cloud hosting tier-2  Qty 1  Rate INR 161030.00  GST 18%
+  78.  Cloud hosting tier-3  Qty 1  Rate INR 158679.00  GST 18%
+  79.  Cloud hosting tier-4  Qty 1  Rate INR 159219.00  GST 18%
+  80.  Cloud hosting tier-5  Qty 1  Rate INR 159759.00  GST 18%
+  81.  Cloud hosting tier-1  Qty 1  Rate INR 160299.00  GST 18%
+  82.  Cloud hosting tier-2  Qty 1  Rate INR 160839.00  GST 18%
+  83.  Cloud hosting tier-3  Qty 1  Rate INR 161379.00  GST 18%
+  84.  Cloud hosting tier-4  Qty 1  Rate INR 161919.00  GST 18%
+  85.  Cloud hosting tier-5  Qty 1  Rate INR 159568.00  GST 18%
+  86.  Cloud hosting tier-1  Qty 1  Rate INR 160108.00  GST 18%
+  87.  Cloud hosting tier-2  Qty 1  Rate INR 160648.00  GST 18%
+  88.  Cloud hosting tier-3  Qty 1  Rate INR 161188.00  GST 18%
+  89.  Cloud hosting tier-4  Qty 1  Rate INR 161728.00  GST 18%
+  90.  Cloud hosting tier-5  Qty 1  Rate INR 162268.00  GST 18%
+  91.  Cloud hosting tier-1  Qty 1  Rate INR 162808.00  GST 18%
+  92.  Cloud hosting tier-2  Qty 1  Rate INR 160457.00  GST 18%
+  93.  Cloud hosting tier-3  Qty 1  Rate INR 160997.00  GST 18%
+  94.  Cloud hosting tier-4  Qty 1  Rate INR 161537.00  GST 18%
+  95.  Cloud hosting tier-5  Qty 1  Rate INR 162077.00  GST 18%
+  96.  Cloud hosting tier-1  Qty 1  Rate INR 162617.00  GST 18%
+  97.  Cloud hosting tier-2  Qty 1  Rate INR 163157.00  GST 18%
+  98.  Cloud hosting tier-3  Qty 1  Rate INR 163697.00  GST 18%
+  99.  Cloud hosting tier-4  Qty 1  Rate INR 161346.00  GST 18%
+  100.  Cloud hosting tier-5  Qty 1  Rate INR 161886.00  GST 18%
+  101.  Cloud hosting tier-1  Qty 1  Rate INR 162426.00  GST 18%
+  102.  Cloud hosting tier-2  Qty 1  Rate INR 162966.00  GST 18%
+  103.  Cloud hosting tier-3  Qty 1  Rate INR 163506.00  GST 18%
+  104.  Cloud hosting tier-4  Qty 1  Rate INR 164046.00  GST 18%
+  105.  Cloud hosting tier-5  Qty 1  Rate INR 164586.00  GST 18%
+  106.  Cloud hosting tier-1  Qty 1  Rate INR 162235.00  GST 18%
+  107.  Cloud hosting tier-2  Qty 1  Rate INR 162775.00  GST 18%
+  108.  Cloud hosting tier-3  Qty 1  Rate INR 163315.00  GST 18%
+  109.  Cloud hosting tier-4  Qty 1  Rate INR 163855.00  GST 18%
+  110.  Cloud hosting tier-5  Qty 1  Rate INR 164395.00  GST 18%
+  111.  Cloud hosting tier-1  Qty 1  Rate INR 164935.00  GST 18%
+  112.  Cloud hosting tier-2  Qty 1  Rate INR 165475.00  GST 18%
+  113.  Cloud hosting tier-3  Qty 1  Rate INR 163124.00  GST 18%
+  114.  Cloud hosting tier-4  Qty 1  Rate INR 163664.00  GST 18%
+  115.  Cloud hosting tier-5  Qty 1  Rate INR 164204.00  GST 18%
+  116.  Cloud hosting tier-1  Qty 1  Rate INR 164744.00  GST 18%
+  117.  Cloud hosting tier-2  Qty 1  Rate INR 165284.00  GST 18%
+  118.  Cloud hosting tier-3  Qty 1  Rate INR 165824.00  GST 18%
+  119.  Cloud hosting tier-4  Qty 1  Rate INR 166364.00  GST 18%
+  120.  Cloud hosting tier-5  Qty 1  Rate INR 164013.00  GST 18%
+
+SUBTOTAL (ex GST)  INR 4,982,340.20
+IGST/CGST+SGST AS APPLICABLE  ...  (demo totals)
+TOTAL PAYABLE  INR 5,879,161.44
+
+Remit to: Yes Bank ****4400   IFSC YESB0000444
+Terms: Net 30 from invoice date 2026-04-02

@@ -58,7 +58,7 @@ export default function FilesPage() {
           className={`rounded-md px-3 py-1.5 text-sm ${
             tab === 'local'
               ? 'bg-velo-accent/20 text-velo-text'
-              : 'text-velo-muted hover:bg-white/5'
+              : 'text-velo-muted hover:bg-velo-inset'
           }`}
         >
           This workspace ({local.length})
@@ -69,7 +69,7 @@ export default function FilesPage() {
           className={`rounded-md px-3 py-1.5 text-sm ${
             tab === 'drive'
               ? 'bg-velo-accent/20 text-velo-text'
-              : 'text-velo-muted hover:bg-white/5'
+              : 'text-velo-muted hover:bg-velo-inset'
           }`}
         >
           Google Drive
@@ -107,7 +107,7 @@ export default function FilesPage() {
       {tab === 'drive' && (
         <div className="mt-4">
           {driveErr && (
-            <p className="text-sm text-amber-200/90">{driveErr}</p>
+            <p className="text-sm text-amber-800">{driveErr}</p>
           )}
           <ul className="mt-2 grid gap-2">
             {drive.length === 0 && !driveErr ? (

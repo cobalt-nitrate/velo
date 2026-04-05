@@ -41,11 +41,11 @@ export default async function CommandCenterPage() {
         </div>
       </header>
 
-      <section className="flex flex-wrap items-center gap-3 rounded-xl border border-velo-line bg-velo-panel/60 px-4 py-3 text-sm">
+      <section className="flex flex-wrap items-center gap-3 rounded-xl border border-velo-line bg-velo-panel px-4 py-3 text-sm shadow-soft">
         <span className="text-velo-muted">Workspace</span>
         <Link
           href="/chat"
-          className="rounded-md bg-velo-accent px-3 py-1.5 font-medium text-black hover:opacity-90"
+          className="rounded-md bg-velo-accent px-3 py-1.5 font-medium text-white shadow-soft hover:bg-velo-accent-hover"
         >
           Open chat
         </Link>

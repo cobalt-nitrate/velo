@@ -139,7 +139,7 @@ describe('AuditLogger', () => {
     it('stored events are not mutated when the returned reference is modified', () => {
       const event = createAuditEvent({ ...BASE, event_type: 'AGENT_STARTED', payload: { foo: 'bar' } });
       // Attempt to mutate the returned event
-      (event as Record<string, unknown>).event_type = 'AGENT_FAILED';
+      (event as unknown as Record<string, unknown>).event_type = 'AGENT_FAILED';
 
       // The stored copy should be unaffected (shallow spread on creation)
       const stored = getAuditEvent(event.id);

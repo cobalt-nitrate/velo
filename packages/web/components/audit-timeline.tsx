@@ -14,7 +14,7 @@ export function AuditTimeline({ events }: AuditTimelineProps) {
       <h3 className="mb-3 text-base font-semibold">Audit timeline</h3>
       <div className="space-y-2">
         {events.map((event) => (
-          <div key={event.id} className="rounded-md bg-white/5 p-2 text-sm">
+          <div key={event.id} className="rounded-md border border-velo-line/80 bg-velo-inset p-2 text-sm">
             <p>{event.event}</p>
             <p className="text-xs text-velo-muted">{event.timestamp}</p>
           </div>

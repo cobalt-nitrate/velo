@@ -4,3 +4,4 @@ export * from './confidence/index.js';
 export * from './config/loader.js';
 export * from './audit/index.js';
 export * from './workflow/index.js';
+export * from './integrations/connector-kit.js';

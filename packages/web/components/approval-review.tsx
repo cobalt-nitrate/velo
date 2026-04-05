@@ -1,5 +1,6 @@
 'use client';
 
+import { isApprovalPendingStatus } from '@velo/tools/sheets/approval-status';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -66,7 +67,7 @@ export function ApprovalReview({ approvalId }: { approvalId: string }) {
   }
 
   useEffect(() => {
-    if (autoResolved.current || !approval || approval.status !== 'PENDING') return;
+    if (autoResolved.current || !approval || !isApprovalPendingStatus(approval.status)) return;
     const r = searchParams.get('resolve');
     if (r === 'approved' || r === 'rejected') {
       autoResolved.current = true;
@@ -82,7 +83,7 @@ export function ApprovalReview({ approvalId }: { approvalId: string }) {
 
   if (error && !approval) {
     return (
-      <p className="p-6 text-sm text-rose-300">{error}</p>
+      <p className="p-6 text-sm text-rose-700">{error}</p>
     );
   }
 
@@ -111,15 +112,15 @@ export function ApprovalReview({ approvalId }: { approvalId: string }) {
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="mt-1 w-full rounded-md border border-white/10 bg-black/20 px-2 py-2 text-sm"
+          className="mt-1 w-full rounded-md border border-velo-line bg-velo-panel px-2 py-2 text-sm"
           rows={3}
         />
       </label>
-      {error && <p className="mt-2 text-sm text-rose-300">{error}</p>}
+      {error && <p className="mt-2 text-sm text-rose-700">{error}</p>}
       <div className="mt-4 flex gap-2">
         <button
           type="button"
-          disabled={busy || approval?.status !== 'PENDING'}
+          disabled={busy || !isApprovalPendingStatus(approval?.status)}
           onClick={() => resolve('APPROVED')}
           className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
@@ -127,7 +128,7 @@ export function ApprovalReview({ approvalId }: { approvalId: string }) {
         </button>
         <button
           type="button"
-          disabled={busy || approval?.status !== 'PENDING'}
+          disabled={busy || !isApprovalPendingStatus(approval?.status)}
           onClick={() => resolve('REJECTED')}
           className="rounded-md bg-rose-600/80 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >

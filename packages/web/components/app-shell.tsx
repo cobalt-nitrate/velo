@@ -78,6 +78,23 @@ function IconUpload({ className }: { className?: string }) {
   );
 }
 
+function IconTable({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M4 6h16M4 12h10M4 18h16M14 9h6M14 15h6" />
+    </svg>
+  );
+}
+
 function IconSettings({ className }: { className?: string }) {
   return (
     <svg
@@ -133,6 +150,7 @@ function IconChevronRight({ className }: { className?: string }) {
 const NAV = [
   { href: '/', label: 'Overview', Icon: IconOverview },
   { href: '/chat', label: 'Chat', Icon: IconChat },
+  { href: '/operations', label: 'Operations', Icon: IconTable },
   { href: '/files', label: 'Files', Icon: IconFolder },
   { href: '/uploads', label: 'Uploads', Icon: IconUpload },
   { href: '/settings', label: 'Settings', Icon: IconSettings },
@@ -169,12 +187,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <aside
-        className={`relative flex shrink-0 flex-col border-r border-velo-line bg-[linear-gradient(180deg,rgba(20,26,39,0.97)_0%,rgba(8,11,20,0.98)_100%)] shadow-[4px_0_24px_-8px_rgba(0,0,0,0.45)] transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] ${
+        className={`relative z-30 flex shrink-0 flex-col border-r border-velo-line bg-velo-panel shadow-shell transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] ${
           collapsed ? 'w-[4.25rem]' : 'w-56'
         }`}
       >
         <div
-          className={`border-b border-velo-line/80 ${
+          className={`relative z-10 border-b border-velo-line ${
             collapsed ? 'px-2 py-3' : 'px-4 py-4 pr-2'
           }`}
         >
@@ -186,7 +204,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               }`}
               title="Velo home"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-velo-accent/25 to-velo-accent/5 ring-1 ring-velo-accent/30">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-velo-accent/10 ring-1 ring-velo-accent/25">
                 <span className="text-sm font-bold tracking-tight text-velo-accent">V</span>
               </span>
               {!collapsed && (
@@ -198,11 +216,21 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               )}
             </Link>
-            {!collapsed && (
+            {collapsed ? (
+              <button
+                type="button"
+                onClick={() => persistCollapsed(false)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-velo-muted transition-colors hover:bg-velo-inset hover:text-velo-accent"
+                aria-label="Expand sidebar"
+                title="Expand sidebar"
+              >
+                <IconChevronRight className="h-4 w-4" />
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => persistCollapsed(true)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-velo-muted transition-colors hover:bg-white/[0.06] hover:text-velo-accent"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-velo-muted transition-colors hover:bg-velo-inset hover:text-velo-accent"
                 aria-label="Collapse sidebar"
                 title="Collapse sidebar"
               >
@@ -228,8 +256,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'
                 } ${
                   active
-                    ? 'bg-velo-accent/[0.12] text-velo-text shadow-[inset_3px_0_0_0_rgba(79,209,197,0.95)]'
-                    : 'text-velo-muted hover:bg-white/[0.04] hover:text-velo-text'
+                    ? 'bg-velo-accent/10 text-velo-text shadow-[inset_3px_0_0_0_#0f766e]'
+                    : 'text-velo-muted hover:bg-velo-inset hover:text-velo-text'
                 }`}
               >
                 <span
@@ -245,27 +273,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        {collapsed ? (
-          <div className="border-t border-velo-line/80 p-2">
-            <button
-              type="button"
-              onClick={() => persistCollapsed(false)}
-              className="flex w-full items-center justify-center rounded-xl py-2.5 text-velo-muted transition-colors hover:bg-white/[0.06] hover:text-velo-accent"
-              aria-label="Expand sidebar"
-              title="Expand sidebar"
-            >
-              <IconChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-        ) : null}
-
         {!collapsed && (
-          <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center opacity-[0.35]">
+          <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center opacity-40">
             <div className="h-1 w-10 rounded-full bg-velo-line" />
           </div>
         )}
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
     </div>
   );
 }

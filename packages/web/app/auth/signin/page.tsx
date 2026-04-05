@@ -10,7 +10,7 @@ export default function SignInPage() {
         <p className="mb-8 text-sm text-velo-muted">Sign in to your back-office command center</p>
         <button
           onClick={() => signIn('google', { callbackUrl: '/' })}
-          className="w-full rounded-lg bg-velo-accent px-4 py-3 text-sm font-semibold text-black hover:opacity-90"
+          className="w-full rounded-lg bg-velo-accent px-4 py-3 text-sm font-semibold text-white shadow-soft hover:bg-velo-accent-hover"
         >
           Sign in with Google
         </button>

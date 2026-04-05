@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   findApprovalById,
+  isApprovalPendingStatus,
   mergeApprovalAttachmentsFromFileLinks,
   parseAttachmentDriveUrlsJson,
   updateApprovalRow,
@@ -52,8 +53,8 @@ export async function PATCH(
       return NextResponse.json({ error: `Approval not found: ${approvalId}` }, { status: 404 });
     }
 
-    // Guard: don't re-resolve an already resolved approval
-    if (found.row.status && found.row.status !== 'PENDING') {
+    // Guard: don't re-resolve an already resolved approval (normalize sheet casing)
+    if (!isApprovalPendingStatus(found.row.status)) {
       return NextResponse.json(
         {
           error: `Approval already resolved: status=${found.row.status}`,

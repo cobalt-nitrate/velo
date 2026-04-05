@@ -1,0 +1,126 @@
+----- paste fragment 0 -----
+INV NVF-APR26-200  Date 2026-04-01
+Bill To: Horizon Retail  Amount INR 88000 plus GST
+HSN 9983   Place of supply: look at PDF page 1
+
+----- paste fragment 1 -----
+INV NVF-APR26-201  Date 2026-04-02
+Bill To: Vertex Mobility  Amount INR 89900 plus GST
+HSN 9983   Place of supply: look at PDF page 2
+
+----- paste fragment 2 -----
+INV NVF-APR26-202  Date 2026-04-03
+Bill To: Sterling Foods  Amount INR 91800 plus GST
+HSN 9983   Place of supply: look at PDF page 3
+
+----- paste fragment 3 -----
+INV NVF-APR26-203  Date 2026-04-04
+Bill To: Horizon Retail  Amount INR 93700 plus GST
+HSN 9983   Place of supply: look at PDF page 4
+
+----- paste fragment 4 -----
+INV NVF-APR26-204  Date 2026-04-05
+Bill To: Vertex Mobility  Amount INR 95600 plus GST
+HSN 9983   Place of supply: look at PDF page 5
+
+----- paste fragment 5 -----
+INV NVF-APR26-205  Date 2026-04-06
+Bill To: Sterling Foods  Amount INR 97500 plus GST
+HSN 9983   Place of supply: look at PDF page 1
+
+----- paste fragment 6 -----
+INV NVF-APR26-206  Date 2026-04-07
+Bill To: Horizon Retail  Amount INR 99400 plus GST
+HSN 9983   Place of supply: look at PDF page 2
+
+----- paste fragment 7 -----
+INV NVF-APR26-207  Date 2026-04-08
+Bill To: Vertex Mobility  Amount INR 101300 plus GST
+HSN 9983   Place of supply: look at PDF page 3
+
+----- paste fragment 8 -----
+INV NVF-APR26-208  Date 2026-04-09
+Bill To: Sterling Foods  Amount INR 103200 plus GST
+HSN 9983   Place of supply: look at PDF page 4
+
+----- paste fragment 9 -----
+INV NVF-APR26-209  Date 2026-04-10
+Bill To: Horizon Retail  Amount INR 105100 plus GST
+HSN 9983   Place of supply: look at PDF page 5
+
+----- paste fragment 10 -----
+INV NVF-APR26-210  Date 2026-04-11
+Bill To: Vertex Mobility  Amount INR 107000 plus GST
+HSN 9983   Place of supply: look at PDF page 1
+
+----- paste fragment 11 -----
+INV NVF-APR26-211  Date 2026-04-12
+Bill To: Sterling Foods  Amount INR 108900 plus GST
+HSN 9983   Place of supply: look at PDF page 2
+
+----- paste fragment 12 -----
+INV NVF-APR26-212  Date 2026-04-13
+Bill To: Horizon Retail  Amount INR 110800 plus GST
+HSN 9983   Place of supply: look at PDF page 3
+
+----- paste fragment 13 -----
+INV NVF-APR26-213  Date 2026-04-14
+Bill To: Vertex Mobility  Amount INR 112700 plus GST
+HSN 9983   Place of supply: look at PDF page 4
+
+----- paste fragment 14 -----
+INV NVF-APR26-214  Date 2026-04-15
+Bill To: Sterling Foods  Amount INR 114600 plus GST
+HSN 9983   Place of supply: look at PDF page 5
+
+----- paste fragment 15 -----
+INV NVF-APR26-215  Date 2026-04-16
+Bill To: Horizon Retail  Amount INR 116500 plus GST
+HSN 9983   Place of supply: look at PDF page 1
+
+----- paste fragment 16 -----
+INV NVF-APR26-216  Date 2026-04-17
+Bill To: Vertex Mobility  Amount INR 118400 plus GST
+HSN 9983   Place of supply: look at PDF page 2
+
+----- paste fragment 17 -----
+INV NVF-APR26-217  Date 2026-04-18
+Bill To: Sterling Foods  Amount INR 120300 plus GST
+HSN 9983   Place of supply: look at PDF page 3
+
+----- paste fragment 18 -----
+INV NVF-APR26-218  Date 2026-04-19
+Bill To: Horizon Retail  Amount INR 122200 plus GST
+HSN 9983   Place of supply: look at PDF page 4
+
+----- paste fragment 19 -----
+INV NVF-APR26-219  Date 2026-04-20
+Bill To: Vertex Mobility  Amount INR 124100 plus GST
+HSN 9983   Place of supply: look at PDF page 5
+
+----- paste fragment 20 -----
+INV NVF-APR26-220  Date 2026-04-21
+Bill To: Sterling Foods  Amount INR 126000 plus GST
+HSN 9983   Place of supply: look at PDF page 1
+
+----- paste fragment 21 -----
+INV NVF-APR26-221  Date 2026-04-22
+Bill To: Horizon Retail  Amount INR 127900 plus GST
+HSN 9983   Place of supply: look at PDF page 2
+
+----- paste fragment 22 -----
+INV NVF-APR26-222  Date 2026-04-23
+Bill To: Vertex Mobility  Amount INR 129800 plus GST
+HSN 9983   Place of supply: look at PDF page 3
+
+----- paste fragment 23 -----
+INV NVF-APR26-223  Date 2026-04-24
+Bill To: Sterling Foods  Amount INR 131700 plus GST
+HSN 9983   Place of supply: look at PDF page 4
+
+----- paste fragment 24 -----
+INV NVF-APR26-224  Date 2026-04-25
+Bill To: Horizon Retail  Amount INR 133600 plus GST
+HSN 9983   Place of supply: look at PDF page 5
+
+Footer noise: scanned @ 300dpi  margin tear  ... signature illegible ...

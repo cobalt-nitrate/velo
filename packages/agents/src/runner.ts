@@ -13,6 +13,8 @@ import { deriveScoringInputs, scoreConfidence } from '@velo/core/confidence';
 import { createAuditEvent } from '@velo/core/audit';
 import { getRuntimeTools } from '@velo/tools';
 import { executeSheetTool } from '@velo/tools/sheets';
+import { notifyApprovalRequestOutOfBand } from './approval-notify.js';
+import { adjustConfidenceForPolicyRisk } from './confidence-policy-bridge.js';
 import { scoringSignalsForTool } from './tool-confidence.js';
 import type {
   AgentConfig,
@@ -74,7 +76,7 @@ async function persistApprovalRequestSheet(
   companyId: string
 ): Promise<void> {
   try {
-    await executeSheetTool({
+    const result = await executeSheetTool({
       tool_id: 'sheets.approval_requests.create',
       company_id: companyId,
       approval_id: approvalRequest.approval_id,
@@ -92,6 +94,12 @@ async function persistApprovalRequestSheet(
       resolved_at: '',
       resolution_notes: '',
     });
+    if (result.ok === false) {
+      console.error(
+        '[runner] sheets.approval_requests.create did not succeed:',
+        result.error ?? result
+      );
+    }
   } catch (err) {
     console.error('[runner] Failed to persist approval request:', err);
   }
@@ -186,6 +194,14 @@ export async function runAgent(
   let auditEntryId = startAudit.id;
 
   if (subAgentDepth > 5) {
+    createAuditEvent({
+      company_id: context.company_id,
+      actor_id: context.actor_id,
+      actor_role: context.actor_role,
+      agent_id: agentId,
+      event_type: 'AGENT_FAILED',
+      payload: { reason: 'sub_agent_depth_exceeded', session_id: context.session_id },
+    });
     return {
       status: 'FAILED',
       error: 'Sub-agent nesting exceeded maximum depth.',
@@ -220,6 +236,18 @@ export async function runAgent(
 
     const choice = completion.choices[0];
     if (!choice?.message) {
+      createAuditEvent({
+        company_id: context.company_id,
+        actor_id: context.actor_id,
+        actor_role: context.actor_role,
+        agent_id: agentId,
+        event_type: 'AGENT_FAILED',
+        payload: {
+          reason: 'empty_llm_completion',
+          session_id: context.session_id,
+          iteration: iterations,
+        },
+      });
       return {
         status: 'FAILED',
         error: 'Empty completion from LLM.',
@@ -319,13 +347,13 @@ export async function runAgent(
             note: 'sub-agent delegation',
           },
         });
-      evaluated.push({
-        tc,
-        toolCall,
-        confidence,
-        metadata,
-        policyResult: 'AUTO_EXECUTE',
-      });
+        evaluated.push({
+          tc,
+          toolCall,
+          confidence,
+          metadata,
+          policyResult: 'AUTO_EXECUTE',
+        });
         emitEvent(onEvent, {
           type: 'tool.proposed',
           agent_id: agentId,
@@ -341,9 +369,23 @@ export async function runAgent(
       );
       const confidence = scoreConfidence(scoringInputs);
       const metadata = deriveActionMetadata(toolCall);
+      const autopilot = autopilotPolicy as {
+        payment_auto_threshold_inr?: number;
+      };
+      const { adjusted: adjustedConfidence, notes: riskNotes } =
+        adjustConfidenceForPolicyRisk({
+          baseConfidence: confidence.overall,
+          toolId: toolCall.tool_id,
+          amountInr: metadata.amount_inr,
+          paymentAutoThresholdInr: numberOrDefault(
+            autopilot.payment_auto_threshold_inr,
+            25000
+          ),
+          isFilingAction: metadata.is_filing_action ?? false,
+        });
       const policyResult = policyEngine.evaluate({
         action: toolCall,
-        confidence: confidence.overall,
+        confidence: adjustedConfidence,
         actor_role: context.actor_role,
         agent_id: agentId,
         metadata,
@@ -359,6 +401,8 @@ export async function runAgent(
           tool_id: toolCall.tool_id,
           policy_result: policyResult,
           confidence,
+          confidence_adjusted: adjustedConfidence,
+          confidence_risk_notes: riskNotes,
           metadata,
         },
       });
@@ -366,7 +410,10 @@ export async function runAgent(
       evaluated.push({
         tc,
         toolCall,
-        confidence,
+        confidence: {
+          ...confidence,
+          overall: adjustedConfidence,
+        },
         metadata,
         policyResult,
       });
@@ -381,6 +428,19 @@ export async function runAgent(
 
     const firstRefuse = evaluated.find((e) => e.policyResult === 'REFUSE');
     if (firstRefuse) {
+      createAuditEvent({
+        company_id: context.company_id,
+        actor_id: context.actor_id,
+        actor_role: context.actor_role,
+        agent_id: agentId,
+        event_type: 'AGENT_FAILED',
+        payload: {
+          reason: 'refused',
+          tool_id: firstRefuse.toolCall.tool_id,
+          confidence: firstRefuse.confidence.overall,
+          session_id: context.session_id,
+        },
+      });
       emitEvent(onEvent, {
         type: 'run.blocked',
         reason: 'refused',
@@ -401,6 +461,7 @@ export async function runAgent(
       const approvalRequest = {
         approval_id: `approval-${Date.now()}`,
         agent_id: agentId,
+        tool_id: toolCall.tool_id,
         action_type: metadata.action_type ?? toolCall.tool_id,
         action_payload: toolCall.parameters,
         confidence_score: confidence.overall,
@@ -429,6 +490,7 @@ export async function runAgent(
       });
 
       await persistApprovalRequestSheet(approvalRequest, context.company_id);
+      await notifyApprovalRequestOutOfBand(approvalRequest, context.company_id);
 
       emitEvent(onEvent, {
         type: 'run.blocked',
@@ -555,6 +617,18 @@ export async function runAgent(
     }
   }
 
+  createAuditEvent({
+    company_id: context.company_id,
+    actor_id: context.actor_id,
+    actor_role: context.actor_role,
+    agent_id: agentId,
+    event_type: 'AGENT_FAILED',
+    payload: {
+      reason: 'max_iterations',
+      max_iterations: config.max_iterations,
+      session_id: context.session_id,
+    },
+  });
   emitEvent(onEvent, {
     type: 'run.complete',
     agent_id: agentId,

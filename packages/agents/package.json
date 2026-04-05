@@ -18,7 +18,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest"
+    "test": "vitest",
+    "e2e:modules": "tsx src/e2e/module-paths.ts"
   },
   "dependencies": {
     "@velo/core": "workspace:*",
@@ -26,6 +27,7 @@
     "openai": "^4.77.0"
   },
   "devDependencies": {
+    "tsx": "^4.0.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   }

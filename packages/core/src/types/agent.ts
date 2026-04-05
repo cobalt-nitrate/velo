@@ -100,6 +100,8 @@ export interface ConfirmationRequest {
 export interface ApprovalRequest {
   approval_id: string;
   agent_id: string;
+  /** Full Velo tool id (e.g. sheets.ap_invoices.create) — used to resume workflows after approval. */
+  tool_id?: string;
   action_type: string;
   action_payload: Record<string, unknown>;
   confidence_score: number;
@@ -160,6 +162,8 @@ export type WorkflowRunStatus =
 
 export interface WorkflowRunState {
   workflow_id: string;
+  /** Key for loadConfig(\`workflows/${key}.json\`). Required for resume (new runs always set this). */
+  workflow_config_key?: string;
   run_id: string;
   status: WorkflowRunStatus;
   current_step: number;
@@ -167,4 +171,40 @@ export interface WorkflowRunState {
   started_at: string;
   updated_at: string;
   error?: string;
+  /** When status is WAITING_FOR_APPROVAL, the sheet approval row id and deferred tool call. */
+  pending_approval_id?: string;
+  pending_tool_id?: string;
+  pending_tool_params?: Record<string, unknown>;
+}
+
+/** Minimal shared entity shape for module UIs and connectors (Wave 1 contract). */
+export type VeloModuleId =
+  | 'runway'
+  | 'compliance'
+  | 'payroll'
+  | 'ap'
+  | 'ar'
+  | 'hr'
+  | 'helpdesk'
+  | 'system';
+
+export type VeloEntityWorkflowStatus =
+  | 'DRAFT'
+  | 'IN_PROGRESS'
+  | 'WAITING_APPROVAL'
+  | 'BLOCKED'
+  | 'COMPLETED'
+  | 'FAILED';
+
+/** Use when writing new code paths; Sheets rows may still use loose strings. */
+export interface VeloWorkflowEntityBase {
+  id: string;
+  module: VeloModuleId;
+  status: VeloEntityWorkflowStatus;
+  confidence: number;
+  policy_result: PolicyResult;
+  owner_role: 'founder' | 'finance_lead' | 'hr_lead' | 'employee' | 'system';
+  evidence_refs: string[];
+  audit_entry_id?: string;
+  updated_at: string;
 }

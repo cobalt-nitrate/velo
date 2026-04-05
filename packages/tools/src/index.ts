@@ -51,6 +51,160 @@ const LOOKUP_SCHEMA: ToolSchema['input_schema'] = {
   },
 };
 
+/** Wave 0 — explicit shapes for high-impact sheet writes (LLM tool registration). */
+const AP_INVOICE_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    invoice_id: { type: 'string' },
+    vendor_id: { type: 'string' },
+    vendor_name: { type: 'string' },
+    invoice_number: { type: 'string' },
+    invoice_date: { type: 'string' },
+    due_date: { type: 'string' },
+    total_amount: { type: 'string' },
+    subtotal: { type: 'string' },
+    igst: { type: 'string' },
+    cgst: { type: 'string' },
+    sgst: { type: 'string' },
+    payment_status: { type: 'string' },
+    status: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['vendor_name', 'total_amount', 'invoice_date'],
+};
+
+const AP_INVOICE_UPDATE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    ...(AP_INVOICE_ROW_SCHEMA.properties as Record<string, unknown>),
+  },
+  required: ['invoice_id'],
+};
+
+const AR_INVOICE_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    invoice_id: { type: 'string' },
+    client_id: { type: 'string' },
+    client_name: { type: 'string' },
+    invoice_number: { type: 'string' },
+    invoice_date: { type: 'string' },
+    due_date: { type: 'string' },
+    service_description: { type: 'string' },
+    subtotal: { type: 'string' },
+    igst: { type: 'string' },
+    cgst: { type: 'string' },
+    sgst: { type: 'string' },
+    total_amount: { type: 'string' },
+    status: { type: 'string' },
+    payment_received_date: { type: 'string' },
+    bank_reference: { type: 'string' },
+    followup_count: { type: 'string' },
+    last_followup_date: { type: 'string' },
+    invoice_pdf_url: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['client_name', 'total_amount', 'invoice_date'],
+};
+
+const APPROVAL_REQUEST_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    approval_id: { type: 'string' },
+    agent_id: { type: 'string' },
+    action_type: { type: 'string' },
+    action_payload_json: { type: 'string' },
+    confidence_score: { type: 'string' },
+    evidence_json: { type: 'string' },
+    proposed_action_text: { type: 'string' },
+    created_at: { type: 'string' },
+    expires_at: { type: 'string' },
+    status: { type: 'string' },
+    approver_role: { type: 'string' },
+    resolved_by: { type: 'string' },
+    resolved_at: { type: 'string' },
+    resolution_notes: { type: 'string' },
+    attachment_drive_urls_json: { type: 'string' },
+  },
+  required: ['approval_id', 'agent_id', 'action_type', 'status'],
+};
+
+const VENDOR_CREATE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    vendor_id: { type: 'string' },
+    vendor_name: { type: 'string' },
+    gstin: { type: 'string' },
+    pan: { type: 'string' },
+    address: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['vendor_name'],
+};
+
+const GST_LEDGER_WRITE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    ledger_id: { type: 'string' },
+    invoice_id: { type: 'string' },
+    vendor_name: { type: 'string' },
+    client_name: { type: 'string' },
+    invoice_date: { type: 'string' },
+    period_month: { type: 'string' },
+    period_year: { type: 'string' },
+    taxable_amount: { type: 'string' },
+    igst: { type: 'string' },
+    cgst: { type: 'string' },
+    sgst: { type: 'string' },
+    total_gst: { type: 'string' },
+    ar_invoice_id: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['company_id'],
+};
+
+const EXPENSE_ENTRY_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    entry_id: { type: 'string' },
+    category: { type: 'string' },
+    amount_inr: { type: 'string' },
+    expense_date: { type: 'string' },
+    description: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['amount_inr'],
+};
+
+const PAYROLL_RUN_CREATE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    run_id: { type: 'string' },
+    month: { type: 'string' },
+    year: { type: 'string' },
+    status: { type: 'string' },
+    total_gross: { type: 'string' },
+    total_deductions: { type: 'string' },
+    net_payable: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['month', 'year'],
+};
+
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
 const toolDefinitions: ToolDefinition[] = [
@@ -66,13 +220,13 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.ap_invoices.create',
     description: 'Create AP invoice row in sheet',
-    schema: COMMON_SCHEMA,
+    schema: AP_INVOICE_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.ap_invoices.update',
     description: 'Update AP invoice row in sheet',
-    schema: COMMON_SCHEMA,
+    schema: AP_INVOICE_UPDATE_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -122,7 +276,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.vendor_master.create',
     description: 'Create vendor in vendor master',
-    schema: COMMON_SCHEMA,
+    schema: VENDOR_CREATE_SCHEMA,
     handler: executeSheetTool,
   },
 
@@ -130,7 +284,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.gst_input_ledger.create',
     description: 'Create GST input ledger row (record ITC-claimable GST)',
-    schema: COMMON_SCHEMA,
+    schema: GST_LEDGER_WRITE_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -142,7 +296,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.gst_output_ledger.create',
     description: 'Create GST output ledger row for AR invoice',
-    schema: COMMON_SCHEMA,
+    schema: GST_LEDGER_WRITE_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -154,7 +308,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.expense_entries.create',
     description: 'Create classified expense ledger row',
-    schema: COMMON_SCHEMA,
+    schema: EXPENSE_ENTRY_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -168,7 +322,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.approval_requests.create',
     description: 'Create approval request entry in Sheets',
-    schema: COMMON_SCHEMA,
+    schema: APPROVAL_REQUEST_ROW_SCHEMA,
     handler: executeSheetTool,
   },
 
@@ -191,19 +345,34 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.ar_invoices.create',
     description: 'Create AR invoice record',
-    schema: COMMON_SCHEMA,
+    schema: AR_INVOICE_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.ar_invoices.update',
     description: 'Update AR invoice status / payment received',
-    schema: COMMON_SCHEMA,
+    schema: {
+      type: 'object',
+      properties: {
+        ...(AR_INVOICE_ROW_SCHEMA.properties as Record<string, unknown>),
+      },
+      required: ['invoice_id'],
+    },
     handler: executeSheetTool,
   },
   {
     id: 'sheets.ar_invoices.update_status',
     description: 'Update AR invoice status (alias)',
-    schema: COMMON_SCHEMA,
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        tool_id: { type: 'string' },
+        invoice_id: { type: 'string' },
+        status: { type: 'string' },
+      },
+      required: ['invoice_id', 'status'],
+    },
     handler: executeSheetTool,
   },
   {
@@ -379,7 +548,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.payroll_runs.create',
     description: 'Create payroll run record',
-    schema: COMMON_SCHEMA,
+    schema: PAYROLL_RUN_CREATE_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -454,6 +623,12 @@ const toolDefinitions: ToolDefinition[] = [
     id: 'sheets.tax_obligations.get_by_period',
     description: 'Get tax obligations for a period',
     schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.tax_obligations.update',
+    description: 'Update tax obligation status, paid_date, or payment_reference',
+    schema: COMMON_SCHEMA,
     handler: executeSheetTool,
   },
   {

@@ -19,6 +19,10 @@
     "audit-sheet-locations": "node scripts/audit-velo-sheet-locations.js",
     "ensure-file-links": "node scripts/ensure-file-links-tab.js",
     "seed-mock-data": "node scripts/seed-mock-velo-data.js",
+    "seed-mock:generate": "node scripts/gen-velo-demo-seed.js",
+    "validate-configs": "pnpm --filter @velo/core validate-configs",
+    "verify:ci": "pnpm validate-configs && pnpm exec tsc --noEmit -p packages/core && pnpm exec tsc --noEmit -p packages/agents && pnpm exec tsc --noEmit -p packages/tools && pnpm exec tsc --noEmit -p packages/web",
+    "e2e:modules": "pnpm --filter @velo/agents e2e:modules",
     "seed-compliance": "node scripts/seed-compliance-calendar.js"
   },
   "devDependencies": {

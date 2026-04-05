@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:clean": "rm -rf .next && next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -13,6 +14,7 @@
     "@velo/agents": "workspace:*",
     "@velo/core": "workspace:*",
     "@velo/tools": "workspace:*",
+    "openai": "^4.77.0",
     "next": "^14.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

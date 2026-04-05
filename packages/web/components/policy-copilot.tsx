@@ -47,7 +47,7 @@ export function PolicyCopilot() {
             type="number"
             value={threshold}
             onChange={(e) => setThreshold(Number(e.target.value))}
-            className="mt-1 w-full rounded-md border border-white/10 bg-black/20 px-2 py-1.5"
+            className="mt-1 w-full rounded-md border border-velo-line bg-velo-panel px-2 py-1.5"
           />
         </label>
         <label className="text-sm">
@@ -59,7 +59,7 @@ export function PolicyCopilot() {
             max={1}
             value={confidence}
             onChange={(e) => setConfidence(Number(e.target.value))}
-            className="mt-1 w-full rounded-md border border-white/10 bg-black/20 px-2 py-1.5"
+            className="mt-1 w-full rounded-md border border-velo-line bg-velo-panel px-2 py-1.5"
           />
         </label>
         <label className="text-sm sm:col-span-2">
@@ -68,7 +68,7 @@ export function PolicyCopilot() {
             type="text"
             value={toolId}
             onChange={(e) => setToolId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-white/10 bg-black/20 px-2 py-1.5 font-mono text-xs"
+            className="mt-1 w-full rounded-md border border-velo-line bg-velo-panel px-2 py-1.5 font-mono text-xs"
           />
         </label>
         <label className="text-sm sm:col-span-2">
@@ -77,21 +77,21 @@ export function PolicyCopilot() {
             type="number"
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            className="mt-1 w-full rounded-md border border-white/10 bg-black/20 px-2 py-1.5"
+            className="mt-1 w-full rounded-md border border-velo-line bg-velo-panel px-2 py-1.5"
           />
         </label>
         <div className="sm:col-span-2">
           <button
             type="submit"
             disabled={loading}
-            className="rounded-md bg-velo-accent px-3 py-1.5 text-sm font-medium text-black disabled:opacity-50"
+            className="rounded-md bg-velo-accent px-3 py-1.5 text-sm font-medium text-white shadow-soft hover:bg-velo-accent-hover disabled:opacity-50"
           >
             {loading ? 'Simulating…' : 'Simulate impact'}
           </button>
         </div>
       </form>
       {result && (
-        <pre className="mt-3 max-h-40 overflow-auto rounded-md bg-black/30 p-2 text-xs text-velo-text">
+        <pre className="mt-3 max-h-40 overflow-auto rounded-md border border-velo-line bg-velo-inset p-2 text-xs text-velo-text">
           {result}
         </pre>
       )}

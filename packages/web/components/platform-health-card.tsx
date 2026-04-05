@@ -22,11 +22,11 @@ interface HealthPayload {
 function statusTone(s: HealthStatus): string {
   switch (s) {
     case 'ok':
-      return 'text-emerald-400';
+      return 'text-emerald-800';
     case 'warn':
-      return 'text-amber-400';
+      return 'text-amber-900';
     case 'fail':
-      return 'text-rose-400';
+      return 'text-rose-800';
     default:
       return 'text-velo-muted';
   }
@@ -64,7 +64,7 @@ export function PlatformHealthCard() {
   return (
     <section
       id="platform-health"
-      className="rounded-xl border border-velo-line bg-velo-panel/60 px-4 py-3 text-sm"
+      className="rounded-xl border border-velo-line bg-velo-panel px-4 py-3 text-sm shadow-sm"
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
@@ -89,7 +89,7 @@ export function PlatformHealthCard() {
         <p className="mt-3 animate-pulse text-velo-muted">Running integration probes…</p>
       )}
       {error && !report && (
-        <p className="mt-3 text-rose-400" role="alert">
+        <p className="mt-3 text-rose-700" role="alert">
           {error}
         </p>
       )}
@@ -97,7 +97,7 @@ export function PlatformHealthCard() {
         <>
           <p className="mt-2 text-velo-text">{report.summary}</p>
           {error && (
-            <p className="mt-1 text-xs text-amber-400" role="status">
+            <p className="mt-1 text-xs text-amber-800" role="status">
               {error}
             </p>
           )}

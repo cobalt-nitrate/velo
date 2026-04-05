@@ -3,16 +3,22 @@
 // Falls back to in-memory store when credentials are not configured (local dev without Sheets).
 
 import { google } from 'googleapis';
+import { isApprovalPendingStatus } from './approval-status.js';
 import {
   APPROVAL_FILE_LINK_SCOPE,
   mergeFileLinkRowsIntoApprovalAttachmentsJson,
   parseAttachmentDriveUrlsJson,
 } from './approval-attachments.js';
+import { withGoogleSheetsRetry } from './google-sheets-retry.js';
 export {
   APPROVAL_FILE_LINK_SCOPE,
   parseAttachmentDriveUrlsJson,
   type DriveAttachmentRef,
 } from './approval-attachments.js';
+export {
+  isApprovalApprovedStatus,
+  isApprovalPendingStatus,
+} from './approval-status.js';
 
 // ─── Table → Spreadsheet mapping ─────────────────────────────────────────────
 
@@ -104,10 +110,12 @@ async function getSheetTabTitles(spreadsheetId: string): Promise<Set<string>> {
   if (hit && now - hit.at < SHEET_TAB_TITLES_TTL_MS) return hit.titles;
 
   const sheets = await getSheetsClient();
-  const meta = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: 'sheets.properties.title',
-  });
+  const meta = await withGoogleSheetsRetry('spreadsheets.get(tabTitles)', () =>
+    sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'sheets.properties.title',
+    })
+  );
   const titles = new Set(
     (meta.data.sheets ?? [])
       .map((s) => s.properties?.title)
@@ -141,10 +149,12 @@ async function readSheet(
   }
 
   const sheets = await getSheetsClient();
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: sheetRangeA1(sheetName),
-  });
+  const res = await withGoogleSheetsRetry(`values.get(${sheetName})`, () =>
+    sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: sheetRangeA1(sheetName),
+    })
+  );
   const values = res.data.values ?? [];
   if (values.length === 0) return { headers: [], rows: [] };
   const headers = values[0] as string[];
@@ -169,13 +179,15 @@ async function appendRow(
   const base = sheetName.includes(' ')
     ? `'${sheetName.replace(/'/g, "''")}'`
     : sheetName;
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `${base}!A:A`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [row] },
-  });
+  await withGoogleSheetsRetry(`values.append(${sheetName})`, () =>
+    sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `${base}!A:A`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] },
+    })
+  );
 }
 
 async function updateRow(
@@ -204,13 +216,15 @@ async function updateRow(
     .filter(Boolean) as Array<{ range: string; values: string[][] }>;
 
   if (requests.length === 0) return;
-  await sheets.spreadsheets.values.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      valueInputOption: 'RAW',
-      data: requests,
-    },
-  });
+  await withGoogleSheetsRetry(`values.batchUpdate(${sheetName})`, () =>
+    sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: requests,
+      },
+    })
+  );
 }
 
 function columnLetter(n: number): string {
@@ -678,11 +692,14 @@ function inferIdField(table: string): string {
     salary_slips: 'slip_id',
     vendor_master: 'vendor_id',
     compliance_calendar: 'calendar_id',
+    tax_obligations: 'obligation_id',
+    filing_history: 'filing_id',
     leave_records: 'record_id',
     leave_balances: 'balance_id',
     hr_tasks: 'task_id',
     bank_transactions: 'txn_id',
     file_links: 'link_id',
+    policy_documents: 'doc_id',
   };
   return idFieldMap[table] ?? 'id';
 }
@@ -854,20 +871,31 @@ export async function mergeApprovalAttachmentsFromFileLinks(
   return mergeFileLinkRowsIntoApprovalAttachmentsJson(existingAttachmentCell, linkRows);
 }
 
+/** Serialize audit appends so bursts of AGENT_* events don't stampede Sheets write quota. */
+let auditAppendChain: Promise<void> = Promise.resolve();
+
 export async function appendAuditRow(row: Record<string, unknown>): Promise<void> {
   const spreadsheetId = process.env.SHEETS_LOGS_ID;
   if (!spreadsheetId || !useRealSheets()) {
     memCreate('audit_trail', row);
     return;
   }
-  try {
-    const { headers } = await readSheet(spreadsheetId, 'audit_trail');
-    if (headers.length > 0) {
-      await appendRow(spreadsheetId, 'audit_trail', headers, row);
+
+  const run = async (): Promise<void> => {
+    try {
+      await withGoogleSheetsRetry('audit_trail.append', async () => {
+        const { headers } = await readSheet(spreadsheetId, 'audit_trail');
+        if (headers.length > 0) {
+          await appendRow(spreadsheetId, 'audit_trail', headers, row);
+        }
+      });
+    } catch (err) {
+      console.error('[sheets] audit_trail append failed:', err);
     }
-  } catch (err) {
-    console.error('[sheets] audit_trail append failed:', err);
-  }
+  };
+
+  auditAppendChain = auditAppendChain.then(run, run);
+  return auditAppendChain;
 }
 
 // ─── Direct read for approval resolution ──────────────────────────────────────
@@ -875,10 +903,13 @@ export async function appendAuditRow(row: Record<string, unknown>): Promise<void
 export async function findApprovalById(
   approvalId: string
 ): Promise<{ row: Record<string, string>; rowIndex: number; headers: string[]; spreadsheetId: string } | null> {
+  const normalizedId = String(approvalId).trim();
   const spreadsheetId = process.env.SHEETS_TRANSACTIONS_ID;
   if (!spreadsheetId || !useRealSheets()) {
     const rows = memStore.get('approval_requests') ?? [];
-    const idx = rows.findIndex((r) => String(r.approval_id ?? r.id) === approvalId);
+    const idx = rows.findIndex(
+      (r) => String(r.approval_id ?? r.id).trim() === normalizedId
+    );
     if (idx < 0) return null;
     return {
       row: rows[idx] as Record<string, string>,
@@ -889,7 +920,7 @@ export async function findApprovalById(
   }
   try {
     const { headers, rows } = await readSheet(spreadsheetId, 'approval_requests');
-    const idx = rows.findIndex((r) => r.approval_id === approvalId);
+    const idx = rows.findIndex((r) => String(r.approval_id ?? '').trim() === normalizedId);
     if (idx < 0) return null;
     return { row: rows[idx], rowIndex: idx, headers, spreadsheetId };
   } catch {
@@ -917,14 +948,73 @@ export function listSheetTable(table: string): Array<Record<string, unknown>> {
   return memStore.get(table) ?? [];
 }
 
+/**
+ * Mark PENDING rows past expires_at as EXPIRED (Wave 2 escalation v1).
+ * Idempotent for rows already resolved.
+ */
+export async function expireStalePendingApprovals(): Promise<{
+  count: number;
+  approval_ids: string[];
+}> {
+  const now = Date.now();
+  const approval_ids: string[] = [];
+
+  if (!useRealSheets() || !process.env.SHEETS_TRANSACTIONS_ID) {
+    const rows = (memStore.get('approval_requests') ?? []) as Record<
+      string,
+      unknown
+    >[];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (!isApprovalPendingStatus(r.status)) continue;
+      const exp = Date.parse(String(r.expires_at ?? ''));
+      if (!Number.isNaN(exp) && exp < now) {
+        rows[i] = {
+          ...r,
+          status: 'EXPIRED',
+          resolved_at: new Date().toISOString(),
+          resolution_notes: 'auto_expired_velo_cron',
+          resolved_by: 'system',
+        };
+        approval_ids.push(String(r.approval_id ?? ''));
+      }
+    }
+    memStore.set('approval_requests', rows);
+    return { count: approval_ids.length, approval_ids };
+  }
+
+  try {
+    const spreadsheetId = process.env.SHEETS_TRANSACTIONS_ID;
+    const { headers, rows } = await readSheet(
+      spreadsheetId,
+      'approval_requests'
+    );
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      if (!isApprovalPendingStatus(r.status)) continue;
+      const exp = Date.parse(String(r.expires_at ?? ''));
+      if (!Number.isNaN(exp) && exp < now) {
+        await updateRow(spreadsheetId, 'approval_requests', headers, i, {
+          status: 'EXPIRED',
+          resolved_at: new Date().toISOString(),
+          resolution_notes: 'auto_expired_velo_cron',
+          resolved_by: 'system',
+        });
+        approval_ids.push(String(r.approval_id ?? ''));
+      }
+    }
+    return { count: approval_ids.length, approval_ids };
+  } catch {
+    return { count: 0, approval_ids: [] };
+  }
+}
+
 /** Pending approval rows for dashboards (newest first). */
 export async function listPendingApprovals(limit = 10): Promise<Record<string, string>[]> {
   const cap = Math.max(1, Math.min(100, limit));
   if (!useRealSheets() || !process.env.SHEETS_TRANSACTIONS_ID) {
     const rows = memStore.get('approval_requests') ?? [];
-    const pending = rows.filter(
-      (r) => String(r.status ?? 'PENDING').toUpperCase() === 'PENDING'
-    );
+    const pending = rows.filter((r) => isApprovalPendingStatus(r.status));
     return pending.slice(-cap).reverse().map((r) => {
       const o: Record<string, string> = {};
       for (const [k, v] of Object.entries(r)) o[k] = String(v ?? '');
@@ -933,9 +1023,7 @@ export async function listPendingApprovals(limit = 10): Promise<Record<string, s
   }
   try {
     const { rows } = await readSheet(process.env.SHEETS_TRANSACTIONS_ID, 'approval_requests');
-    const pending = rows.filter(
-      (r) => (r.status ?? 'PENDING').toUpperCase() === 'PENDING'
-    );
+    const pending = rows.filter((r) => isApprovalPendingStatus(r.status));
     return pending.slice(-cap).reverse();
   } catch {
     return [];

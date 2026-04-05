@@ -45,7 +45,7 @@ export default function UploadsPage() {
       <h1 className="text-2xl font-semibold">Uploads</h1>
       <p className="mt-1 max-w-2xl text-sm text-velo-muted">
         Drop bank CSVs, invoices, or exports here. Files stay in your Velo workspace (
-        <code className="rounded bg-white/5 px-1">.velo/uploads</code>
+        <code className="rounded bg-velo-inset-deep px-1 text-velo-text">.velo/uploads</code>
         ) and show up under{' '}
         <Link href="/files" className="text-velo-accent hover:underline">
           Files
@@ -67,7 +67,7 @@ export default function UploadsPage() {
         className={`mt-6 flex min-h-[200px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 transition-colors ${
           drag
             ? 'border-velo-accent bg-velo-accent/10'
-            : 'border-velo-line bg-velo-panel/50'
+            : 'border-velo-line bg-velo-panel'
         }`}
       >
         <p className="text-sm text-velo-muted">
@@ -89,7 +89,7 @@ export default function UploadsPage() {
       </div>
 
       {log.length > 0 && (
-        <ul className="mt-6 space-y-1 rounded-lg border border-velo-line bg-black/20 p-3 font-mono text-xs">
+        <ul className="mt-6 space-y-1 rounded-lg border border-velo-line bg-velo-inset p-3 font-mono text-xs">
           {log.map((line, i) => (
             <li key={i}>{line}</li>
           ))}
