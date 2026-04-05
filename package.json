@@ -14,7 +14,8 @@
     "build:turbo": "turbo run build",
     "test": "npx --yes pnpm@9.15.0 -r run test",
     "lint": "npx --yes pnpm@9.15.0 -r run lint",
-    "setup-sheets": "node scripts/setup-sheets-run.js"
+    "setup-sheets": "node scripts/setup-sheets-run.js",
+    "seed-compliance": "node scripts/seed-compliance-calendar.js"
   },
   "devDependencies": {
     "googleapis": "^171.4.0",
