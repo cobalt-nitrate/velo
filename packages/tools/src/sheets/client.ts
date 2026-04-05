@@ -80,6 +80,31 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth: authClient as Parameters<typeof google.sheets>[0]['auth'] });
 }
 
+/** Max data rows read in one request (rectangle A1:ZZ…); keeps responses well under API size limits. */
+const SHEET_READ_MAX_ROW = 20_000;
+
+const sheetTabTitlesCache = new Map<string, { titles: Set<string>; at: number }>();
+const SHEET_TAB_TITLES_TTL_MS = 30_000;
+
+async function getSheetTabTitles(spreadsheetId: string): Promise<Set<string>> {
+  const now = Date.now();
+  const hit = sheetTabTitlesCache.get(spreadsheetId);
+  if (hit && now - hit.at < SHEET_TAB_TITLES_TTL_MS) return hit.titles;
+
+  const sheets = await getSheetsClient();
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties.title',
+  });
+  const titles = new Set(
+    (meta.data.sheets ?? [])
+      .map((s) => s.properties?.title)
+      .filter((t): t is string => typeof t === 'string' && t.length > 0)
+  );
+  sheetTabTitlesCache.set(spreadsheetId, { titles, at: now });
+  return titles;
+}
+
 // ─── Core read/write helpers ──────────────────────────────────────────────────
 
 function sheetRangeA1(sheetName: string): string {
@@ -87,13 +112,22 @@ function sheetRangeA1(sheetName: string): string {
   const q = sheetName.includes(' ')
     ? `'${sheetName.replace(/'/g, "''")}'`
     : sheetName;
-  return `${q}!A:ZZZZ`;
+  // Bounded A1 rectangle (API is picky; missing tabs also surface as "Unable to parse range").
+  return `${q}!A1:ZZ${SHEET_READ_MAX_ROW}`;
 }
 
 async function readSheet(
   spreadsheetId: string,
   sheetName: string
 ): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
+  const tabTitles = await getSheetTabTitles(spreadsheetId);
+  if (!tabTitles.has(sheetName)) {
+    console.warn(
+      `[sheets] Tab "${sheetName}" is not in spreadsheet ${spreadsheetId}; returning empty rows (add the tab or run setup).`
+    );
+    return { headers: [], rows: [] };
+  }
+
   const sheets = await getSheetsClient();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,

@@ -53,6 +53,14 @@ const LOOKUP_SCHEMA: ToolSchema['input_schema'] = {
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
 const toolDefinitions: ToolDefinition[] = [
+  // ── CONFIG (company_settings in Sheets) ─────────────────────────────────────
+  {
+    id: 'sheets.company_settings.lookup',
+    description: 'Read company_settings key/value rows from CONFIG spreadsheet',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+
   // ── AP Invoice tools ────────────────────────────────────────────────────────
   {
     id: 'sheets.ap_invoices.create',

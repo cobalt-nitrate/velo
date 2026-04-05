@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { ReactNode } from 'react';
+import { AppShell } from '../components/app-shell';
 import { VeloSessionProvider } from '../components/session-provider';
 
 export const metadata: Metadata = {
@@ -12,7 +13,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <VeloSessionProvider>{children}</VeloSessionProvider>
+        <VeloSessionProvider>
+          <AppShell>{children}</AppShell>
+        </VeloSessionProvider>
       </body>
     </html>
   );

@@ -15,6 +15,8 @@
     "test": "npx --yes pnpm@9.15.0 -r run test",
     "lint": "npx --yes pnpm@9.15.0 -r run lint",
     "setup-sheets": "node scripts/setup-sheets-run.js",
+    "ensure-bank-tab": "node scripts/ensure-bank-transactions-tab.js",
+    "audit-sheet-locations": "node scripts/audit-velo-sheet-locations.js",
     "seed-compliance": "node scripts/seed-compliance-calendar.js"
   },
   "devDependencies": {

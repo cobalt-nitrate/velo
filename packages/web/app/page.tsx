@@ -1,7 +1,7 @@
+import Link from 'next/link';
 import { executeSheetTool, listPendingApprovals } from '@velo/tools/sheets';
 import { ApprovalCard } from '../components/approval-card';
 import { AuditTimeline } from '../components/audit-timeline';
-import { CommandBar } from '../components/command-bar';
 import { EvidenceDrawer } from '../components/evidence-drawer';
 import { ExceptionCard } from '../components/exception-card';
 import { PolicyCopilot } from '../components/policy-copilot';
@@ -40,7 +40,24 @@ export default async function CommandCenterPage() {
         </div>
       </header>
 
-      <CommandBar />
+      <section className="flex flex-wrap items-center gap-3 rounded-xl border border-velo-line bg-velo-panel/60 px-4 py-3 text-sm">
+        <span className="text-velo-muted">Workspace</span>
+        <Link
+          href="/chat"
+          className="rounded-md bg-velo-accent px-3 py-1.5 font-medium text-black hover:opacity-90"
+        >
+          Open chat
+        </Link>
+        <Link href="/uploads" className="text-velo-accent hover:underline">
+          Upload files
+        </Link>
+        <Link href="/files" className="text-velo-accent hover:underline">
+          Browse files
+        </Link>
+        <Link href="/settings" className="text-velo-accent hover:underline">
+          Configuration
+        </Link>
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
         <RunwayTile months={months} burnRateInr={burn} confidence={cashConf} />
@@ -125,7 +142,7 @@ export default async function CommandCenterPage() {
           highlights={[
             'Runway tile uses imported bank_transactions when available.',
             'GST filing checklist follows compliance_calendar in Sheets.',
-            'Use Command Bar with orchestrator for cross-domain routing.',
+            'Use Chat with the orchestrator agent for cross-domain routing.',
           ]}
         />
         <PolicyCopilot />
