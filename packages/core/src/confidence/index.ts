@@ -1,8 +1,9 @@
 // ConfidenceScorer — pure function, zero LLM calls.
 // Scores the confidence of a proposed action based on weighted signals.
-// Weights are configurable (not hardcoded).
+// Weights load from configs/policies/confidence_weights.json (Phase 3).
 
 import type { ConfidenceScore } from '../types/agent.js';
+import { loadConfig } from '../config/loader.js';
 
 interface ScoringWeights {
   extraction_completeness: number;
@@ -13,12 +14,31 @@ interface ScoringWeights {
 }
 
 const DEFAULT_WEIGHTS: ScoringWeights = {
-  extraction_completeness: 0.30,
-  entity_match_quality: 0.20,
-  category_match_quality: 0.20,
+  extraction_completeness: 0.3,
+  entity_match_quality: 0.2,
+  category_match_quality: 0.2,
   historical_pattern_match: 0.15,
   data_freshness: 0.15,
 };
+
+let cachedPolicyWeights: ScoringWeights | null = null;
+
+/** Weights from policy JSON; falls back to defaults if file missing. */
+export function getScoringWeights(): ScoringWeights {
+  if (cachedPolicyWeights) return cachedPolicyWeights;
+  try {
+    const w = loadConfig('policies/confidence_weights') as Partial<ScoringWeights>;
+    cachedPolicyWeights = { ...DEFAULT_WEIGHTS, ...w };
+  } catch {
+    cachedPolicyWeights = DEFAULT_WEIGHTS;
+  }
+  return cachedPolicyWeights;
+}
+
+/** Call when clearing config cache (tests / hot reload). */
+export function resetScoringWeightsCache(): void {
+  cachedPolicyWeights = null;
+}
 
 export interface ScoringInputs {
   // 0–1: fraction of required fields successfully extracted
@@ -68,8 +88,9 @@ export function deriveScoringInputs(signals: ConfidenceSignals): ScoringInputs {
 
 export function scoreConfidence(
   inputs: ScoringInputs,
-  weights: ScoringWeights = DEFAULT_WEIGHTS
+  weights?: ScoringWeights
 ): ConfidenceScore {
+  const w = weights ?? getScoringWeights();
   const breakdown = {
     extraction_completeness: clamp(inputs.extraction_completeness),
     entity_match_quality: clamp(inputs.entity_match_quality),
@@ -79,11 +100,11 @@ export function scoreConfidence(
   };
 
   const overall =
-    breakdown.extraction_completeness * weights.extraction_completeness +
-    breakdown.entity_match_quality * weights.entity_match_quality +
-    breakdown.category_match_quality * weights.category_match_quality +
-    breakdown.historical_pattern_match * weights.historical_pattern_match +
-    breakdown.data_freshness * weights.data_freshness;
+    breakdown.extraction_completeness * w.extraction_completeness +
+    breakdown.entity_match_quality * w.entity_match_quality +
+    breakdown.category_match_quality * w.category_match_quality +
+    breakdown.historical_pattern_match * w.historical_pattern_match +
+    breakdown.data_freshness * w.data_freshness;
 
   return {
     overall: Math.round(overall * 100) / 100,

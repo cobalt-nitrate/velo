@@ -1,0 +1,15 @@
+{
+  "_comment": "Phase 3 — required fields per tool for extraction completeness (overrides code defaults when set).",
+  "tool_required_fields": {
+    "sheets.leave_records.create": ["employee_id", "from_date", "to_date"],
+    "sheets.leave_records.update_status": ["record_id", "status"],
+    "sheets.employees.create": ["full_name", "email", "employee_id"],
+    "sheets.employees.update": ["employee_id"],
+    "sheets.compliance_calendar.mark_done": ["calendar_id"],
+    "sheets.tax_obligations.create": ["obligation_id", "type", "due_date"],
+    "sheets.bank_transactions.create": ["date", "narration", "amount"],
+    "sheets.policy_documents.create": ["doc_id", "doc_type", "content_markdown"],
+    "sheets.hr_tasks.create": ["task_id", "employee_id", "task_type"],
+    "sheets.hr_tasks.update_status": ["task_id", "status"]
+  }
+}

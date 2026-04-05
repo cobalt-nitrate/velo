@@ -10,7 +10,7 @@ import OpenAI from 'openai';
 import { loadAgentConfig, loadConfig, loadPrompt } from '@velo/core/config';
 import { PolicyEngine } from '@velo/core/policy-engine';
 import { deriveScoringInputs, scoreConfidence } from '@velo/core/confidence';
-import { createAuditEvent } from '@velo/core/audit';
+import { appendDecisionMemory, createAuditEvent } from '@velo/core';
 import { getRuntimeTools } from '@velo/tools';
 import { executeSheetTool } from '@velo/tools/sheets';
 import { notifyApprovalRequestOutOfBand } from './approval-notify.js';
@@ -27,6 +27,24 @@ import type {
 import type { AgentRunEvent, RunAgentOptions } from './run-events.js';
 
 export type { AgentRunEvent, RunAgentOptions } from './run-events.js';
+
+function shouldRecordAutoDecisionMemory(toolId: string): boolean {
+  if (toolId === 'internal.platform.healthcheck') return false;
+  const lower = toolId.toLowerCase();
+  if (lower.includes('internal.sub_agent')) return false;
+  if (lower.includes('.get_')) return false;
+  if (lower.includes('.lookup') || lower.includes('lookup_by')) return false;
+  if (lower.includes('.find_by_')) return false;
+  return true;
+}
+
+function toolOutcomeSuccess(toolResult: unknown): boolean {
+  if (toolResult === null || toolResult === undefined) return false;
+  if (typeof toolResult !== 'object') return true;
+  const o = toolResult as Record<string, unknown>;
+  if ('ok' in o && o.ok === false) return false;
+  return true;
+}
 
 function emitEvent(
   onEvent: ((e: AgentRunEvent) => void) | undefined,
@@ -597,6 +615,21 @@ export async function runAgent(
         preview: previewToolJson(toolResult),
         structured: structuredPayload(toolResult),
       });
+      if (
+        item.policyResult === 'AUTO_EXECUTE' &&
+        shouldRecordAutoDecisionMemory(item.toolCall.tool_id) &&
+        toolOutcomeSuccess(toolResult)
+      ) {
+        appendDecisionMemory({
+          tool_id: item.toolCall.tool_id,
+          parameters: {
+            ...item.toolCall.parameters,
+            company_id: context.company_id,
+          },
+          outcome: 'auto_executed',
+          actor_id: context.actor_id,
+        });
+      }
       createAuditEvent({
         company_id: context.company_id,
         actor_id: context.actor_id,

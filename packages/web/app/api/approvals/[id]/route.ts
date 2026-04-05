@@ -10,6 +10,7 @@ import {
   parseAttachmentDriveUrlsJson,
   updateApprovalRow,
 } from '@velo/tools/sheets';
+import { appendDecisionMemory } from '@velo/core';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../../lib/auth';
 
@@ -80,6 +81,25 @@ export async function PATCH(
     };
 
     await updateApprovalRow(found.spreadsheetId, found.rowIndex, found.headers, updates);
+
+    const toolId = String(found.row.action_type ?? '').trim();
+    let actionPayload: Record<string, unknown> = {};
+    try {
+      actionPayload = JSON.parse(
+        String(found.row.action_payload_json ?? '{}')
+      ) as Record<string, unknown>;
+    } catch {
+      actionPayload = {};
+    }
+    if (toolId) {
+      appendDecisionMemory({
+        tool_id: toolId,
+        parameters: actionPayload,
+        outcome: body.resolution === 'APPROVED' ? 'approved' : 'rejected',
+        actor_id: resolvedBy,
+        notes: body.resolution_notes,
+      });
+    }
 
     return NextResponse.json({
       ok: true,

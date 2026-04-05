@@ -23,14 +23,6 @@ export interface ToolDefinition {
 
 // ─── Shared schemas ───────────────────────────────────────────────────────────
 
-const COMMON_SCHEMA: ToolSchema['input_schema'] = {
-  type: 'object',
-  properties: {
-    company_id: { type: 'string' },
-    payload: { type: 'object' },
-  },
-};
-
 const LOOKUP_SCHEMA: ToolSchema['input_schema'] = {
   type: 'object',
   properties: {
@@ -49,6 +41,75 @@ const LOOKUP_SCHEMA: ToolSchema['input_schema'] = {
     to_date: { type: 'string' },
     limit: { type: 'number' },
   },
+};
+
+const BANK_STATEMENT_PARSE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    raw_text: { type: 'string' },
+    text: { type: 'string' },
+    csv: { type: 'string' },
+    transactions: {
+      type: 'array',
+      items: { type: 'object' },
+    },
+  },
+};
+
+const BANK_TX_ROW_ITEM_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    txn_id: { type: 'string' },
+    date: { type: 'string' },
+    narration: { type: 'string' },
+    ref_number: { type: 'string' },
+    amount: { type: 'string' },
+    balance: { type: 'string' },
+    type: { type: 'string', description: 'credit | debit' },
+    mode: { type: 'string' },
+    source: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['date', 'narration', 'amount'],
+};
+
+const BANK_TX_CREATE_BATCH_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    rows: {
+      type: 'array',
+      items: BANK_TX_ROW_ITEM_SCHEMA,
+      minItems: 1,
+    },
+  },
+  required: ['rows'],
+};
+
+const AR_INVOICE_PDF_GEN_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    invoice_id: { type: 'string' },
+    invoice_number: { type: 'string' },
+    client_name: { type: 'string' },
+    client_id: { type: 'string' },
+    invoice_date: { type: 'string' },
+    due_date: { type: 'string' },
+    service_description: { type: 'string' },
+    subtotal: { type: 'number' },
+    igst: { type: 'number' },
+    cgst: { type: 'number' },
+    sgst: { type: 'number' },
+    total_amount: { type: 'number' },
+    company_name: { type: 'string' },
+  },
+  required: ['client_name', 'total_amount'],
 };
 
 /** Wave 0 — explicit shapes for high-impact sheet writes (LLM tool registration). */
@@ -203,6 +264,239 @@ const PAYROLL_RUN_CREATE_SCHEMA: ToolSchema['input_schema'] = {
     created_at: { type: 'string' },
   },
   required: ['month', 'year'],
+};
+
+const PAYROLL_RUN_STATUS_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    run_id: { type: 'string' },
+    status: { type: 'string' },
+    updated_at: { type: 'string' },
+  },
+  required: ['run_id', 'status'],
+};
+
+const EMPLOYEE_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    employee_id: { type: 'string' },
+    full_name: { type: 'string' },
+    email: { type: 'string' },
+    designation: { type: 'string' },
+    department: { type: 'string' },
+    doj: { type: 'string' },
+    status: { type: 'string' },
+    employment_type: { type: 'string' },
+    pan: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['employee_id', 'full_name', 'email'],
+};
+
+const EMPLOYEE_UPDATE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    ...(EMPLOYEE_ROW_SCHEMA.properties as Record<string, unknown>),
+  },
+  required: ['employee_id'],
+};
+
+const LEAVE_RECORD_WRITE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    record_id: { type: 'string' },
+    employee_id: { type: 'string' },
+    leave_type: { type: 'string' },
+    from_date: { type: 'string' },
+    to_date: { type: 'string' },
+    status: { type: 'string' },
+    reason: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['employee_id', 'from_date', 'to_date'],
+};
+
+const LEAVE_RECORD_STATUS_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    record_id: { type: 'string' },
+    status: { type: 'string' },
+    approved_by: { type: 'string' },
+    approved_at: { type: 'string' },
+  },
+  required: ['record_id', 'status'],
+};
+
+const LEAVE_BALANCE_BATCH_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    employee_id: { type: 'string' },
+    rows: { type: 'array', items: { type: 'object' } },
+  },
+  required: ['employee_id'],
+};
+
+const LEAVE_BALANCE_UPDATE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    balance_id: { type: 'string' },
+    employee_id: { type: 'string' },
+    leave_type: { type: 'string' },
+    balance_days: { type: 'string' },
+  },
+  required: ['balance_id'],
+};
+
+const COMPLIANCE_MARK_DONE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    calendar_id: { type: 'string' },
+    status: { type: 'string' },
+    completed_at: { type: 'string' },
+    notes: { type: 'string' },
+  },
+  required: ['calendar_id'],
+};
+
+const TAX_OBLIGATION_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    obligation_id: { type: 'string' },
+    type: { type: 'string' },
+    period_month: { type: 'string' },
+    period_year: { type: 'string' },
+    due_date: { type: 'string' },
+    amount_inr: { type: 'string' },
+    status: { type: 'string' },
+    paid_date: { type: 'string' },
+    payment_reference: { type: 'string' },
+    payroll_run_id: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['obligation_id', 'type', 'due_date'],
+};
+
+const FILING_HISTORY_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    filing_id: { type: 'string' },
+    form_type: { type: 'string' },
+    period: { type: 'string' },
+    filed_at: { type: 'string' },
+    ack_number: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['filing_id', 'form_type'],
+};
+
+const HR_TASK_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    task_id: { type: 'string' },
+    employee_id: { type: 'string' },
+    task_type: { type: 'string' },
+    description: { type: 'string' },
+    due_date: { type: 'string' },
+    status: { type: 'string' },
+    completed_at: { type: 'string' },
+    notes: { type: 'string' },
+    primary_drive_url: { type: 'string' },
+    primary_drive_file_id: { type: 'string' },
+  },
+  required: ['task_id', 'employee_id', 'task_type'],
+};
+
+const FILE_LINK_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    link_id: { type: 'string' },
+    scope_table: { type: 'string' },
+    scope_record_id: { type: 'string' },
+    role: { type: 'string' },
+    drive_file_id: { type: 'string' },
+    drive_web_view_url: { type: 'string' },
+    mime: { type: 'string' },
+    created_at: { type: 'string' },
+  },
+  required: ['link_id', 'scope_table', 'scope_record_id'],
+};
+
+const POLICY_DOC_ROW_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    doc_id: { type: 'string' },
+    doc_type: { type: 'string' },
+    version: { type: 'string' },
+    content_markdown: { type: 'string' },
+    generated_at: { type: 'string' },
+    generated_by: { type: 'string' },
+    gdrive_url: { type: 'string' },
+  },
+  required: ['doc_id', 'doc_type'],
+};
+
+const SALARY_SLIP_BATCH_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    run_id: { type: 'string' },
+    month: { type: 'string' },
+    year: { type: 'string' },
+  },
+  required: ['run_id'],
+};
+
+const DOC_DRIVE_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    employee_id: { type: 'string' },
+    invoice_id: { type: 'string' },
+    vendor_id: { type: 'string' },
+    file_path: { type: 'string' },
+    payload: { type: 'object' },
+  },
+  required: ['company_id'],
+};
+
+const NOTIFY_DIGEST_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    tool_id: { type: 'string' },
+    title: { type: 'string' },
+    message: { type: 'string' },
+    highlights: { type: 'array', items: { type: 'string' } },
+    channel: { type: 'string' },
+    label: { type: 'string' },
+  },
+  required: ['company_id'],
 };
 
 // ─── Tool definitions ─────────────────────────────────────────────────────────
@@ -469,13 +763,13 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.employees.create',
     description: 'Create new employee record',
-    schema: COMMON_SCHEMA,
+    schema: EMPLOYEE_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.employees.update',
     description: 'Update employee record',
-    schema: COMMON_SCHEMA,
+    schema: EMPLOYEE_UPDATE_SCHEMA,
     handler: executeSheetTool,
   },
 
@@ -516,13 +810,13 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.leave_records.create',
     description: 'Create a new leave record',
-    schema: COMMON_SCHEMA,
+    schema: LEAVE_RECORD_WRITE_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.leave_records.update_status',
     description: 'Approve or reject a leave record',
-    schema: COMMON_SCHEMA,
+    schema: LEAVE_RECORD_STATUS_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -534,13 +828,13 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.leave_balances.create_batch',
     description: 'Initialize leave balances for a new employee',
-    schema: COMMON_SCHEMA,
+    schema: LEAVE_BALANCE_BATCH_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.leave_balances.update',
     description: 'Update leave balance after approval/rejection',
-    schema: COMMON_SCHEMA,
+    schema: LEAVE_BALANCE_UPDATE_SCHEMA,
     handler: executeSheetTool,
   },
 
@@ -554,7 +848,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.payroll_runs.update_status',
     description: 'Update payroll run status (e.g., PENDING_APPROVAL → APPROVED)',
-    schema: COMMON_SCHEMA,
+    schema: PAYROLL_RUN_STATUS_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -572,7 +866,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.salary_slips.create_batch',
     description: 'Create salary slips for all employees in a payroll run',
-    schema: COMMON_SCHEMA,
+    schema: SALARY_SLIP_BATCH_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -604,19 +898,19 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.compliance_calendar.mark_done',
     description: 'Mark a compliance obligation as completed',
-    schema: COMMON_SCHEMA,
+    schema: COMPLIANCE_MARK_DONE_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.tax_obligations.create',
     description: 'Create a tax obligation record',
-    schema: COMMON_SCHEMA,
+    schema: TAX_OBLIGATION_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.tax_obligations.create_batch',
     description: 'Create multiple tax obligation records (PF, ESIC, TDS, PT)',
-    schema: COMMON_SCHEMA,
+    schema: TAX_OBLIGATION_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -628,13 +922,29 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.tax_obligations.update',
     description: 'Update tax obligation status, paid_date, or payment_reference',
-    schema: COMMON_SCHEMA,
+    schema: {
+      type: 'object',
+      properties: {
+        ...(TAX_OBLIGATION_ROW_SCHEMA.properties as Record<string, unknown>),
+      },
+      required: ['obligation_id'],
+    },
     handler: executeSheetTool,
   },
   {
     id: 'sheets.tds_records.create_batch',
     description: 'Create TDS records for all employees',
-    schema: COMMON_SCHEMA,
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        tool_id: { type: 'string' },
+        quarter: { type: 'string' },
+        financial_year: { type: 'string' },
+        run_id: { type: 'string' },
+      },
+      required: ['company_id'],
+    },
     handler: executeSheetTool,
   },
   {
@@ -652,7 +962,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.filing_history.create',
     description: 'Record a completed statutory filing',
-    schema: COMMON_SCHEMA,
+    schema: FILING_HISTORY_ROW_SCHEMA,
     handler: executeSheetTool,
   },
 
@@ -660,13 +970,13 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.hr_tasks.create',
     description: 'Create an HR onboarding/offboarding task',
-    schema: COMMON_SCHEMA,
+    schema: HR_TASK_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.hr_tasks.create_batch',
     description: 'Create multiple HR tasks',
-    schema: COMMON_SCHEMA,
+    schema: HR_TASK_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -684,25 +994,51 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.hr_tasks.update_status',
     description: 'Mark an HR task as completed',
-    schema: COMMON_SCHEMA,
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        tool_id: { type: 'string' },
+        task_id: { type: 'string' },
+        status: { type: 'string' },
+        completed_at: { type: 'string' },
+      },
+      required: ['task_id', 'status'],
+    },
     handler: executeSheetTool,
   },
   {
     id: 'sheets.hr_tasks.update',
     description: 'Update HR task fields (e.g. primary Drive URL after document generation)',
-    schema: COMMON_SCHEMA,
+    schema: {
+      type: 'object',
+      properties: {
+        ...(HR_TASK_ROW_SCHEMA.properties as Record<string, unknown>),
+      },
+      required: ['task_id'],
+    },
     handler: executeSheetTool,
   },
   {
     id: 'sheets.salary_slips.update',
     description: 'Update a salary slip row (e.g. drive_url after generating payslip HTML)',
-    schema: COMMON_SCHEMA,
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        tool_id: { type: 'string' },
+        slip_id: { type: 'string' },
+        drive_url: { type: 'string' },
+        status: { type: 'string' },
+      },
+      required: ['slip_id'],
+    },
     handler: executeSheetTool,
   },
   {
     id: 'sheets.file_links.create',
     description: 'Record a Drive file in Velo file_links index (scope_table + scope_record_id + role)',
-    schema: COMMON_SCHEMA,
+    schema: FILE_LINK_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -722,7 +1058,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.policy_documents.create',
     description: 'Create a policy document record',
-    schema: COMMON_SCHEMA,
+    schema: POLICY_DOC_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -752,13 +1088,13 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'notifications.send_compliance_alert',
     description: 'Send compliance deadline alert',
-    schema: COMMON_SCHEMA,
+    schema: NOTIFY_DIGEST_SCHEMA,
     handler: sendNotification,
   },
   {
     id: 'notifications.send_digest',
     description: 'Send weekly/monthly compliance or AR digest',
-    schema: COMMON_SCHEMA,
+    schema: NOTIFY_DIGEST_SCHEMA,
     handler: sendNotification,
   },
   {
@@ -780,37 +1116,37 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'notifications.send_ar_reminder',
     description: 'Send payment reminder to a client for an overdue AR invoice',
-    schema: COMMON_SCHEMA,
+    schema: NOTIFY_DIGEST_SCHEMA,
     handler: sendNotification,
   },
   {
     id: 'notifications.send_offer_letter',
     description: 'Send offer letter to a candidate',
-    schema: COMMON_SCHEMA,
+    schema: NOTIFY_DIGEST_SCHEMA,
     handler: sendNotification,
   },
   {
     id: 'notifications.send_onboarding_welcome',
     description: 'Send welcome email to new joiner',
-    schema: COMMON_SCHEMA,
+    schema: NOTIFY_DIGEST_SCHEMA,
     handler: sendNotification,
   },
   {
     id: 'notifications.send_alert',
     description: 'Generic Slack alert (runway / ops)',
-    schema: COMMON_SCHEMA,
+    schema: NOTIFY_DIGEST_SCHEMA,
     handler: sendNotification,
   },
   {
     id: 'notifications.send_onboarding_link',
     description: 'Slack DM with onboarding checklist link',
-    schema: COMMON_SCHEMA,
+    schema: NOTIFY_DIGEST_SCHEMA,
     handler: sendNotification,
   },
   {
     id: 'notifications.send_leave_notification',
     description: 'Slack update on leave request to employee/manager HR channel',
-    schema: COMMON_SCHEMA,
+    schema: NOTIFY_DIGEST_SCHEMA,
     handler: sendNotification,
   },
 
@@ -818,31 +1154,31 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'documents.drive.upload_invoice',
     description: 'Upload source invoice file to Google Drive',
-    schema: COMMON_SCHEMA,
+    schema: DOC_DRIVE_SCHEMA,
     handler: generatePdfDocument,
   },
   {
     id: 'documents.drive.generate_offer_letter',
     description: 'Generate offer letter PDF and upload to Drive',
-    schema: COMMON_SCHEMA,
+    schema: DOC_DRIVE_SCHEMA,
     handler: generatePdfDocument,
   },
   {
     id: 'documents.drive.generate_salary_slip',
     description: 'Generate salary slip PDF and upload to Drive',
-    schema: COMMON_SCHEMA,
+    schema: DOC_DRIVE_SCHEMA,
     handler: generatePdfDocument,
   },
   {
     id: 'documents.drive.generate_experience_certificate',
     description: 'Generate experience certificate PDF',
-    schema: COMMON_SCHEMA,
+    schema: DOC_DRIVE_SCHEMA,
     handler: generatePdfDocument,
   },
   {
     id: 'documents.drive.generate_relieving_letter',
     description: 'Generate relieving letter PDF',
-    schema: COMMON_SCHEMA,
+    schema: DOC_DRIVE_SCHEMA,
     handler: generatePdfDocument,
   },
   {
@@ -861,7 +1197,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'documents.pdf_generator.generate_invoice',
     description: 'Generate client-facing AR invoice HTML/PDF artifact',
-    schema: COMMON_SCHEMA,
+    schema: AR_INVOICE_PDF_GEN_SCHEMA,
     handler: generatePdfDocument,
   },
 
@@ -975,7 +1311,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'bank.statement.parse',
     description: 'Parse bank statement to extract transactions',
-    schema: COMMON_SCHEMA,
+    schema: BANK_STATEMENT_PARSE_SCHEMA,
     handler: parseBankStatement,
   },
 
@@ -1001,13 +1337,13 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.bank_transactions.create',
     description: 'Append one parsed bank transaction row',
-    schema: COMMON_SCHEMA,
+    schema: BANK_TX_ROW_ITEM_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.bank_transactions.create_batch',
     description: 'Append many bank transaction rows (e.g. after statement parse)',
-    schema: COMMON_SCHEMA,
+    schema: BANK_TX_CREATE_BATCH_SCHEMA,
     handler: executeSheetTool,
   },
 

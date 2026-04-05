@@ -33,7 +33,10 @@ type ConfigKey =
   | 'business/workflow_config'
   | 'business/onboarding_templates'
   | 'business/policy_templates'
+  | 'business/confidence_signals'
   | 'policies/autopilot'
+  | 'policies/confidence_weights'
+  | 'policies/confidence_risk_caps'
   | `agents/${string}`
   | `workflows/${string}`;
 
@@ -151,6 +154,29 @@ const employeeFieldsSchema = z
   })
   .passthrough();
 
+const confidenceSignalsSchema = z
+  .object({
+    tool_required_fields: z.record(z.array(z.string())),
+  })
+  .passthrough();
+
+const confidenceWeightsSchema = z
+  .object({
+    extraction_completeness: z.number(),
+    entity_match_quality: z.number(),
+    category_match_quality: z.number(),
+    historical_pattern_match: z.number(),
+    data_freshness: z.number(),
+  })
+  .passthrough();
+
+const confidenceRiskCapsSchema = z
+  .object({
+    high_value_write_cap: z.number(),
+    filing_action_cap: z.number(),
+  })
+  .passthrough();
+
 export function loadConfig<T = unknown>(key: ConfigKey): T {
   if (cache.has(key)) return cache.get(key) as T;
 
@@ -194,6 +220,12 @@ function validateConfig(key: string, value: unknown): unknown {
   if (key === 'policies/autopilot') {
     return autopilotPolicySchema.parse(sanitizeAutopilot(value));
   }
+  if (key === 'policies/confidence_weights') {
+    return confidenceWeightsSchema.parse(sanitizeUnderscoreKeys(value));
+  }
+  if (key === 'policies/confidence_risk_caps') {
+    return confidenceRiskCapsSchema.parse(sanitizeUnderscoreKeys(value));
+  }
   if (key.startsWith('workflows/')) {
     return workflowSchema.parse(value);
   }
@@ -221,7 +253,19 @@ function validateConfig(key: string, value: unknown): unknown {
   if (key === 'business/employee_fields') {
     return employeeFieldsSchema.parse(value);
   }
+  if (key === 'business/confidence_signals') {
+    return confidenceSignalsSchema.parse(sanitizeUnderscoreKeys(value));
+  }
   return value;
+}
+
+function sanitizeUnderscoreKeys(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const obj = { ...(raw as Record<string, unknown>) };
+  for (const k of Object.keys(obj)) {
+    if (k.startsWith('_')) delete obj[k];
+  }
+  return obj;
 }
 
 function sanitizeAutopilot(raw: unknown): unknown {
@@ -269,12 +313,21 @@ export function validateAllVeloConfigs(): { ok: boolean; errors: string[] } {
     }
   }
 
-  try {
-    const autopilotPath = resolve(CONFIG_ROOT, 'policies/autopilot.json');
-    const parsed = JSON.parse(readFileSync(autopilotPath, 'utf-8'));
-    validateConfig('policies/autopilot', parsed);
-  } catch (e) {
-    errors.push(`policies/autopilot: ${e instanceof Error ? e.message : String(e)}`);
+  const policiesDir = resolve(CONFIG_ROOT, 'policies');
+  if (existsSync(policiesDir)) {
+    for (const name of readdirSync(policiesDir)) {
+      if (!name.endsWith('.json')) continue;
+      const base = name.replace(/\.json$/, '');
+      const key = `policies/${base}` as ConfigKey;
+      try {
+        const parsed = JSON.parse(
+          readFileSync(resolve(policiesDir, name), 'utf-8')
+        );
+        validateConfig(key, parsed);
+      } catch (e) {
+        errors.push(`${key}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
   }
 
   const workflowsDir = resolve(CONFIG_ROOT, 'workflows');

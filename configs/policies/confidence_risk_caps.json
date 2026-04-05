@@ -1,0 +1,5 @@
+{
+  "_comment": "Caps applied before PolicyEngine when amount threshold or filing-shaped tools fire.",
+  "high_value_write_cap": 0.72,
+  "filing_action_cap": 0.68
+}

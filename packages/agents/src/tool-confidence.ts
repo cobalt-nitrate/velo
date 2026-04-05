@@ -1,22 +1,20 @@
 import type { ConfidenceSignals } from '@velo/core/confidence';
+import { loadConfig } from '@velo/core/config';
+import { memoryBoostForTool } from '@velo/core';
 
 /** Maps tool ids to fields used for extraction completeness scoring. */
 export function scoringSignalsForTool(
   toolId: string,
   parameters: Record<string, unknown>
 ): ConfidenceSignals {
+  const mem = memoryBoostForTool(toolId, parameters);
+  const paramHist = numberOrUndef(parameters.historical_match_confidence);
   return {
     required_fields: requiredFieldsForTool(toolId),
     extracted_fields: parameters,
-    entity_match_confidence: numberOrUndef(
-      parameters.entity_match_confidence
-    ),
-    category_match_confidence: numberOrUndef(
-      parameters.category_match_confidence
-    ),
-    historical_match_confidence: numberOrUndef(
-      parameters.historical_match_confidence
-    ),
+    entity_match_confidence: numberOrUndef(parameters.entity_match_confidence),
+    category_match_confidence: numberOrUndef(parameters.category_match_confidence),
+    historical_match_confidence: paramHist ?? mem,
     data_age_hours: numberOrUndef(parameters.data_age_hours),
   };
 }
@@ -25,7 +23,25 @@ function numberOrUndef(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 }
 
-function requiredFieldsForTool(toolId: string): string[] {
+function requiredFieldsFromConfig(toolId: string): string[] | undefined {
+  try {
+    const cfg = loadConfig('business/confidence_signals') as {
+      tool_required_fields?: Record<string, string[]>;
+    };
+    const list = cfg.tool_required_fields?.[toolId];
+    return list?.length ? list : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function requiredFieldsForTool(toolId: string): string[] {
+  const fromCfg = requiredFieldsFromConfig(toolId);
+  if (fromCfg) return fromCfg;
+  return requiredFieldsForToolCodeFallback(toolId);
+}
+
+function requiredFieldsForToolCodeFallback(toolId: string): string[] {
   if (toolId === 'internal.sub_agent.invoke') {
     return ['sub_agent_id', 'input'];
   }

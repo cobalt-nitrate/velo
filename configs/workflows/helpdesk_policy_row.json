@@ -1,0 +1,17 @@
+{
+  "id": "helpdesk_policy_row",
+  "label": "Helpdesk — policy document record",
+  "description": "Phase 2 minimum path: create policy_documents row for knowledge base.",
+  "trigger": "helpdesk.policy.create",
+  "required_params": [],
+  "steps": [
+    {
+      "step": 1,
+      "id": "insert_doc",
+      "action": "tool_call",
+      "tool": "sheets.policy_documents.create",
+      "input_from": "trigger.payload",
+      "output_to": "policy_doc"
+    }
+  ]
+}

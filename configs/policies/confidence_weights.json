@@ -1,0 +1,8 @@
+{
+  "_comment": "Weights for packages/core confidence scorer (sum should stay ~1.0).",
+  "extraction_completeness": 0.32,
+  "entity_match_quality": 0.2,
+  "category_match_quality": 0.18,
+  "historical_pattern_match": 0.15,
+  "data_freshness": 0.15
+}
