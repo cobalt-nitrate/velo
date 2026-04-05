@@ -2,8 +2,20 @@
 
 import { ChangeEvent, FormEvent, useState } from 'react';
 
+const AGENTS = [
+  { id: 'orchestrator', label: 'Orchestrator' },
+  { id: 'helpdesk', label: 'Helpdesk' },
+  { id: 'runway', label: 'Runway' },
+  { id: 'compliance', label: 'Compliance' },
+  { id: 'ap-invoice', label: 'AP invoice' },
+  { id: 'ar-collections', label: 'AR' },
+  { id: 'payroll', label: 'Payroll' },
+  { id: 'hr', label: 'HR' },
+] as const;
+
 export function CommandBar() {
   const [text, setText] = useState('');
+  const [agentId, setAgentId] = useState<string>('orchestrator');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +33,7 @@ export function CommandBar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: q,
-          agentId: 'helpdesk',
+          agentId,
           companyId: 'demo-company',
           actorId: 'demo-user',
           actorRole: 'founder',
@@ -47,6 +59,24 @@ export function CommandBar() {
   return (
     <div className="rounded-xl border border-velo-line bg-velo-panel p-3">
       <form onSubmit={onSubmit} className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-xs text-velo-muted">
+            Agent
+            <select
+              value={agentId}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                setAgentId(e.target.value)
+              }
+              className="ml-1 rounded-md border border-white/10 bg-black/20 px-2 py-1 text-sm text-velo-text"
+            >
+              {AGENTS.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <input
           type="text"
           value={text}
@@ -64,7 +94,9 @@ export function CommandBar() {
           >
             {loading ? 'Running…' : 'Run agent'}
           </button>
-          <span className="text-xs text-velo-muted">helpdesk · POST /api/chat</span>
+          <span className="text-xs text-velo-muted">
+            {agentId} · POST /api/chat
+          </span>
         </div>
       </form>
       <div className="mt-2 flex gap-2 text-xs text-velo-muted">

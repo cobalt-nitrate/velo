@@ -2,7 +2,12 @@ import type { ToolSchema } from '@velo/core/types';
 import { executeSheetTool } from './sheets/client.js';
 import { sendEmail } from './email/index.js';
 import { sendNotification } from './notifications/index.js';
-import { parseInvoiceText } from './ocr/invoice-parser.js';
+import {
+  parseInvoiceText,
+  ocrExtractFromPdf,
+  ocrExtractFromImage,
+  ocrExtractFromText,
+} from './ocr/invoice-parser.js';
 import { parseBankStatement } from './bank/statement-parser.js';
 import { generatePdfDocument } from './documents/pdf-generator.js';
 
@@ -39,6 +44,9 @@ const LOOKUP_SCHEMA: ToolSchema['input_schema'] = {
     quarter: { type: 'string' },
     doc_type: { type: 'string' },
     days_ahead: { type: 'number' },
+    from_date: { type: 'string' },
+    to_date: { type: 'string' },
+    limit: { type: 'number' },
   },
 };
 
@@ -184,6 +192,12 @@ const toolDefinitions: ToolDefinition[] = [
     handler: executeSheetTool,
   },
   {
+    id: 'sheets.ar_invoices.update_status',
+    description: 'Update AR invoice status (alias)',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
     id: 'sheets.ar_invoices.get_by_period',
     description: 'Get AR invoices for a period',
     schema: LOOKUP_SCHEMA,
@@ -192,6 +206,24 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'sheets.ar_invoices.get_outstanding',
     description: 'Get all outstanding (unpaid) AR invoices',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.ar_invoices.get_overdue',
+    description: 'Get AR invoices past due date and unpaid',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.ap_invoices.get_pending_payables',
+    description: 'AP invoices not yet paid',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.ar_invoices.get_pending_receivables',
+    description: 'AR invoices with balance due',
     schema: LOOKUP_SCHEMA,
     handler: executeSheetTool,
   },
@@ -209,6 +241,38 @@ const toolDefinitions: ToolDefinition[] = [
     id: 'sheets.employees.get_active',
     description: 'Get all active employees',
     schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.employees.get_by_id',
+    description: 'Get employee by employee_id',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        employee_id: { type: 'string' },
+      },
+      required: ['employee_id'],
+    },
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.employees.get_active_headcount',
+    description: 'Count active employees',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.employees.get_own_salary_structure',
+    description: 'Employee row joined with salary structure definition',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        employee_id: { type: 'string' },
+      },
+      required: ['employee_id'],
+    },
     handler: executeSheetTool,
   },
   {
@@ -322,6 +386,12 @@ const toolDefinitions: ToolDefinition[] = [
     handler: executeSheetTool,
   },
   {
+    id: 'sheets.payroll_runs.get_committed_salaries',
+    description: 'Payroll runs in approved/committed/paid state',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
     id: 'sheets.salary_slips.create_batch',
     description: 'Create salary slips for all employees in a payroll run',
     schema: COMMON_SCHEMA,
@@ -333,11 +403,23 @@ const toolDefinitions: ToolDefinition[] = [
     schema: LOOKUP_SCHEMA,
     handler: executeSheetTool,
   },
+  {
+    id: 'sheets.salary_slips.get_ytd_by_employee',
+    description: 'Year-to-date salary slips per employee',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
 
   // ── Compliance tools ──────────────────────────────────────────────────────────
   {
     id: 'sheets.compliance_calendar.get_upcoming',
     description: 'Get upcoming compliance obligations (next N days)',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.compliance_calendar.get_upcoming_obligations',
+    description: 'Alias for upcoming compliance obligations',
     schema: LOOKUP_SCHEMA,
     handler: executeSheetTool,
   },
@@ -378,6 +460,12 @@ const toolDefinitions: ToolDefinition[] = [
     handler: executeSheetTool,
   },
   {
+    id: 'sheets.tds_records.get_by_employee_year',
+    description: 'TDS ledger rows for one employee and financial year period',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
     id: 'sheets.filing_history.create',
     description: 'Record a completed statutory filing',
     schema: COMMON_SCHEMA,
@@ -389,6 +477,24 @@ const toolDefinitions: ToolDefinition[] = [
     id: 'sheets.hr_tasks.create',
     description: 'Create an HR onboarding/offboarding task',
     schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.hr_tasks.create_batch',
+    description: 'Create multiple HR tasks',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.hr_tasks.get_blockers',
+    description: 'Tasks blocking onboarding or HR workflows',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.hr_tasks.get_pending_hires',
+    description: 'Onboarding/hire tasks not completed',
+    schema: LOOKUP_SCHEMA,
     handler: executeSheetTool,
   },
   {
@@ -473,6 +579,24 @@ const toolDefinitions: ToolDefinition[] = [
     schema: COMMON_SCHEMA,
     handler: sendNotification,
   },
+  {
+    id: 'notifications.send_alert',
+    description: 'Generic Slack alert (runway / ops)',
+    schema: COMMON_SCHEMA,
+    handler: sendNotification,
+  },
+  {
+    id: 'notifications.send_onboarding_link',
+    description: 'Slack DM with onboarding checklist link',
+    schema: COMMON_SCHEMA,
+    handler: sendNotification,
+  },
+  {
+    id: 'notifications.send_leave_notification',
+    description: 'Slack update on leave request to employee/manager HR channel',
+    schema: COMMON_SCHEMA,
+    handler: sendNotification,
+  },
 
   // ── Document / Drive tools ────────────────────────────────────────────────────
   {
@@ -518,6 +642,12 @@ const toolDefinitions: ToolDefinition[] = [
     },
     handler: generatePdfDocument,
   },
+  {
+    id: 'documents.pdf_generator.generate_invoice',
+    description: 'Generate client-facing AR invoice HTML/PDF artifact',
+    schema: COMMON_SCHEMA,
+    handler: generatePdfDocument,
+  },
 
   // ── Email tools ───────────────────────────────────────────────────────────────
   {
@@ -538,8 +668,81 @@ const toolDefinitions: ToolDefinition[] = [
     },
     handler: sendEmail,
   },
+  {
+    id: 'email.send_offer_letter',
+    description: 'Email offer letter PDF link to candidate',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        to: { type: 'string' },
+        candidate_name: { type: 'string' },
+        role_title: { type: 'string' },
+        pdf_url: { type: 'string' },
+        join_date: { type: 'string' },
+        subject: { type: 'string' },
+      },
+    },
+    handler: sendEmail,
+  },
+  {
+    id: 'email.send_followup',
+    description: 'AR/collections follow-up email',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        to: { type: 'string' },
+        client_name: { type: 'string' },
+        invoice_id: { type: 'string' },
+        amount: { type: 'number' },
+        days_overdue: { type: 'number' },
+        subject: { type: 'string' },
+      },
+    },
+    handler: sendEmail,
+  },
 
   // ── OCR and parsing ───────────────────────────────────────────────────────────
+  {
+    id: 'ocr.extract_from_pdf',
+    description: 'Extract invoice fields from a PDF URL',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        file_url: { type: 'string' },
+        pdf_url: { type: 'string' },
+      },
+    },
+    handler: ocrExtractFromPdf,
+  },
+  {
+    id: 'ocr.extract_from_image',
+    description: 'Extract invoice fields from an image URL',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        file_url: { type: 'string' },
+        image_url: { type: 'string' },
+      },
+    },
+    handler: ocrExtractFromImage,
+  },
+  {
+    id: 'ocr.extract_from_text',
+    description: 'Extract invoice fields from raw pasted text',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        raw_text: { type: 'string' },
+        text: { type: 'string' },
+      },
+    },
+    handler: ocrExtractFromText,
+  },
   {
     id: 'ocr.invoice.parse',
     description: 'Parse invoice text/image to extract structured fields',
@@ -566,6 +769,47 @@ const toolDefinitions: ToolDefinition[] = [
     description: 'Get recent bank transactions for cash position',
     schema: LOOKUP_SCHEMA,
     handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.bank_transactions.get_latest_balance',
+    description: 'Latest running balance from imported bank transactions',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.bank_transactions.get_by_date_range',
+    description: 'Bank transactions between from_date and to_date (ISO)',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.bank_transactions.create',
+    description: 'Append one parsed bank transaction row',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.bank_transactions.create_batch',
+    description: 'Append many bank transaction rows (e.g. after statement parse)',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+
+  {
+    id: 'internal.sub_agent.invoke',
+    description:
+      'Delegate to a registered sub-agent by id (invoice-extractor, tax-planning, document-generator, …).',
+    schema: {
+      type: 'object',
+      properties: {
+        sub_agent_id: { type: 'string', description: 'Agent id from configs/agents' },
+        input: { type: 'string', description: 'Natural language task for the sub-agent' },
+      },
+      required: ['sub_agent_id', 'input'],
+    },
+    handler: async () => ({
+      error: 'internal.sub_agent.invoke is handled inside runAgent',
+    }),
   },
 ];
 

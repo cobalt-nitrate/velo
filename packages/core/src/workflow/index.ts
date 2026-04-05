@@ -1,6 +1,9 @@
 import type { WorkflowDefinition, WorkflowRunState } from '../types/agent.js';
+import { hydrateWorkflowRuns, persistWorkflowRuns } from './persist.js';
 
 const workflowRuns = new Map<string, WorkflowRunState>();
+
+hydrateWorkflowRuns(workflowRuns);
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -21,6 +24,7 @@ export function startWorkflowRun(
   };
 
   workflowRuns.set(run.run_id, run);
+  persistWorkflowRuns(workflowRuns);
   return run;
 }
 
@@ -45,6 +49,7 @@ export function advanceWorkflowRun(
   };
 
   workflowRuns.set(runId, updated);
+  persistWorkflowRuns(workflowRuns);
   return updated;
 }
 
@@ -66,6 +71,7 @@ export function setWorkflowRunStatus(
   };
 
   workflowRuns.set(runId, updated);
+  persistWorkflowRuns(workflowRuns);
   return updated;
 }
 

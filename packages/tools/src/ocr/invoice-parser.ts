@@ -1,3 +1,4 @@
+/// <reference path="../pdf-parse.d.ts" />
 // Invoice parser — extracts structured fields from raw invoice text or files.
 // Pipeline:
 //   1. If file_url provided → fetch file → extract text (PDF → pdf-parse, image → tesseract.js)
@@ -284,4 +285,29 @@ export async function parseInvoiceText(
     ],
     raw_text_length: rawText.length,
   };
+}
+
+// Thin wrappers — agent configs reference per-modality OCR tool ids.
+
+export async function ocrExtractFromPdf(
+  params: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const url = String(params.file_url ?? params.pdf_url ?? params.url ?? '');
+  return parseInvoiceText({ ...params, file_url: url });
+}
+
+export async function ocrExtractFromImage(
+  params: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const url = String(params.file_url ?? params.image_url ?? params.url ?? '');
+  return parseInvoiceText({ ...params, file_url: url });
+}
+
+export async function ocrExtractFromText(
+  params: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  return parseInvoiceText({
+    ...params,
+    raw_text: String(params.raw_text ?? params.text ?? ''),
+  });
 }

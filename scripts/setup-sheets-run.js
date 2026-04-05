@@ -194,6 +194,13 @@ const SPREADSHEETS = [
           'due_date', 'status', 'completed_at', 'notes',
         ],
       },
+      {
+        title: 'bank_transactions',
+        headers: [
+          'txn_id', 'company_id', 'date', 'narration', 'ref_number',
+          'amount', 'balance', 'type', 'mode', 'source', 'created_at',
+        ],
+      },
     ],
   },
   {

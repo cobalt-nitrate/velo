@@ -12,15 +12,46 @@ import { PolicyEngine } from '@velo/core/policy-engine';
 import { deriveScoringInputs, scoreConfidence } from '@velo/core/confidence';
 import { createAuditEvent } from '@velo/core/audit';
 import { getRuntimeTools } from '@velo/tools';
+import { executeSheetTool } from '@velo/tools/sheets';
+import { scoringSignalsForTool } from './tool-confidence.js';
 import type {
   AgentConfig,
   AgentContext,
   AgentResult,
+  ApprovalRequest,
   ToolActionMetadata,
   ToolSchema,
 } from '@velo/core/types';
 
 type ToolExecutor = (params: Record<string, unknown>) => Promise<unknown>;
+
+async function persistApprovalRequestSheet(
+  approvalRequest: ApprovalRequest,
+  companyId: string
+): Promise<void> {
+  try {
+    await executeSheetTool({
+      tool_id: 'sheets.approval_requests.create',
+      company_id: companyId,
+      approval_id: approvalRequest.approval_id,
+      agent_id: approvalRequest.agent_id,
+      action_type: approvalRequest.action_type,
+      action_payload_json: JSON.stringify(approvalRequest.action_payload),
+      confidence_score: String(approvalRequest.confidence_score),
+      evidence_json: JSON.stringify(approvalRequest.evidence),
+      proposed_action_text: approvalRequest.proposed_action_text,
+      created_at: approvalRequest.created_at,
+      expires_at: approvalRequest.expires_at,
+      status: approvalRequest.status,
+      approver_role: approvalRequest.approver_role,
+      resolved_by: '',
+      resolved_at: '',
+      resolution_notes: '',
+    });
+  } catch (err) {
+    console.error('[runner] Failed to persist approval request:', err);
+  }
+}
 
 const toolRegistry = new Map<string, ToolExecutor>();
 const toolSchemaRegistry = new Map<string, ToolSchema>();
@@ -58,7 +89,8 @@ function getOpenAIClient(): OpenAI {
 export async function runAgent(
   agentId: string,
   input: unknown,
-  context: AgentContext
+  context: AgentContext,
+  subAgentDepth = 0
 ): Promise<AgentResult> {
   ensureRuntimeToolsRegistered();
   const client = getOpenAIClient();
@@ -70,7 +102,11 @@ export async function runAgent(
   );
 
   const resolvedModel = resolveAgentModel(config.model);
-  const openaiTools = buildOpenAITools(config.tools);
+  const mergedToolIds = [...config.tools];
+  if (config.sub_agents?.length) {
+    mergedToolIds.push('internal.sub_agent.invoke');
+  }
+  const openaiTools = buildOpenAITools(mergedToolIds);
   const useTools = openaiTools.length > 0;
 
   const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
@@ -100,6 +136,14 @@ export async function runAgent(
     },
   });
   let auditEntryId = startAudit.id;
+
+  if (subAgentDepth > 5) {
+    return {
+      status: 'FAILED',
+      error: 'Sub-agent nesting exceeded maximum depth.',
+      audit_entry_id: auditEntryId,
+    };
+  }
 
   while (iterations < config.max_iterations) {
     iterations++;
@@ -182,23 +226,38 @@ export async function runAgent(
         payload: { tool_call: toolCall },
       });
 
-      const scoringInputs = deriveScoringInputs({
-        required_fields: ['amount', 'vendor_name', 'invoice_date'],
-        extracted_fields: toolCall.parameters,
-        entity_match_confidence: numberOrDefault(
-          toolCall.parameters.entity_match_confidence,
-          0.72
-        ),
-        category_match_confidence: numberOrDefault(
-          toolCall.parameters.category_match_confidence,
-          0.68
-        ),
-        historical_match_confidence: numberOrDefault(
-          toolCall.parameters.historical_match_confidence,
-          0.61
-        ),
-        data_age_hours: numberOrDefault(toolCall.parameters.data_age_hours, 6),
-      });
+      if (name === 'internal.sub_agent.invoke') {
+        const confidence = scoreConfidence(
+          deriveScoringInputs(scoringSignalsForTool(name, parameters))
+        );
+        const metadata = deriveActionMetadata(toolCall);
+        createAuditEvent({
+          company_id: context.company_id,
+          actor_id: context.actor_id,
+          actor_role: context.actor_role,
+          agent_id: agentId,
+          event_type: 'POLICY_DECISION',
+          payload: {
+            tool_id: toolCall.tool_id,
+            policy_result: 'AUTO_EXECUTE',
+            confidence,
+            metadata,
+            note: 'sub-agent delegation',
+          },
+        });
+        evaluated.push({
+          tc,
+          toolCall,
+          confidence,
+          metadata,
+          policyResult: 'AUTO_EXECUTE',
+        });
+        continue;
+      }
+
+      const scoringInputs = deriveScoringInputs(
+        scoringSignalsForTool(toolCall.tool_id, toolCall.parameters)
+      );
       const confidence = scoreConfidence(scoringInputs);
       const metadata = deriveActionMetadata(toolCall);
       const policyResult = policyEngine.evaluate({
@@ -276,6 +335,8 @@ export async function runAgent(
         payload: { approval_request: approvalRequest },
       });
 
+      await persistApprovalRequestSheet(approvalRequest, context.company_id);
+
       return {
         status: 'PENDING_APPROVAL',
         approval_id: approvalRequest.approval_id,
@@ -302,6 +363,39 @@ export async function runAgent(
     });
 
     for (const item of evaluated) {
+      if (item.toolCall.tool_id === 'internal.sub_agent.invoke') {
+        const sid = String(item.toolCall.parameters.sub_agent_id ?? '');
+        const rawIn =
+          item.toolCall.parameters.input ?? item.toolCall.parameters.message ?? '';
+        const sin =
+          typeof rawIn === 'string' ? rawIn : JSON.stringify(rawIn);
+        const subResult = await runAgent(sid, sin, context, subAgentDepth + 1);
+        if (
+          subResult.status === 'PENDING_APPROVAL' ||
+          subResult.status === 'REFUSED' ||
+          subResult.status === 'FAILED'
+        ) {
+          return subResult;
+        }
+        createAuditEvent({
+          company_id: context.company_id,
+          actor_id: context.actor_id,
+          actor_role: context.actor_role,
+          agent_id: agentId,
+          event_type: 'TOOL_EXECUTED',
+          payload: {
+            tool_id: item.toolCall.tool_id,
+            tool_result: subResult,
+          },
+        });
+        chatMessages.push({
+          role: 'tool',
+          tool_call_id: item.tc.id,
+          content: JSON.stringify(subResult),
+        });
+        continue;
+      }
+
       const tool = toolRegistry.get(item.toolCall.tool_id);
       if (!tool) {
         throw new Error(`Tool not registered: ${item.toolCall.tool_id}`);

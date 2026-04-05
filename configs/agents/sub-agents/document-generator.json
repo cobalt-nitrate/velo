@@ -1,0 +1,24 @@
+{
+  "id": "document-generator",
+  "label": "Document Generator SubAgent",
+  "description": "Generates HR and payroll PDFs (offer, salary slip, certificates) and uploads to Drive.",
+  "model": "${LLM_MODEL_DOCUMENT_GEN}",
+  "system_prompt_file": "configs/prompts/document-generator.md",
+  "sub_agents": [],
+  "tools": [
+    "documents.drive.generate_offer_letter",
+    "documents.drive.generate_salary_slip",
+    "documents.drive.generate_experience_certificate",
+    "documents.drive.generate_relieving_letter",
+    "documents.pdf_generator.generate_invoice",
+    "documents.drive.upload_invoice"
+  ],
+  "confidence_thresholds": {
+    "auto_execute": 0.85,
+    "request_approval": 0.60,
+    "recommend_only": 0.40,
+    "refuse": 0.0
+  },
+  "max_iterations": 6,
+  "timeout_seconds": 60
+}

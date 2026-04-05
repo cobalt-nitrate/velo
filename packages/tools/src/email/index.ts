@@ -75,6 +75,12 @@ function buildEmailHtml(params: Record<string, unknown>): string {
   if (toolId === 'email.send_invoice') {
     return invoiceEmailHtml(params);
   }
+  if (toolId === 'email.send_offer_letter') {
+    return offerLetterEmailHtml(params);
+  }
+  if (toolId === 'email.send_followup') {
+    return followupEmailHtml(params);
+  }
 
   // Generic notification email
   const body = String(
@@ -128,6 +134,46 @@ function invoiceEmailHtml(params: Record<string, unknown>): string {
   </div>
 </body>
 </html>`;
+}
+
+function offerLetterEmailHtml(params: Record<string, unknown>): string {
+  const name = escapeHtml(String(params.candidate_name ?? 'there'));
+  const role = escapeHtml(String(params.role_title ?? 'the role'));
+  const join = escapeHtml(String(params.join_date ?? 'TBD'));
+  const pdfUrl = escapeHtml(String(params.pdf_url ?? ''));
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8" /></head>
+<body style="font-family:sans-serif;background:#f4f4f4;padding:24px;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;">
+    <h2 style="margin-top:0;">Your offer from Velo</h2>
+    <p>Hi ${name},</p>
+    <p>We're pleased to extend an offer for <strong>${role}</strong>, with a proposed start date of <strong>${join}</strong>.</p>
+    ${pdfUrl ? `<p><a href="${pdfUrl}" style="display:inline-block;background:#111;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">View offer letter</a></p>` : ''}
+    <p style="font-size:12px;color:#999;">Sent by Velo</p>
+  </div>
+</body></html>`;
+}
+
+function followupEmailHtml(params: Record<string, unknown>): string {
+  const client = escapeHtml(String(params.client_name ?? 'Valued client'));
+  const inv = escapeHtml(String(params.invoice_id ?? ''));
+  const amt = Number(params.amount ?? 0).toLocaleString('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  });
+  const days = params.days_overdue ?? 'several';
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8" /></head>
+<body style="font-family:sans-serif;background:#f4f4f4;padding:24px;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;">
+    <h2 style="margin-top:0;">Payment reminder</h2>
+    <p>Dear ${client},</p>
+    <p>This is a friendly reminder that invoice <strong>${inv}</strong> for <strong>${amt}</strong> is outstanding (${days} days past terms).</p>
+    <p>Please arrange payment at your earliest convenience. Reply to this email for any questions.</p>
+    <p style="font-size:12px;color:#999;">Sent by Velo</p>
+  </div>
+</body></html>`;
 }
 
 function escapeHtml(str: string): string {

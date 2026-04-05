@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findApprovalById, updateApprovalRow } from '@velo/tools/sheets';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../lib/auth';
+import { authOptions } from '../../../../lib/auth';
 
 export const runtime = 'nodejs';
 

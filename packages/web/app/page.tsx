@@ -1,3 +1,4 @@
+import { executeSheetTool, listPendingApprovals } from '@velo/tools/sheets';
 import { ApprovalCard } from '../components/approval-card';
 import { AuditTimeline } from '../components/audit-timeline';
 import { CommandBar } from '../components/command-bar';
@@ -7,7 +8,27 @@ import { PolicyCopilot } from '../components/policy-copilot';
 import { RunwayTile } from '../components/runway-tile';
 import { WeeklyCloseNarrative } from '../components/weekly-close-narrative';
 
-export default function CommandCenterPage() {
+export default async function CommandCenterPage() {
+  const pending = await listPendingApprovals(5);
+  const top = pending[0];
+
+  let months = 6;
+  let burn = 1250000;
+  let cashConf = 0.75;
+  try {
+    const bal = await executeSheetTool({
+      tool_id: 'sheets.bank_transactions.get_latest_balance',
+      company_id: 'demo-company',
+    });
+    const b = bal as { balance_inr?: number; transaction_count?: number };
+    if (typeof b.balance_inr === 'number' && b.balance_inr > 0 && b.transaction_count) {
+      months = Math.min(24, Math.max(0.5, b.balance_inr / (burn * 1.1)));
+      cashConf = b.transaction_count >= 3 ? 0.88 : 0.72;
+    }
+  } catch {
+    /* optional runway enrichment */
+  }
+
   return (
     <main className="mx-auto grid max-w-7xl gap-4 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -22,11 +43,19 @@ export default function CommandCenterPage() {
       <CommandBar />
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <RunwayTile months={7.2} burnRateInr={1460000} confidence={0.88} />
+        <RunwayTile months={months} burnRateInr={burn} confidence={cashConf} />
         <ApprovalCard
-          title="Approve April payroll run"
-          summary="38 employees - INR 12.4L payout - due in 2 days"
-          confidence={0.91}
+          title={
+            top?.action_type
+              ? top.action_type
+              : 'No pending approvals'
+          }
+          summary={
+            top?.proposed_action_text ??
+            'Agent-generated approvals appear here after a gated tool call.'
+          }
+          confidence={top?.confidence_score ? Number(top.confidence_score) : 0}
+          approvalId={top?.approval_id}
         />
         <ExceptionCard
           title="Vendor bank payee missing"
@@ -35,14 +64,52 @@ export default function CommandCenterPage() {
         />
       </section>
 
+      {pending.length > 1 && (
+        <section className="rounded-xl border border-velo-line bg-velo-panel/50 p-3 text-xs text-velo-muted">
+          <p className="font-medium text-velo-text">Queue ({pending.length})</p>
+          <ul className="mt-2 space-y-1">
+            {pending.slice(1).map((row) => (
+              <li key={row.approval_id}>
+                <a
+                  href={`/approvals/${encodeURIComponent(row.approval_id)}`}
+                  className="text-velo-accent hover:underline"
+                >
+                  {row.approval_id}
+                </a>{' '}
+                — {row.action_type}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="grid gap-4 lg:grid-cols-2">
         <EvidenceDrawer
           title="Evidence drawer"
-          items={[
-            { label: 'Policy reason', value: 'Payroll actions always require approval.' },
-            { label: 'Confidence factors', value: 'Extraction 0.95, Match 0.88, Freshness 0.9' },
-            { label: 'Historical context', value: 'Last 3 payroll runs approved with no errors.' },
-          ]}
+          items={
+            top
+              ? [
+                  {
+                    label: 'Approval id',
+                    value: top.approval_id,
+                  },
+                  {
+                    label: 'Agent',
+                    value: top.agent_id,
+                  },
+                  {
+                    label: 'Confidence',
+                    value: top.confidence_score,
+                  },
+                ]
+              : [
+                  { label: 'Policy reason', value: 'High-impact actions require explicit review.' },
+                  {
+                    label: 'Data source',
+                    value: 'approval_requests sheet or in-memory store.',
+                  },
+                ]
+          }
         />
         <AuditTimeline
           events={[
@@ -56,9 +123,9 @@ export default function CommandCenterPage() {
       <section className="grid gap-4 lg:grid-cols-2">
         <WeeklyCloseNarrative
           highlights={[
-            'Runway improved by 0.4 months due to lower vendor outflow.',
-            'GST filing checklist is on track, two input documents pending.',
-            'AR collection risk increased for one client with 9-day delay.',
+            'Runway tile uses imported bank_transactions when available.',
+            'GST filing checklist follows compliance_calendar in Sheets.',
+            'Use Command Bar with orchestrator for cross-domain routing.',
           ]}
         />
         <PolicyCopilot />

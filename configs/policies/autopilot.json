@@ -64,7 +64,9 @@
       "helpdesk.*",
       "leave.request",
       "payslip.download_own",
-      "tax_planning.self"
+      "tax_planning.self",
+      "sub_agent.invoke",
+      "internal.*"
     ]
   },
   "runway_alert_thresholds_months": {

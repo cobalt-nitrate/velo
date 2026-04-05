@@ -8,13 +8,14 @@
   "tools": [
     "sheets.bank_transactions.get_latest_balance",
     "sheets.bank_transactions.get_by_date_range",
+    "sheets.bank_transactions.get_recent",
     "sheets.payroll_runs.get_committed_salaries",
     "sheets.ap_invoices.get_pending_payables",
     "sheets.ar_invoices.get_pending_receivables",
     "sheets.compliance_calendar.get_upcoming_obligations",
     "sheets.employees.get_active_headcount",
     "sheets.hr_tasks.get_pending_hires",
-    "bank.statement_parser.parse",
+    "bank.statement.parse",
     "notifications.send_digest",
     "notifications.send_alert"
   ],

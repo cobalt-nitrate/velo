@@ -60,6 +60,7 @@ function approvalBlocks(params: Record<string, unknown>): SlackBlock[] {
   const approvalId = String(params.approval_id ?? '');
   const appUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
   const approveUrl = `${appUrl}/api/approvals/${approvalId}`;
+  const reviewPage = `${appUrl}/approvals/${approvalId}`;
 
   const confidenceEmoji = confidence >= 0.85 ? '🟢' : confidence >= 0.60 ? '🟡' : '🔴';
 
@@ -81,20 +82,20 @@ function approvalBlocks(params: Record<string, unknown>): SlackBlock[] {
           type: 'button',
           text: { type: 'plain_text', text: '✅ Approve' },
           style: 'primary',
-          url: `${appUrl}?action=approve&id=${approvalId}`,
+          url: `${reviewPage}?resolve=approved`,
           action_id: `approve_${approvalId}`,
         },
         {
           type: 'button',
           text: { type: 'plain_text', text: '❌ Reject' },
           style: 'danger',
-          url: `${appUrl}?action=reject&id=${approvalId}`,
+          url: `${reviewPage}?resolve=rejected`,
           action_id: `reject_${approvalId}`,
         },
         {
           type: 'button',
           text: { type: 'plain_text', text: 'View Details' },
-          url: `${appUrl}/approvals/${approvalId}`,
+          url: reviewPage,
           action_id: `view_${approvalId}`,
         },
       ],
@@ -216,6 +217,43 @@ export async function sendNotification(
     text = `AR follow-up: ${params.client_name ?? 'client'} — ${params.amount_inr ? `₹${Number(params.amount_inr).toLocaleString('en-IN')}` : 'amount pending'}`;
     blocks = [
       { type: 'section', text: { type: 'mrkdwn', text: `*AR Follow-up Required*\nClient: *${params.client_name ?? 'Unknown'}*\nInvoice: ${params.invoice_id ?? ''}\nAmount: ₹${Number(params.amount_inr ?? 0).toLocaleString('en-IN')}\nDays overdue: *${params.days_overdue ?? 'N/A'}*` } },
+    ];
+  } else if (toolId === 'notifications.send_alert') {
+    channel = channelOverride || resolveChannel('general');
+    text = String(params.title ?? params.message ?? 'Velo alert');
+    blocks = [
+      { type: 'header', text: { type: 'plain_text', text: `⚡ ${String(params.title ?? 'Alert')}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: String(params.message ?? params.body ?? '_No details._') } },
+    ];
+  } else if (toolId === 'notifications.send_onboarding_link') {
+    channel = channelOverride || resolveChannel('hr');
+    text = `Onboarding link for ${params.employee_name ?? 'new joiner'}`;
+    const appUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+    blocks = [
+      { type: 'section', text: { type: 'mrkdwn', text: `*Complete your onboarding*\n${String(params.message ?? 'Use the link below to finish setup.')}` } },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: 'Open onboarding' },
+            url: String(params.link_url ?? appUrl),
+            style: 'primary',
+          },
+        ],
+      },
+    ];
+  } else if (toolId === 'notifications.send_leave_notification') {
+    channel = channelOverride || resolveChannel('hr');
+    text = `Leave update: ${params.employee_name ?? ''}`;
+    blocks = [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Leave ${String(params.event ?? 'update')}*\nEmployee: *${params.employee_name ?? '—'}*\nDates: ${params.from_date ?? ''} → ${params.to_date ?? ''}\nStatus: *${params.status ?? 'pending'}*`,
+        },
+      },
     ];
   } else {
     // Generic notification

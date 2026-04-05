@@ -206,8 +206,16 @@ function parseCSVStatement(text: string): Partial<ParsedStatement> & { transacti
       amount = raw;
       type = raw >= 0 ? 'CREDIT' : 'DEBIT';
     } else {
-      const debit = parseAmount(row[map.debit]);
-      const credit = parseAmount(row[map.credit]);
+      const di = map.debit;
+      const cr = map.credit;
+      if (di === undefined || cr === undefined) {
+        errors.push(
+          `Row ${headerIdx + i + 2}: bank profile missing debit/credit column indices`
+        );
+        continue;
+      }
+      const debit = parseAmount(row[di]);
+      const credit = parseAmount(row[cr]);
       if (credit > 0) {
         amount = credit;
         type = 'CREDIT';

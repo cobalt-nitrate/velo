@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { ConfidenceBadge } from './confidence-badge';
 import { PolicyChip } from './policy-chip';
 
@@ -5,9 +6,15 @@ interface ApprovalCardProps {
   title: string;
   summary: string;
   confidence: number;
+  approvalId?: string;
 }
 
-export function ApprovalCard({ title, summary, confidence }: ApprovalCardProps) {
+export function ApprovalCard({
+  title,
+  summary,
+  confidence,
+  approvalId,
+}: ApprovalCardProps) {
   return (
     <article className="rounded-xl border border-velo-line bg-velo-panel p-4">
       <div className="flex items-center justify-between">
@@ -17,14 +24,16 @@ export function ApprovalCard({ title, summary, confidence }: ApprovalCardProps) 
       <p className="mt-2 text-sm text-velo-muted">{summary}</p>
       <div className="mt-4 flex items-center justify-between">
         <ConfidenceBadge value={confidence} />
-        <div className="flex gap-2">
-          <button className="rounded-md bg-rose-500/20 px-3 py-1.5 text-sm text-rose-200">
-            Reject
-          </button>
-          <button className="rounded-md bg-velo-accent px-3 py-1.5 text-sm font-medium text-black">
-            Approve
-          </button>
-        </div>
+        {approvalId ? (
+          <Link
+            href={`/approvals/${encodeURIComponent(approvalId)}`}
+            className="rounded-md bg-velo-accent px-3 py-1.5 text-sm font-medium text-black"
+          >
+            Review
+          </Link>
+        ) : (
+          <span className="text-xs text-velo-muted">No open approvals</span>
+        )}
       </div>
     </article>
   );
