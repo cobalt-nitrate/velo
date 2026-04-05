@@ -1,3 +1,8 @@
+// AuditLogger — append-only event trail.
+// Events are stored in-memory for fast access within a session.
+// Separately flushed to VELO_LOGS.audit_trail via the Sheets client.
+// The Sheets flush is fire-and-forget (never blocks agent execution).
+
 export interface AuditEvent {
   id: string;
   timestamp: string;
@@ -18,6 +23,38 @@ export interface AuditEvent {
 
 const auditStore = new Map<string, AuditEvent>();
 
+// Lazy import to avoid circular dependency. Only resolved once.
+let sheetsFlushFn: ((row: Record<string, unknown>) => Promise<void>) | null = null;
+
+async function flushToSheets(event: AuditEvent): Promise<void> {
+  try {
+    if (!sheetsFlushFn) {
+      // Dynamic import — tools package is a peer, not a hard dep of core.
+      // If it's not available, this silently does nothing.
+      const mod = await import('@velo/tools/sheets' as string).catch(() => null);
+      sheetsFlushFn = mod?.appendAuditRow ?? null;
+    }
+    if (sheetsFlushFn) {
+      await sheetsFlushFn({
+        entry_id: event.id,
+        timestamp: event.timestamp,
+        actor_id: event.actor_id,
+        actor_role: event.actor_role,
+        agent_id: event.agent_id,
+        action_type: event.event_type,
+        module: event.agent_id,
+        record_id: String(event.payload.tool_id ?? event.payload.session_id ?? ''),
+        old_value_json: '',
+        new_value_json: JSON.stringify(event.payload),
+        status: event.event_type.includes('FAILED') ? 'FAILED' : 'OK',
+        session_id: String(event.payload.session_id ?? ''),
+      });
+    }
+  } catch {
+    // Never let audit flush failure propagate — it's observability, not execution
+  }
+}
+
 export function createAuditEvent(
   input: Omit<AuditEvent, 'id' | 'timestamp'>
 ): AuditEvent {
@@ -28,6 +65,10 @@ export function createAuditEvent(
   };
 
   auditStore.set(event.id, event);
+
+  // Fire-and-forget Sheets flush — never awaited so it never blocks the agent
+  void flushToSheets(event);
+
   return event;
 }
 
@@ -38,5 +79,13 @@ export function getAuditEvent(eventId: string): AuditEvent | undefined {
 export function listAuditEventsByCompany(companyId: string): AuditEvent[] {
   return Array.from(auditStore.values()).filter(
     (event) => event.company_id === companyId
+  );
+}
+
+export function listAuditEventsBySession(sessionId: string): AuditEvent[] {
+  return Array.from(auditStore.values()).filter(
+    (event) =>
+      event.payload.session_id === sessionId ||
+      event.id.includes(sessionId)
   );
 }

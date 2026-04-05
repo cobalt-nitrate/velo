@@ -15,6 +15,8 @@ export interface ToolDefinition {
   handler: ToolHandler;
 }
 
+// ─── Shared schemas ───────────────────────────────────────────────────────────
+
 const COMMON_SCHEMA: ToolSchema['input_schema'] = {
   type: 'object',
   properties: {
@@ -23,7 +25,27 @@ const COMMON_SCHEMA: ToolSchema['input_schema'] = {
   },
 };
 
+const LOOKUP_SCHEMA: ToolSchema['input_schema'] = {
+  type: 'object',
+  properties: {
+    company_id: { type: 'string' },
+    vendor_name: { type: 'string' },
+    gstin: { type: 'string' },
+    employee_id: { type: 'string' },
+    month: { type: 'string' },
+    year: { type: 'string' },
+    period_month: { type: 'string' },
+    period_year: { type: 'string' },
+    quarter: { type: 'string' },
+    doc_type: { type: 'string' },
+    days_ahead: { type: 'number' },
+  },
+};
+
+// ─── Tool definitions ─────────────────────────────────────────────────────────
+
 const toolDefinitions: ToolDefinition[] = [
+  // ── AP Invoice tools ────────────────────────────────────────────────────────
   {
     id: 'sheets.ap_invoices.create',
     description: 'Create AP invoice row in sheet',
@@ -38,20 +60,46 @@ const toolDefinitions: ToolDefinition[] = [
   },
   {
     id: 'sheets.ap_invoices.find_by_vendor_amount_date',
-    description: 'Find AP invoice matches by vendor, amount, date',
-    schema: COMMON_SCHEMA,
+    description: 'Find AP invoice matches by vendor, amount, date (duplicate detection)',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        vendor_id: { type: 'string' },
+        vendor_name: { type: 'string' },
+        total_amount: { type: 'number' },
+        invoice_date: { type: 'string' },
+        invoice_number: { type: 'string' },
+      },
+    },
     handler: executeSheetTool,
   },
+
+  // ── Vendor master tools ──────────────────────────────────────────────────────
   {
     id: 'sheets.vendor_master.lookup_by_gstin',
-    description: 'Lookup vendor using GSTIN',
-    schema: COMMON_SCHEMA,
+    description: 'Lookup vendor using GSTIN (exact match)',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        gstin: { type: 'string', description: '15-char GSTIN of the vendor' },
+      },
+      required: ['gstin'],
+    },
     handler: executeSheetTool,
   },
   {
     id: 'sheets.vendor_master.lookup_by_name_fuzzy',
     description: 'Lookup vendor using fuzzy name matching',
-    schema: COMMON_SCHEMA,
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        vendor_name: { type: 'string', description: 'Vendor name to search for' },
+      },
+      required: ['vendor_name'],
+    },
     handler: executeSheetTool,
   },
   {
@@ -60,59 +108,464 @@ const toolDefinitions: ToolDefinition[] = [
     schema: COMMON_SCHEMA,
     handler: executeSheetTool,
   },
+
+  // ── GST and expense tools ────────────────────────────────────────────────────
   {
     id: 'sheets.gst_input_ledger.create',
-    description: 'Create GST input ledger row',
+    description: 'Create GST input ledger row (record ITC-claimable GST)',
     schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.gst_input_ledger.get_balance',
+    description: 'Get ITC balance for a given period (month + year)',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.gst_output_ledger.create',
+    description: 'Create GST output ledger row for AR invoice',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.gst_output_ledger.get_by_period',
+    description: 'Get output GST for a period',
+    schema: LOOKUP_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.expense_entries.create',
-    description: 'Create expense ledger row',
+    description: 'Create classified expense ledger row',
     schema: COMMON_SCHEMA,
     handler: executeSheetTool,
   },
+  {
+    id: 'sheets.expense_entries.get_by_period',
+    description: 'Get expense entries for a period',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+
+  // ── Approval tools ────────────────────────────────────────────────────────────
   {
     id: 'sheets.approval_requests.create',
-    description: 'Create approval request entry',
+    description: 'Create approval request entry in Sheets',
     schema: COMMON_SCHEMA,
     handler: executeSheetTool,
   },
+
+  // ── Bank payee ────────────────────────────────────────────────────────────────
   {
     id: 'sheets.bank_payees.lookup',
-    description: 'Lookup bank payee details',
+    description: 'Lookup bank payee details by vendor_id',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        vendor_id: { type: 'string' },
+        vendor_name: { type: 'string' },
+      },
+    },
+    handler: executeSheetTool,
+  },
+
+  // ── AR Invoice tools ──────────────────────────────────────────────────────────
+  {
+    id: 'sheets.ar_invoices.create',
+    description: 'Create AR invoice record',
     schema: COMMON_SCHEMA,
     handler: executeSheetTool,
   },
   {
+    id: 'sheets.ar_invoices.update',
+    description: 'Update AR invoice status / payment received',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.ar_invoices.get_by_period',
+    description: 'Get AR invoices for a period',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.ar_invoices.get_outstanding',
+    description: 'Get all outstanding (unpaid) AR invoices',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+
+  // ── Client master ────────────────────────────────────────────────────────────
+  {
+    id: 'sheets.client_master.lookup',
+    description: 'Lookup client details by client_id or name',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+
+  // ── Employee tools ────────────────────────────────────────────────────────────
+  {
+    id: 'sheets.employees.get_active',
+    description: 'Get all active employees',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.employees.get_own_record',
+    description: 'Get the requesting employee\'s own profile',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        employee_id: { type: 'string' },
+      },
+      required: ['employee_id'],
+    },
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.employees.create',
+    description: 'Create new employee record',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.employees.update',
+    description: 'Update employee record',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+
+  // ── Salary structures ─────────────────────────────────────────────────────────
+  {
+    id: 'sheets.salary_structures.get_by_id',
+    description: 'Get salary structure by structure_id',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        structure_id: { type: 'string' },
+      },
+      required: ['structure_id'],
+    },
+    handler: executeSheetTool,
+  },
+
+  // ── Attendance & leave ────────────────────────────────────────────────────────
+  {
+    id: 'sheets.attendance.get_by_employee_month',
+    description: 'Get attendance record for employee by month/year',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.leave_records.get_by_employee',
+    description: 'Get all leave history for an employee',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.leave_records.get_by_employee_month',
+    description: 'Get leave records for employee in a specific month',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.leave_records.create',
+    description: 'Create a new leave record',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.leave_records.update_status',
+    description: 'Approve or reject a leave record',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.leave_balances.get_by_employee',
+    description: 'Get leave balance by type for an employee',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.leave_balances.create_batch',
+    description: 'Initialize leave balances for a new employee',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.leave_balances.update',
+    description: 'Update leave balance after approval/rejection',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+
+  // ── Payroll tools ─────────────────────────────────────────────────────────────
+  {
+    id: 'sheets.payroll_runs.create',
+    description: 'Create payroll run record',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.payroll_runs.update_status',
+    description: 'Update payroll run status (e.g., PENDING_APPROVAL → APPROVED)',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.payroll_runs.get_by_period',
+    description: 'Get payroll run records for a period',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.salary_slips.create_batch',
+    description: 'Create salary slips for all employees in a payroll run',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.salary_slips.get_by_employee_month',
+    description: 'Get salary slip for an employee for a specific month/year',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+
+  // ── Compliance tools ──────────────────────────────────────────────────────────
+  {
+    id: 'sheets.compliance_calendar.get_upcoming',
+    description: 'Get upcoming compliance obligations (next N days)',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.compliance_calendar.mark_done',
+    description: 'Mark a compliance obligation as completed',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.tax_obligations.create',
+    description: 'Create a tax obligation record',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.tax_obligations.create_batch',
+    description: 'Create multiple tax obligation records (PF, ESIC, TDS, PT)',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.tax_obligations.get_by_period',
+    description: 'Get tax obligations for a period',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.tds_records.create_batch',
+    description: 'Create TDS records for all employees',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.tds_records.get_by_quarter',
+    description: 'Get TDS records for a quarter',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.filing_history.create',
+    description: 'Record a completed statutory filing',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+
+  // ── HR tools ──────────────────────────────────────────────────────────────────
+  {
+    id: 'sheets.hr_tasks.create',
+    description: 'Create an HR onboarding/offboarding task',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.hr_tasks.update_status',
+    description: 'Mark an HR task as completed',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.policy_documents.create',
+    description: 'Create a policy document record',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.policy_documents.get_by_type',
+    description: 'Get policy document by type (e.g., "wfh", "leave", "posh")',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
+  },
+
+  // ── Notification tools ────────────────────────────────────────────────────────
+  {
     id: 'notifications.send_approval_request',
-    description: 'Send approval request notification',
+    description: 'Send approval request notification to approver',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        approver_role: { type: 'string' },
+        approval_id: { type: 'string' },
+        title: { type: 'string' },
+        message: { type: 'string' },
+        channel: { type: 'string', enum: ['slack', 'email', 'in_app'] },
+      },
+    },
+    handler: sendNotification,
+  },
+  {
+    id: 'notifications.send_compliance_alert',
+    description: 'Send compliance deadline alert',
     schema: COMMON_SCHEMA,
     handler: sendNotification,
   },
   {
+    id: 'notifications.send_digest',
+    description: 'Send weekly/monthly compliance or AR digest',
+    schema: COMMON_SCHEMA,
+    handler: sendNotification,
+  },
+  {
+    id: 'notifications.send_secure_link',
+    description: 'Send secure download link to employee (payslip, etc.)',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        employee_id: { type: 'string' },
+        email: { type: 'string' },
+        link: { type: 'string' },
+        document_type: { type: 'string' },
+        expiry_hours: { type: 'number' },
+      },
+    },
+    handler: sendNotification,
+  },
+  {
+    id: 'notifications.send_ar_reminder',
+    description: 'Send payment reminder to a client for an overdue AR invoice',
+    schema: COMMON_SCHEMA,
+    handler: sendNotification,
+  },
+  {
+    id: 'notifications.send_offer_letter',
+    description: 'Send offer letter to a candidate',
+    schema: COMMON_SCHEMA,
+    handler: sendNotification,
+  },
+  {
+    id: 'notifications.send_onboarding_welcome',
+    description: 'Send welcome email to new joiner',
+    schema: COMMON_SCHEMA,
+    handler: sendNotification,
+  },
+
+  // ── Document / Drive tools ────────────────────────────────────────────────────
+  {
     id: 'documents.drive.upload_invoice',
-    description: 'Upload invoice to document storage',
+    description: 'Upload source invoice file to Google Drive',
     schema: COMMON_SCHEMA,
     handler: generatePdfDocument,
   },
   {
-    id: 'email.send_invoice',
-    description: 'Send AR invoice via email',
+    id: 'documents.drive.generate_offer_letter',
+    description: 'Generate offer letter PDF and upload to Drive',
     schema: COMMON_SCHEMA,
-    handler: sendEmail,
+    handler: generatePdfDocument,
   },
   {
-    id: 'ocr.invoice.parse',
-    description: 'Parse invoice text from OCR payload',
+    id: 'documents.drive.generate_salary_slip',
+    description: 'Generate salary slip PDF and upload to Drive',
     schema: COMMON_SCHEMA,
+    handler: generatePdfDocument,
+  },
+  {
+    id: 'documents.drive.generate_experience_certificate',
+    description: 'Generate experience certificate PDF',
+    schema: COMMON_SCHEMA,
+    handler: generatePdfDocument,
+  },
+  {
+    id: 'documents.drive.generate_relieving_letter',
+    description: 'Generate relieving letter PDF',
+    schema: COMMON_SCHEMA,
+    handler: generatePdfDocument,
+  },
+  {
+    id: 'documents.drive.generate_secure_link',
+    description: 'Generate a time-limited secure Drive link for a document',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        file_id: { type: 'string' },
+        expiry_hours: { type: 'number' },
+      },
+    },
+    handler: generatePdfDocument,
+  },
+
+  // ── Email tools ───────────────────────────────────────────────────────────────
+  {
+    id: 'email.send_invoice',
+    description: 'Send AR invoice to client via email',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        to: { type: 'string' },
+        subject: { type: 'string' },
+        invoice_id: { type: 'string' },
+        client_name: { type: 'string' },
+        amount: { type: 'number' },
+        due_date: { type: 'string' },
+        pdf_url: { type: 'string' },
+      },
+    },
+    handler: sendEmail,
+  },
+
+  // ── OCR and parsing ───────────────────────────────────────────────────────────
+  {
+    id: 'ocr.invoice.parse',
+    description: 'Parse invoice text/image to extract structured fields',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        raw_text: { type: 'string', description: 'Raw OCR text from invoice' },
+        file_url: { type: 'string', description: 'URL to invoice file (PDF or image)' },
+      },
+    },
     handler: parseInvoiceText,
   },
   {
     id: 'bank.statement.parse',
-    description: 'Parse bank statement payload',
+    description: 'Parse bank statement to extract transactions',
     schema: COMMON_SCHEMA,
     handler: parseBankStatement,
+  },
+
+  // ── Bank transactions (read-only for runway) ──────────────────────────────────
+  {
+    id: 'sheets.bank_transactions.get_recent',
+    description: 'Get recent bank transactions for cash position',
+    schema: LOOKUP_SCHEMA,
+    handler: executeSheetTool,
   },
 ];
 
