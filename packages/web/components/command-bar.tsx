@@ -1,5 +1,6 @@
 'use client';
 
+import { MarkdownBody } from '@/components/markdown-body';
 import { ChangeEvent, FormEvent, useState } from 'react';
 
 const AGENTS = [
@@ -110,9 +111,9 @@ export function CommandBar() {
         </p>
       )}
       {result && (
-        <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-black/30 p-2 text-xs text-velo-text">
-          {result}
-        </pre>
+        <div className="mt-3 max-h-96 overflow-auto rounded-xl border border-velo-line bg-black/25 p-3">
+          <MarkdownBody text={result} />
+        </div>
       )}
     </div>
   );

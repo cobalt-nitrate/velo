@@ -13,7 +13,9 @@
     "hr",
     "helpdesk"
   ],
-  "tools": [],
+  "tools": [
+    "internal.platform.healthcheck"
+  ],
   "confidence_thresholds": {
     "auto_execute": 0.85,
     "request_approval": 0.60,

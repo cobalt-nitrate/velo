@@ -29,6 +29,9 @@ function requiredFieldsForTool(toolId: string): string[] {
   if (toolId === 'internal.sub_agent.invoke') {
     return ['sub_agent_id', 'input'];
   }
+  if (toolId === 'internal.platform.healthcheck') {
+    return [];
+  }
 
   const isRead =
     /\.(get_|lookup|find_|list)/.test(toolId) ||

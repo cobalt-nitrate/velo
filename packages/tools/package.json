@@ -11,7 +11,9 @@
     "./notifications": "./src/notifications/index.ts",
     "./ocr": "./src/ocr/invoice-parser.ts",
     "./bank": "./src/bank/statement-parser.ts",
-    "./documents": "./src/documents/pdf-generator.ts"
+    "./documents": "./src/documents/pdf-generator.ts",
+    "./documents/drive-folders": "./src/documents/drive-folders.ts",
+    "./platform-health": "./src/platform-health.ts"
   },
   "scripts": {
     "build": "tsc",

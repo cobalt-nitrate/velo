@@ -1,0 +1,686 @@
+{
+  "_meta": {
+    "company": "Fictitious data for Velo demos — Novaforge Labs theme",
+    "prefix": "demo_",
+    "note": "Re-running the seed script appends again; delete demo_* rows in Sheets if you need a clean slate."
+  },
+  "tables": [
+    {
+      "envKey": "SHEETS_CONFIG_ID",
+      "sheet": "company_settings",
+      "headers": ["key", "value", "description", "last_updated"],
+      "rows": [
+        {
+          "key": "company_name",
+          "value": "Novaforge Labs Pvt Ltd",
+          "description": "Legal entity for demo",
+          "last_updated": "2026-04-01T10:00:00.000Z"
+        },
+        {
+          "key": "company_gstin",
+          "value": "27AABCNova1Z5",
+          "description": "Demo GSTIN (format only)",
+          "last_updated": "2026-04-01T10:00:00.000Z"
+        },
+        {
+          "key": "default_currency",
+          "value": "INR",
+          "description": "Reporting currency",
+          "last_updated": "2026-04-01T10:00:00.000Z"
+        },
+        {
+          "key": "chatbot_escalation_email",
+          "value": "ops@novaforge-labs.example",
+          "description": "Where urgent chats escalate",
+          "last_updated": "2026-04-01T10:00:00.000Z"
+        },
+        {
+          "key": "runway_cash_buffer_months",
+          "value": "6",
+          "description": "Target cash runway (months)",
+          "last_updated": "2026-04-01T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_MASTER_ID",
+      "sheet": "employees",
+      "headers": [
+        "employee_id", "full_name", "email", "personal_email", "phone", "dob", "gender",
+        "pan", "aadhaar", "address", "designation", "department", "reports_to",
+        "doj", "doe", "status", "employment_type", "salary_structure_id",
+        "ctc_annual_inr", "pf_uan", "esic_ip_number", "pt_applicable", "tds_regime",
+        "bank_account_number", "bank_ifsc", "bank_name", "created_at", "updated_at"
+      ],
+      "rows": [
+        {
+          "employee_id": "demo-emp-001",
+          "full_name": "Aditi Sharma",
+          "email": "aditi.s@novaforge-labs.example",
+          "personal_email": "aditi.sharma.personal@example.com",
+          "phone": "+91 98765 43210",
+          "dob": "1992-05-18",
+          "gender": "F",
+          "pan": "TESTR1234A",
+          "aadhaar": "XXXX-XXXX-4210",
+          "address": "Powai, Mumbai 400076",
+          "designation": "Head of Engineering",
+          "department": "Engineering",
+          "reports_to": "",
+          "doj": "2022-03-01",
+          "doe": "",
+          "status": "active",
+          "employment_type": "full_time",
+          "salary_structure_id": "demo-struct-senior",
+          "ctc_annual_inr": "2400000",
+          "pf_uan": "101234567890",
+          "esic_ip_number": "",
+          "pt_applicable": "yes",
+          "tds_regime": "new",
+          "bank_account_number": "50100987654321",
+          "bank_ifsc": "HDFC0001234",
+          "bank_name": "HDFC Bank",
+          "created_at": "2025-01-15T09:00:00.000Z",
+          "updated_at": "2026-04-01T10:00:00.000Z"
+        },
+        {
+          "employee_id": "demo-emp-002",
+          "full_name": "Rohan Mehta",
+          "email": "rohan.m@novaforge-labs.example",
+          "personal_email": "rohan.mehta@example.com",
+          "phone": "+91 98123 45678",
+          "dob": "1994-11-02",
+          "gender": "M",
+          "pan": "TESTR5678B",
+          "aadhaar": "XXXX-XXXX-8899",
+          "address": "Whitefield, Bengaluru 560066",
+          "designation": "Product Lead",
+          "department": "Product",
+          "reports_to": "demo-emp-001",
+          "doj": "2023-06-12",
+          "doe": "",
+          "status": "active",
+          "employment_type": "full_time",
+          "salary_structure_id": "demo-struct-mid",
+          "ctc_annual_inr": "1680000",
+          "pf_uan": "101234567891",
+          "esic_ip_number": "",
+          "pt_applicable": "yes",
+          "tds_regime": "new",
+          "bank_account_number": "31204567890123",
+          "bank_ifsc": "ICIC0004321",
+          "bank_name": "ICICI Bank",
+          "created_at": "2023-06-01T09:00:00.000Z",
+          "updated_at": "2026-04-01T10:00:00.000Z"
+        },
+        {
+          "employee_id": "demo-emp-003",
+          "full_name": "Priya Nair",
+          "email": "priya.n@novaforge-labs.example",
+          "personal_email": "",
+          "phone": "+91 91234 55667",
+          "dob": "1996-02-28",
+          "gender": "F",
+          "pan": "TESTR9012C",
+          "aadhaar": "",
+          "address": "Indiranagar, Bengaluru 560038",
+          "designation": "Finance & Operations Manager",
+          "department": "Finance",
+          "reports_to": "demo-emp-001",
+          "doj": "2024-01-08",
+          "doe": "",
+          "status": "active",
+          "employment_type": "full_time",
+          "salary_structure_id": "demo-struct-mid",
+          "ctc_annual_inr": "1320000",
+          "pf_uan": "101234567892",
+          "esic_ip_number": "",
+          "pt_applicable": "yes",
+          "tds_regime": "new",
+          "bank_account_number": "60219876543210",
+          "bank_ifsc": "SBIN0009876",
+          "bank_name": "State Bank of India",
+          "created_at": "2023-12-20T09:00:00.000Z",
+          "updated_at": "2026-04-01T10:00:00.000Z"
+        },
+        {
+          "employee_id": "demo-emp-004",
+          "full_name": "Vikram Joshi",
+          "email": "vikram.j@novaforge-labs.example",
+          "personal_email": "",
+          "phone": "+91 99887 76655",
+          "dob": "1995-07-14",
+          "gender": "M",
+          "pan": "TESTR3456D",
+          "aadhaar": "",
+          "address": "Salt Lake, Kolkata 700091",
+          "designation": "Senior Backend Engineer",
+          "department": "Engineering",
+          "reports_to": "demo-emp-001",
+          "doj": "2025-11-01",
+          "doe": "",
+          "status": "active",
+          "employment_type": "full_time",
+          "salary_structure_id": "demo-struct-mid",
+          "ctc_annual_inr": "1560000",
+          "pf_uan": "",
+          "esic_ip_number": "",
+          "pt_applicable": "yes",
+          "tds_regime": "new",
+          "bank_account_number": "02104567891234",
+          "bank_ifsc": "AXIS0002468",
+          "bank_name": "Axis Bank",
+          "created_at": "2025-10-15T09:00:00.000Z",
+          "updated_at": "2026-04-01T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_MASTER_ID",
+      "sheet": "salary_structures",
+      "headers": [
+        "structure_id", "label", "description",
+        "basic_pct_of_ctc", "hra_pct_of_basic", "lta_pct_of_ctc",
+        "special_allowance_residual", "effective_from", "created_at"
+      ],
+      "rows": [
+        {
+          "structure_id": "demo-struct-senior",
+          "label": "Senior IC / Lead",
+          "description": "40/50 HRA on basic, balance special",
+          "basic_pct_of_ctc": "40",
+          "hra_pct_of_basic": "50",
+          "lta_pct_of_ctc": "5",
+          "special_allowance_residual": "yes",
+          "effective_from": "2024-04-01",
+          "created_at": "2024-03-20T00:00:00.000Z"
+        },
+        {
+          "structure_id": "demo-struct-mid",
+          "label": "Mid individual contributor",
+          "description": "Standard mid-level slab",
+          "basic_pct_of_ctc": "45",
+          "hra_pct_of_basic": "40",
+          "lta_pct_of_ctc": "5",
+          "special_allowance_residual": "yes",
+          "effective_from": "2024-04-01",
+          "created_at": "2024-03-20T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_MASTER_ID",
+      "sheet": "vendor_master",
+      "headers": [
+        "vendor_id", "vendor_name", "gstin", "pan",
+        "bank_account", "ifsc", "bank_name",
+        "payment_terms_days", "is_payee_added",
+        "contact_email", "contact_phone", "created_at", "updated_at"
+      ],
+      "rows": [
+        {
+          "vendor_id": "demo-vnd-001",
+          "vendor_name": "CloudScale Infra Solutions LLP",
+          "gstin": "29AABCUCS01Z2",
+          "pan": "AABCU0001A",
+          "bank_account": "77554433221100",
+          "ifsc": "YESB0000444",
+          "bank_name": "Yes Bank",
+          "payment_terms_days": "30",
+          "is_payee_added": "yes",
+          "contact_email": "billing@cloudscale-infra.example",
+          "contact_phone": "+91 80444 88999",
+          "created_at": "2025-06-01T00:00:00.000Z",
+          "updated_at": "2026-04-01T00:00:00.000Z"
+        },
+        {
+          "vendor_id": "demo-vnd-002",
+          "vendor_name": "MindCanvas Design Studio",
+          "gstin": "27MCDES9999Z1",
+          "pan": "MCDES0009B",
+          "bank_account": "402011998877",
+          "ifsc": "KKBK0000958",
+          "bank_name": "Kotak Mahindra Bank",
+          "payment_terms_days": "15",
+          "is_payee_added": "yes",
+          "contact_email": "accounts@mindcanvas.example",
+          "contact_phone": "+91 22 4012 8899",
+          "created_at": "2025-08-12T00:00:00.000Z",
+          "updated_at": "2026-04-01T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_MASTER_ID",
+      "sheet": "client_master",
+      "headers": [
+        "client_id", "client_name", "gstin", "pan",
+        "billing_address", "state", "contact_email", "contact_phone",
+        "payment_terms_days", "created_at", "updated_at"
+      ],
+      "rows": [
+        {
+          "client_id": "demo-cli-001",
+          "client_name": "Horizon Retail India Pvt Ltd",
+          "gstin": "27AABCHRI1234Z1",
+          "pan": "AABCH0001C",
+          "billing_address": "BKC, Mumbai 400051",
+          "state": "Maharashtra",
+          "contact_email": "ap@horizon-retail.example",
+          "contact_phone": "+91 22 6700 1200",
+          "payment_terms_days": "45",
+          "created_at": "2025-04-01T00:00:00.000Z",
+          "updated_at": "2026-04-01T00:00:00.000Z"
+        },
+        {
+          "client_id": "demo-cli-002",
+          "client_name": "Vertex Mobility Technologies",
+          "gstin": "29AABCVX9012Z5",
+          "pan": "AABCV0002D",
+          "billing_address": "Electronic City, Bengaluru 560100",
+          "state": "Karnataka",
+          "contact_email": "finance@vertex-mobility.example",
+          "contact_phone": "+91 80 4555 3300",
+          "payment_terms_days": "30",
+          "created_at": "2025-09-10T00:00:00.000Z",
+          "updated_at": "2026-04-01T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "bank_transactions",
+      "headers": [
+        "txn_id", "company_id", "date", "narration", "ref_number",
+        "amount", "balance", "type", "mode", "source", "created_at"
+      ],
+      "rows": [
+        {"txn_id": "demo-txn-001", "company_id": "demo-company", "date": "2026-03-28", "narration": "OPENING BAL B/F", "ref_number": "", "amount": "0", "balance": "1842500.45", "type": "credit", "mode": "system", "source": "demo_seed", "created_at": "2026-04-01T06:00:00.000Z"},
+        {"txn_id": "demo-txn-002", "company_id": "demo-company", "date": "2026-03-29", "narration": "NEFT CR — HORIZON RETAIL — INV-MAR26-014", "ref_number": "NEFT7039284411", "amount": "442600.00", "balance": "2285100.45", "type": "credit", "mode": "neft", "source": "demo_seed", "created_at": "2026-04-01T06:00:00.000Z"},
+        {"txn_id": "demo-txn-003", "company_id": "demo-company", "date": "2026-03-30", "narration": "GST_PAYMENT Mar-26 — CGST+SGST", "ref_number": "GST30264412", "amount": "-128400.00", "balance": "2156700.45", "type": "debit", "mode": "neft", "source": "demo_seed", "created_at": "2026-04-01T06:00:00.000Z"},
+        {"txn_id": "demo-txn-004", "company_id": "demo-company", "date": "2026-03-30", "narration": "IFT — CloudScale Infra — AWS host Mar", "ref_number": "FT98712033", "amount": "-186500.50", "balance": "1970199.95", "type": "debit", "mode": "imps", "source": "demo_seed", "created_at": "2026-04-01T06:00:00.000Z"},
+        {"txn_id": "demo-txn-005", "company_id": "demo-company", "date": "2026-03-31", "narration": "PAYOUT — Payroll Mar-26 — batch", "ref_number": "PYR31259001", "amount": "-612000.00", "balance": "1358199.95", "type": "debit", "mode": "neft", "source": "demo_seed", "created_at": "2026-04-01T06:00:00.000Z"},
+        {"txn_id": "demo-txn-006", "company_id": "demo-company", "date": "2026-03-31", "narration": "UPI DR — MindCanvas — creative sprint", "ref_number": "UPI1122339900", "amount": "-88000.00", "balance": "1270199.95", "type": "debit", "mode": "upi", "source": "demo_seed", "created_at": "2026-04-01T06:00:00.000Z"},
+        {"txn_id": "demo-txn-007", "company_id": "demo-company", "date": "2026-04-01", "narration": "IMPS CR — Vertex Mobility — retainer Q2", "ref_number": "IMPS5544332211", "amount": "275000.00", "balance": "1545199.95", "type": "credit", "mode": "imps", "source": "demo_seed", "created_at": "2026-04-01T08:00:00.000Z"},
+        {"txn_id": "demo-txn-008", "company_id": "demo-company", "date": "2026-04-02", "narration": "ATM WDL — petty cash top-up", "ref_number": "ATM880012", "amount": "-25000.00", "balance": "1520199.95", "type": "debit", "mode": "cash", "source": "demo_seed", "created_at": "2026-04-02T09:00:00.000Z"}
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "ap_invoices",
+      "headers": [
+        "invoice_id", "vendor_id", "vendor_name", "invoice_number", "invoice_date", "due_date",
+        "line_items_json", "subtotal", "gst_amount", "total_amount",
+        "expense_category", "sub_category", "itc_claimable", "itc_amount",
+        "payment_status", "payment_date", "bank_reference",
+        "approver", "approved_at", "source_file_url", "notes", "created_at"
+      ],
+      "rows": [
+        {
+          "invoice_id": "demo-ap-001",
+          "vendor_id": "demo-vnd-001",
+          "vendor_name": "CloudScale Infra Solutions LLP",
+          "invoice_number": "CSI-MAR-1903",
+          "invoice_date": "2026-03-15",
+          "due_date": "2026-04-14",
+          "line_items_json": "[{\"desc\":\"Cloud hosting & data egress Mar-26\",\"qty\":1,\"rate\":148900,\"gst_pct\":18}]",
+          "subtotal": "148900.00",
+          "gst_amount": "26802.00",
+          "total_amount": "175702.00",
+          "expense_category": "technology",
+          "sub_category": "cloud_infra",
+          "itc_claimable": "yes",
+          "itc_amount": "26802.00",
+          "payment_status": "pending",
+          "payment_date": "",
+          "bank_reference": "",
+          "approver": "priya.n@novaforge-labs.example",
+          "approved_at": "2026-03-18T11:00:00.000Z",
+          "source_file_url": "",
+          "notes": "Auto-matched to PO demo-po-004 (mock)",
+          "created_at": "2026-03-16T10:00:00.000Z"
+        },
+        {
+          "invoice_id": "demo-ap-002",
+          "vendor_id": "demo-vnd-002",
+          "vendor_name": "MindCanvas Design Studio",
+          "invoice_number": "MC-INV-2026-044",
+          "invoice_date": "2026-02-20",
+          "due_date": "2026-03-07",
+          "line_items_json": "[{\"desc\":\"Product UX sprint + research\",\"qty\":1,\"rate\":74407,\"gst_pct\":18}]",
+          "subtotal": "74407.00",
+          "gst_amount": "13393.26",
+          "total_amount": "87800.26",
+          "expense_category": "marketing",
+          "sub_category": "design",
+          "itc_claimable": "yes",
+          "itc_amount": "13393.26",
+          "payment_status": "paid",
+          "payment_date": "2026-03-10",
+          "bank_reference": "UPI1122339900",
+          "approver": "priya.n@novaforge-labs.example",
+          "approved_at": "2026-02-22T14:00:00.000Z",
+          "source_file_url": "",
+          "notes": "Settled via UPI",
+          "created_at": "2026-02-21T09:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "ar_invoices",
+      "headers": [
+        "invoice_id", "client_id", "client_name", "invoice_number", "invoice_date", "due_date",
+        "service_description", "subtotal", "igst", "cgst", "sgst", "total_amount",
+        "status", "payment_received_date", "bank_reference",
+        "followup_count", "last_followup_date", "invoice_pdf_url", "created_at"
+      ],
+      "rows": [
+        {
+          "invoice_id": "demo-ar-001",
+          "client_id": "demo-cli-001",
+          "client_name": "Horizon Retail India Pvt Ltd",
+          "invoice_number": "NVF-MAR26-014",
+          "invoice_date": "2026-03-10",
+          "due_date": "2026-04-24",
+          "service_description": "SaaS subscription + implementation support (Mar-26)",
+          "subtotal": "375000.00",
+          "igst": "0",
+          "cgst": "33750.00",
+          "sgst": "33750.00",
+          "total_amount": "442500.00",
+          "status": "paid",
+          "payment_received_date": "2026-03-29",
+          "bank_reference": "NEFT7039284411",
+          "followup_count": "0",
+          "last_followup_date": "",
+          "invoice_pdf_url": "",
+          "created_at": "2026-03-10T16:00:00.000Z"
+        },
+        {
+          "invoice_id": "demo-ar-002",
+          "client_id": "demo-cli-002",
+          "client_name": "Vertex Mobility Technologies",
+          "invoice_number": "NVF-APR26-018",
+          "invoice_date": "2026-04-01",
+          "due_date": "2026-05-01",
+          "service_description": "Quarterly platform retainer — Q2 FY26",
+          "subtotal": "233050.85",
+          "igst": "41949.15",
+          "cgst": "0",
+          "sgst": "0",
+          "total_amount": "275000.00",
+          "status": "sent",
+          "payment_received_date": "",
+          "bank_reference": "",
+          "followup_count": "1",
+          "last_followup_date": "2026-04-03",
+          "invoice_pdf_url": "",
+          "created_at": "2026-04-01T10:30:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "payroll_runs",
+      "headers": [
+        "run_id", "month", "year", "employee_count",
+        "total_gross", "total_deductions", "total_net",
+        "pf_employer_total", "esic_employer_total",
+        "status", "approved_by", "approved_at", "created_at"
+      ],
+      "rows": [
+        {
+          "run_id": "demo-run-2026-03",
+          "month": "3",
+          "year": "2026",
+          "employee_count": "4",
+          "total_gross": "583750.00",
+          "total_deductions": "131250.00",
+          "total_net": "452500.00",
+          "pf_employer_total": "65400.00",
+          "esic_employer_total": "0",
+          "status": "paid",
+          "approved_by": "priya.n@novaforge-labs.example",
+          "approved_at": "2026-03-28T09:00:00.000Z",
+          "created_at": "2026-03-27T18:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "salary_slips",
+      "headers": [
+        "slip_id", "run_id", "employee_id", "employee_name", "month", "year",
+        "basic", "hra", "lta", "special_allowance", "gross_salary",
+        "pf_employee", "esic_employee", "pt", "tds", "lop_deduction",
+        "total_deductions", "net_salary",
+        "working_days", "lop_days", "drive_url", "created_at"
+      ],
+      "rows": [
+        {"slip_id": "demo-slip-001", "run_id": "demo-run-2026-03", "employee_id": "demo-emp-001", "employee_name": "Aditi Sharma", "month": "3", "year": "2026", "basic": "80000", "hra": "40000", "lta": "8333", "special_allowance": "51667", "gross_salary": "200000", "pf_employee": "9600", "esic_employee": "0", "pt": "200", "tds": "28000", "lop_deduction": "0", "total_deductions": "37800", "net_salary": "162200", "working_days": "26", "lop_days": "0", "drive_url": "", "created_at": "2026-03-28T09:05:00.000Z"},
+        {"slip_id": "demo-slip-002", "run_id": "demo-run-2026-03", "employee_id": "demo-emp-002", "employee_name": "Rohan Mehta", "month": "3", "year": "2026", "basic": "56000", "hra": "22400", "lta": "5833", "special_allowance": "66167", "gross_salary": "150400", "pf_employee": "6720", "esic_employee": "0", "pt": "200", "tds": "18500", "lop_deduction": "0", "total_deductions": "25420", "net_salary": "124980", "working_days": "26", "lop_days": "0", "drive_url": "", "created_at": "2026-03-28T09:05:00.000Z"},
+        {"slip_id": "demo-slip-003", "run_id": "demo-run-2026-03", "employee_id": "demo-emp-003", "employee_name": "Priya Nair", "month": "3", "year": "2026", "basic": "44000", "hra": "17600", "lta": "4583", "special_allowance": "53217", "gross_salary": "119400", "pf_employee": "5280", "esic_employee": "0", "pt": "200", "tds": "12800", "lop_deduction": "0", "total_deductions": "18280", "net_salary": "101120", "working_days": "26", "lop_days": "0", "drive_url": "", "created_at": "2026-03-28T09:05:00.000Z"},
+        {"slip_id": "demo-slip-004", "run_id": "demo-run-2026-03", "employee_id": "demo-emp-004", "employee_name": "Vikram Joshi", "month": "3", "year": "2026", "basic": "52000", "hra": "20800", "lta": "5417", "special_allowance": "52133", "gross_salary": "130350", "pf_employee": "6240", "esic_employee": "0", "pt": "200", "tds": "14990", "lop_deduction": "0", "total_deductions": "21430", "net_salary": "108920", "working_days": "26", "lop_days": "0", "drive_url": "", "created_at": "2026-03-28T09:05:00.000Z"}
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "leave_records",
+      "headers": [
+        "record_id", "employee_id", "employee_name", "leave_type",
+        "from_date", "to_date", "days", "reason",
+        "status", "approver", "approved_at", "created_at"
+      ],
+      "rows": [
+        {
+          "record_id": "demo-leave-001",
+          "employee_id": "demo-emp-002",
+          "employee_name": "Rohan Mehta",
+          "leave_type": "annual",
+          "from_date": "2026-04-15",
+          "to_date": "2026-04-17",
+          "days": "3",
+          "reason": "Family function",
+          "status": "approved",
+          "approver": "aditi.s@novaforge-labs.example",
+          "approved_at": "2026-04-02T07:00:00.000Z",
+          "created_at": "2026-03-28T12:00:00.000Z"
+        },
+        {
+          "record_id": "demo-leave-002",
+          "employee_id": "demo-emp-004",
+          "employee_name": "Vikram Joshi",
+          "leave_type": "sick",
+          "from_date": "2026-04-08",
+          "to_date": "2026-04-08",
+          "days": "1",
+          "reason": "Medical",
+          "status": "pending",
+          "approver": "",
+          "approved_at": "",
+          "created_at": "2026-04-04T08:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "leave_balances",
+      "headers": ["balance_id", "employee_id", "leave_type", "year", "opening_balance", "accrued", "used", "closing_balance", "last_updated"],
+      "rows": [
+        {"balance_id": "demo-lb-001", "employee_id": "demo-emp-001", "leave_type": "annual", "year": "2026", "opening_balance": "12", "accrued": "4", "used": "2", "closing_balance": "14", "last_updated": "2026-04-01"},
+        {"balance_id": "demo-lb-002", "employee_id": "demo-emp-002", "leave_type": "annual", "year": "2026", "opening_balance": "10", "accrued": "4", "used": "1", "closing_balance": "13", "last_updated": "2026-04-01"}
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "attendance",
+      "headers": ["record_id", "employee_id", "month", "year", "working_days_in_month", "days_present", "days_absent", "lop_days", "wfh_days", "updated_at"],
+      "rows": [
+        {"record_id": "demo-att-001", "employee_id": "demo-emp-001", "month": "3", "year": "2026", "working_days_in_month": "26", "days_present": "25", "days_absent": "1", "lop_days": "0", "wfh_days": "4", "updated_at": "2026-04-01T00:00:00.000Z"},
+        {"record_id": "demo-att-002", "employee_id": "demo-emp-002", "month": "3", "year": "2026", "working_days_in_month": "26", "days_present": "26", "days_absent": "0", "lop_days": "0", "wfh_days": "8", "updated_at": "2026-04-01T00:00:00.000Z"}
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "approval_requests",
+      "headers": [
+        "approval_id", "agent_id", "action_type", "action_payload_json",
+        "confidence_score", "evidence_json", "proposed_action_text",
+        "created_at", "expires_at", "status",
+        "approver_role", "resolved_by", "resolved_at", "resolution_notes",
+        "attachment_drive_urls_json"
+      ],
+      "rows": [
+        {
+          "approval_id": "demo-appr-001",
+          "agent_id": "payroll",
+          "action_type": "PAYOUT_BATCH",
+          "action_payload_json": "{\"run_id\":\"demo-run-2026-04\",\"employee_count\":4,\"total_inr\":465000}",
+          "confidence_score": "0.88",
+          "evidence_json": "{\"attendance_ok\":true,\"prior_run\":\"demo-run-2026-03\"}",
+          "proposed_action_text": "Approve April payroll batch for ₹4.65L net",
+          "created_at": "2026-04-04T10:00:00.000Z",
+          "expires_at": "2026-04-05T10:00:00.000Z",
+          "status": "PENDING",
+          "approver_role": "CFO",
+          "resolved_by": "",
+          "resolved_at": "",
+          "resolution_notes": "",
+          "attachment_drive_urls_json": ""
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "hr_tasks",
+      "headers": ["task_id", "employee_id", "task_type", "description", "due_date", "status", "completed_at", "notes", "primary_drive_url", "primary_drive_file_id"],
+      "rows": [
+        {
+          "task_id": "demo-hrtask-001",
+          "employee_id": "demo-emp-004",
+          "task_type": "onboarding_docs",
+          "description": "Collect PF declaration + investment proofs for FY26",
+          "due_date": "2026-04-15",
+          "status": "open",
+          "completed_at": "",
+          "notes": "Employee joined Nov-25",
+          "primary_drive_url": "",
+          "primary_drive_file_id": ""
+        },
+        {
+          "task_id": "demo-hrtask-002",
+          "employee_id": "demo-emp-003",
+          "task_type": "compliance_training",
+          "description": "Complete POSH refresher (annual)",
+          "due_date": "2026-04-30",
+          "status": "in_progress",
+          "completed_at": "",
+          "notes": "LMS link sent",
+          "primary_drive_url": "",
+          "primary_drive_file_id": ""
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_TRANSACTIONS_ID",
+      "sheet": "expense_entries",
+      "headers": [
+        "entry_id", "date", "source_ap_invoice_id", "vendor_name",
+        "category", "sub_category", "amount", "gst_amount", "gst_rate",
+        "itc_claimable", "itc_amount", "notes", "created_at"
+      ],
+      "rows": [
+        {
+          "entry_id": "demo-exp-001",
+          "date": "2026-03-16",
+          "source_ap_invoice_id": "demo-ap-001",
+          "vendor_name": "CloudScale Infra Solutions LLP",
+          "category": "technology",
+          "sub_category": "cloud_infra",
+          "amount": "148900.00",
+          "gst_amount": "26802.00",
+          "gst_rate": "18",
+          "itc_claimable": "yes",
+          "itc_amount": "26802.00",
+          "notes": "Derived from demo-ap-001 for GL view",
+          "created_at": "2026-03-16T11:00:00.000Z"
+        },
+        {
+          "entry_id": "demo-exp-002",
+          "date": "2026-02-21",
+          "source_ap_invoice_id": "demo-ap-002",
+          "vendor_name": "MindCanvas Design Studio",
+          "category": "marketing",
+          "sub_category": "design",
+          "amount": "74407.00",
+          "gst_amount": "13393.26",
+          "gst_rate": "18",
+          "itc_claimable": "yes",
+          "itc_amount": "13393.26",
+          "notes": "Design sprint — settled",
+          "created_at": "2026-02-21T14:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_COMPLIANCE_ID",
+      "sheet": "gst_input_ledger",
+      "headers": [
+        "ledger_id", "ap_invoice_id", "vendor_name", "invoice_date",
+        "period_month", "period_year",
+        "invoice_amount", "gst_amount", "gst_rate",
+        "itc_claimable", "itc_claimed", "itc_amount",
+        "category", "created_at"
+      ],
+      "rows": [
+        {
+          "ledger_id": "demo-gstin-001",
+          "ap_invoice_id": "demo-ap-001",
+          "vendor_name": "CloudScale Infra Solutions LLP",
+          "invoice_date": "2026-03-15",
+          "period_month": "3",
+          "period_year": "2026",
+          "invoice_amount": "148900.00",
+          "gst_amount": "26802.00",
+          "gst_rate": "18",
+          "itc_claimable": "yes",
+          "itc_claimed": "no",
+          "itc_amount": "26802.00",
+          "category": "cloud_infra",
+          "created_at": "2026-03-18T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "envKey": "SHEETS_COMPLIANCE_ID",
+      "sheet": "compliance_calendar",
+      "headers": ["calendar_id", "type", "label", "period_month", "period_year", "due_date", "status", "alert_sent_7d", "alert_sent_2d", "completed_date", "filing_reference", "notes"],
+      "rows": [
+        {"calendar_id": "demo-cal-001", "type": "gst_gstr1", "label": "GSTR-1 Mar-26", "period_month": "3", "period_year": "2026", "due_date": "2026-04-11", "status": "pending", "alert_sent_7d": "no", "alert_sent_2d": "no", "completed_date": "", "filing_reference": "", "notes": "Demo row"},
+        {"calendar_id": "demo-cal-002", "type": "tds_24q", "label": "24Q FY25-26 Q4", "period_month": "3", "period_year": "2026", "due_date": "2026-05-31", "status": "pending", "alert_sent_7d": "no", "alert_sent_2d": "no", "completed_date": "", "filing_reference": "", "notes": "Demo row"}
+      ]
+    },
+    {
+      "envKey": "SHEETS_LOGS_ID",
+      "sheet": "file_links",
+      "headers": ["link_id", "scope_table", "scope_record_id", "role", "drive_file_id", "drive_web_view_url", "mime", "filename", "local_upload_id", "source", "meta_json", "created_at"],
+      "rows": [
+        {
+          "link_id": "demo-fl-001",
+          "scope_table": "approval_request",
+          "scope_record_id": "demo-appr-001",
+          "role": "payroll_evidence",
+          "drive_file_id": "demo-no-drive-file",
+          "drive_web_view_url": "https://drive.google.com/file/d/demo-view/view",
+          "mime": "application/pdf",
+          "filename": "payroll_evidence_mar.pdf",
+          "local_upload_id": "",
+          "source": "demo_seed",
+          "meta_json": "{\"note\":\"illustrative link\"}",
+          "created_at": "2026-04-04T10:01:00.000Z"
+        }
+      ]
+    }
+  ]
+}

@@ -118,22 +118,8 @@ export async function POST(
         createdAt: new Date().toISOString(),
       });
     }
-    if (result.status === 'COMPLETED' && result.output) {
-      artifacts.push({
-        id: nid('out'),
-        kind: 'agent_output',
-        title: 'Agent output',
-        body:
-          typeof result.output === 'string'
-            ? result.output
-            : JSON.stringify(result.output, null, 2),
-        payload: {
-          status: result.status,
-          audit_entry_id: result.audit_entry_id,
-        },
-        createdAt: new Date().toISOString(),
-      });
-    }
+    // Do not attach agent_output artifacts: the same text is already in the assistant
+    // message body and would render twice in the chat UI.
 
     let assistantText = '';
     if (typeof result.output === 'string' && result.output.trim()) {

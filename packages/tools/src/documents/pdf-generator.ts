@@ -1,11 +1,16 @@
 // Document generator — produces HTML documents and uploads to Google Drive.
 // Falls back to returning the HTML as a data-url if Drive credentials are absent.
 //
-// Drive folder: VELO_DRIVE_FOLDER_ID env var (root of all Velo documents).
-// Folder layout: /VELO_DRIVE_FOLDER/<doc_type>/<year>/<employee_id>/
+// Drive root: VELO_DRIVE_FOLDER_ID. Subfolders are created under ./drive-folders.ts layout
+// (generated/hr, generated/invoices, uploads/invoices/source, etc.).
 
 import { google } from 'googleapis';
 import { Readable } from 'stream';
+import {
+  ensureVeloDrivePath,
+  segmentsForDocumentTool,
+} from './drive-folders.js';
+import { recordDocumentOnDriveAndSheets } from './drive-sheet-cohesion.js';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -441,8 +446,26 @@ export async function generatePdfDocument(
 
   if (useDrive()) {
     try {
-      const folderId = process.env.VELO_DRIVE_FOLDER_ID;
-      const result = await uploadToDrive(filename, html, folderId);
+      const rootId = process.env.VELO_DRIVE_FOLDER_ID;
+      if (!rootId) {
+        throw new Error('VELO_DRIVE_FOLDER_ID missing');
+      }
+      const drive = await getDriveClient();
+      const leafId = await ensureVeloDrivePath(
+        drive,
+        rootId,
+        segmentsForDocumentTool(toolId, params)
+      );
+      const result = await uploadToDrive(filename, html, leafId);
+      await recordDocumentOnDriveAndSheets({
+        toolId,
+        params,
+        documentId,
+        filename,
+        mime: 'text/html',
+        driveFileId: result.file_id,
+        driveWebViewUrl: result.web_view_link,
+      });
       return {
         ok: true,
         document_id: documentId,
@@ -452,6 +475,7 @@ export async function generatePdfDocument(
         filename,
         generated_at: new Date().toISOString(),
         storage: 'google_drive',
+        sheets: { file_links_recorded: true },
       };
     } catch (err) {
       console.error('[documents] Drive upload failed, returning html fallback:', err);

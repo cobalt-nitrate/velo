@@ -4,6 +4,7 @@ import { ApprovalCard } from '../components/approval-card';
 import { AuditTimeline } from '../components/audit-timeline';
 import { EvidenceDrawer } from '../components/evidence-drawer';
 import { ExceptionCard } from '../components/exception-card';
+import { PlatformHealthCard } from '../components/platform-health-card';
 import { PolicyCopilot } from '../components/policy-copilot';
 import { RunwayTile } from '../components/runway-tile';
 import { WeeklyCloseNarrative } from '../components/weekly-close-narrative';
@@ -57,7 +58,12 @@ export default async function CommandCenterPage() {
         <Link href="/settings" className="text-velo-accent hover:underline">
           Configuration
         </Link>
+        <a href="#platform-health" className="text-velo-accent hover:underline">
+          Platform health
+        </a>
       </section>
+
+      <PlatformHealthCard />
 
       <section className="grid gap-4 lg:grid-cols-3">
         <RunwayTile months={months} burnRateInr={burn} confidence={cashConf} />

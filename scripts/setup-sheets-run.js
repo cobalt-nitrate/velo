@@ -185,6 +185,7 @@ const SPREADSHEETS = [
           'confidence_score', 'evidence_json', 'proposed_action_text',
           'created_at', 'expires_at', 'status',
           'approver_role', 'resolved_by', 'resolved_at', 'resolution_notes',
+          'attachment_drive_urls_json',
         ],
       },
       {
@@ -192,6 +193,7 @@ const SPREADSHEETS = [
         headers: [
           'task_id', 'employee_id', 'task_type', 'description',
           'due_date', 'status', 'completed_at', 'notes',
+          'primary_drive_url', 'primary_drive_file_id',
         ],
       },
       {
@@ -308,6 +310,15 @@ const SPREADSHEETS = [
         headers: [
           'notification_id', 'timestamp', 'type', 'channel',
           'recipient', 'subject', 'status', 'related_record_id',
+        ],
+      },
+      {
+        title: 'file_links',
+        headers: [
+          'link_id', 'scope_table', 'scope_record_id', 'role',
+          'drive_file_id', 'drive_web_view_url',
+          'mime', 'filename', 'local_upload_id',
+          'source', 'meta_json', 'created_at',
         ],
       },
     ],

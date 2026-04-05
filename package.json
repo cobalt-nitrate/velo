@@ -17,6 +17,8 @@
     "setup-sheets": "node scripts/setup-sheets-run.js",
     "ensure-bank-tab": "node scripts/ensure-bank-transactions-tab.js",
     "audit-sheet-locations": "node scripts/audit-velo-sheet-locations.js",
+    "ensure-file-links": "node scripts/ensure-file-links-tab.js",
+    "seed-mock-data": "node scripts/seed-mock-velo-data.js",
     "seed-compliance": "node scripts/seed-compliance-calendar.js"
   },
   "devDependencies": {

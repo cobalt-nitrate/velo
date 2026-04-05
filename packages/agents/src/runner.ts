@@ -22,6 +22,50 @@ import type {
   ToolActionMetadata,
   ToolSchema,
 } from '@velo/core/types';
+import type { AgentRunEvent, RunAgentOptions } from './run-events.js';
+
+export type { AgentRunEvent, RunAgentOptions } from './run-events.js';
+
+function emitEvent(
+  onEvent: ((e: AgentRunEvent) => void) | undefined,
+  event: AgentRunEvent
+): void {
+  if (!onEvent) return;
+  try {
+    onEvent(event);
+  } catch {
+    /* streaming client must not break the run */
+  }
+}
+
+function summarizeParams(p: Record<string, unknown>, max = 1200): string {
+  try {
+    const s = JSON.stringify(p);
+    return s.length > max ? `${s.slice(0, max)}…` : s;
+  } catch {
+    return '[parameters]';
+  }
+}
+
+function previewToolJson(data: unknown, max = 3600): string {
+  try {
+    const s = typeof data === 'string' ? data : JSON.stringify(data);
+    return s.length > max ? `${s.slice(0, max)}…` : s;
+  } catch {
+    return String(data);
+  }
+}
+
+function structuredPayload(data: unknown): unknown | undefined {
+  if (data === null || data === undefined) return undefined;
+  try {
+    const s = JSON.stringify(data);
+    if (s.length > 32_000) return undefined;
+    return JSON.parse(s) as unknown;
+  } catch {
+    return undefined;
+  }
+}
 
 type ToolExecutor = (params: Record<string, unknown>) => Promise<unknown>;
 
@@ -90,8 +134,12 @@ export async function runAgent(
   agentId: string,
   input: unknown,
   context: AgentContext,
-  subAgentDepth = 0
+  options?: number | RunAgentOptions
 ): Promise<AgentResult> {
+  const opts: RunAgentOptions =
+    typeof options === 'number' ? { subAgentDepth: options } : (options ?? {});
+  const subAgentDepth = opts.subAgentDepth ?? 0;
+  const onEvent = opts.onEvent;
   ensureRuntimeToolsRegistered();
   const client = getOpenAIClient();
   const config = loadAgentConfig(agentId) as AgentConfig;
@@ -145,8 +193,21 @@ export async function runAgent(
     };
   }
 
+  emitEvent(onEvent, {
+    type: 'run.start',
+    agent_id: agentId,
+    depth: subAgentDepth,
+    model: resolvedModel,
+  });
+
   while (iterations < config.max_iterations) {
     iterations++;
+
+    emitEvent(onEvent, {
+      type: 'iteration',
+      agent_id: agentId,
+      iteration: iterations,
+    });
 
     const completion = await client.chat.completions.create({
       model: resolvedModel,
@@ -169,6 +230,14 @@ export async function runAgent(
     const msg = choice.message;
     const toolCalls = msg.tool_calls;
 
+    if (msg.content?.trim()) {
+      emitEvent(onEvent, {
+        type: 'assistant.delta',
+        agent_id: agentId,
+        text: msg.content ?? '',
+      });
+    }
+
     if (!toolCalls?.length) {
       const answer = msg.content ?? '';
       createAuditEvent({
@@ -182,6 +251,11 @@ export async function runAgent(
           answer,
           finish_reason: choice.finish_reason,
         },
+      });
+      emitEvent(onEvent, {
+        type: 'run.complete',
+        agent_id: agentId,
+        status: 'COMPLETED',
       });
       return {
         status: 'COMPLETED',
@@ -245,12 +319,19 @@ export async function runAgent(
             note: 'sub-agent delegation',
           },
         });
-        evaluated.push({
-          tc,
-          toolCall,
-          confidence,
-          metadata,
-          policyResult: 'AUTO_EXECUTE',
+      evaluated.push({
+        tc,
+        toolCall,
+        confidence,
+        metadata,
+        policyResult: 'AUTO_EXECUTE',
+      });
+        emitEvent(onEvent, {
+          type: 'tool.proposed',
+          agent_id: agentId,
+          tool_id: toolCall.tool_id,
+          policy: 'AUTO_EXECUTE',
+          parameters_preview: summarizeParams(parameters),
         });
         continue;
       }
@@ -289,10 +370,22 @@ export async function runAgent(
         metadata,
         policyResult,
       });
+      emitEvent(onEvent, {
+        type: 'tool.proposed',
+        agent_id: agentId,
+        tool_id: toolCall.tool_id,
+        policy: policyResult,
+        parameters_preview: summarizeParams(parameters),
+      });
     }
 
     const firstRefuse = evaluated.find((e) => e.policyResult === 'REFUSE');
     if (firstRefuse) {
+      emitEvent(onEvent, {
+        type: 'run.blocked',
+        reason: 'refused',
+        message: `Refused: ${firstRefuse.toolCall.tool_id}`,
+      });
       return {
         status: 'REFUSED',
         error: `Action refused: RBAC, confidence floor, or policy blocked tool ${firstRefuse.toolCall.tool_id} (confidence ${firstRefuse.confidence.overall}).`,
@@ -337,6 +430,12 @@ export async function runAgent(
 
       await persistApprovalRequestSheet(approvalRequest, context.company_id);
 
+      emitEvent(onEvent, {
+        type: 'run.blocked',
+        reason: 'approval',
+        message: approvalRequest.proposed_action_text,
+        approval_id: approvalRequest.approval_id,
+      });
       return {
         status: 'PENDING_APPROVAL',
         approval_id: approvalRequest.approval_id,
@@ -349,6 +448,11 @@ export async function runAgent(
       (e) => e.policyResult === 'RECOMMEND_ONLY'
     );
     if (firstRecommend) {
+      emitEvent(onEvent, {
+        type: 'run.complete',
+        agent_id: agentId,
+        status: 'COMPLETED',
+      });
       return {
         status: 'COMPLETED',
         output: msg.content ?? '',
@@ -369,7 +473,21 @@ export async function runAgent(
           item.toolCall.parameters.input ?? item.toolCall.parameters.message ?? '';
         const sin =
           typeof rawIn === 'string' ? rawIn : JSON.stringify(rawIn);
-        const subResult = await runAgent(sid, sin, context, subAgentDepth + 1);
+        emitEvent(onEvent, {
+          type: 'sub_agent.start',
+          parent_agent: agentId,
+          child_agent: sid,
+        });
+        const subResult = await runAgent(sid, sin, context, {
+          subAgentDepth: subAgentDepth + 1,
+          onEvent,
+        });
+        emitEvent(onEvent, {
+          type: 'sub_agent.end',
+          parent_agent: agentId,
+          child_agent: sid,
+          status: subResult.status,
+        });
         if (
           subResult.status === 'PENDING_APPROVAL' ||
           subResult.status === 'REFUSED' ||
@@ -400,10 +518,22 @@ export async function runAgent(
       if (!tool) {
         throw new Error(`Tool not registered: ${item.toolCall.tool_id}`);
       }
+      emitEvent(onEvent, {
+        type: 'tool.executing',
+        agent_id: agentId,
+        tool_id: item.toolCall.tool_id,
+      });
       const toolResult = await tool({
         ...item.toolCall.parameters,
         tool_id: item.toolCall.tool_id,
         company_id: context.company_id,
+      });
+      emitEvent(onEvent, {
+        type: 'tool.result',
+        agent_id: agentId,
+        tool_id: item.toolCall.tool_id,
+        preview: previewToolJson(toolResult),
+        structured: structuredPayload(toolResult),
       });
       createAuditEvent({
         company_id: context.company_id,
@@ -425,6 +555,11 @@ export async function runAgent(
     }
   }
 
+  emitEvent(onEvent, {
+    type: 'run.complete',
+    agent_id: agentId,
+    status: 'FAILED',
+  });
   return {
     status: 'FAILED',
     error: 'Max iterations reached without resolution.',

@@ -51,14 +51,16 @@
       "expense.*",
       "payroll.view",
       "vendor.*",
-      "approval.resolve"
+      "approval.resolve",
+      "internal.platform.healthcheck"
     ],
     "hr_lead": [
       "hr.*",
       "employee.*",
       "leave.*",
       "payroll.view",
-      "policy_document.*"
+      "policy_document.*",
+      "internal.platform.healthcheck"
     ],
     "employee": [
       "helpdesk.*",

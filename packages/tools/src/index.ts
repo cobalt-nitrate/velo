@@ -10,6 +10,7 @@ import {
 } from './ocr/invoice-parser.js';
 import { parseBankStatement } from './bank/statement-parser.js';
 import { generatePdfDocument } from './documents/pdf-generator.js';
+import { runPlatformHealthcheck } from './platform-health.js';
 
 type ToolHandler = (params: Record<string, unknown>) => Promise<unknown>;
 
@@ -512,6 +513,38 @@ const toolDefinitions: ToolDefinition[] = [
     handler: executeSheetTool,
   },
   {
+    id: 'sheets.hr_tasks.update',
+    description: 'Update HR task fields (e.g. primary Drive URL after document generation)',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.salary_slips.update',
+    description: 'Update a salary slip row (e.g. drive_url after generating payslip HTML)',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.file_links.create',
+    description: 'Record a Drive file in Velo file_links index (scope_table + scope_record_id + role)',
+    schema: COMMON_SCHEMA,
+    handler: executeSheetTool,
+  },
+  {
+    id: 'sheets.file_links.get_by_scope',
+    description: 'List file_links for a scope_table / scope_record_id (optional role)',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string' },
+        scope_table: { type: 'string' },
+        scope_record_id: { type: 'string' },
+        role: { type: 'string' },
+      },
+    },
+    handler: executeSheetTool,
+  },
+  {
     id: 'sheets.policy_documents.create',
     description: 'Create a policy document record',
     schema: COMMON_SCHEMA,
@@ -801,6 +834,19 @@ const toolDefinitions: ToolDefinition[] = [
     description: 'Append many bank transaction rows (e.g. after statement parse)',
     schema: COMMON_SCHEMA,
     handler: executeSheetTool,
+  },
+
+  {
+    id: 'internal.platform.healthcheck',
+    description:
+      'Full Velo health: integration probes (Sheets IDs, Drive, LLM) plus operational_snapshot from live Sheets — pending approvals (with texts), compliance due soon, AP/AR/bank/employees/HR blockers. Read-only.',
+    schema: {
+      type: 'object',
+      properties: {
+        company_id: { type: 'string', description: 'Optional; ignored — global health' },
+      },
+    },
+    handler: async () => runPlatformHealthcheck(),
   },
 
   {

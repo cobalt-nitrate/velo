@@ -1,5 +1,5 @@
 import { parseBankStatement } from '@velo/tools/bank';
-import { executeSheetTool } from '@velo/tools/sheets';
+import { executeSheetTool, recordVeloFileLink } from '@velo/tools/sheets';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -13,6 +13,11 @@ export async function POST(req: Request) {
     const body = (await req.json()) as Record<string, unknown>;
     const companyId = String(body.companyId ?? body.company_id ?? 'demo-company');
     const persist = body.persist !== false;
+    const statementDriveUrl = body.statement_drive_url ?? body.statementDriveUrl;
+    const statementDriveFileId = body.statement_drive_file_id ?? body.statementDriveFileId;
+    const importBatchId = String(
+      body.import_batch_id ?? body.importBatchId ?? `stmt_${companyId}_${Date.now()}`
+    );
 
     const parsed = await parseBankStatement({
       raw_text: body.raw_text ?? body.text ?? body.csv,
@@ -38,6 +43,28 @@ export async function POST(req: Request) {
         tool_id: 'sheets.bank_transactions.create_batch',
         company_id: companyId,
         rows,
+      });
+    }
+
+    if (
+      typeof statementDriveUrl === 'string' &&
+      statementDriveUrl &&
+      typeof statementDriveFileId === 'string' &&
+      statementDriveFileId
+    ) {
+      await recordVeloFileLink({
+        scope_table: 'bank_statement_import',
+        scope_record_id: importBatchId,
+        role: 'statement_source',
+        drive_file_id: statementDriveFileId,
+        drive_web_view_url: statementDriveUrl,
+        mime: body.statement_mime ? String(body.statement_mime) : 'application/pdf',
+        filename: body.statement_filename ? String(body.statement_filename) : 'statement',
+        source: 'bank-statement-api',
+        meta_json: JSON.stringify({
+          company_id: companyId,
+          txn_count: parsed.transactions?.length ?? 0,
+        }),
       });
     }
 

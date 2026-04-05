@@ -3,7 +3,12 @@
 // Updates the approval_requests sheet and returns the updated record.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { findApprovalById, updateApprovalRow } from '@velo/tools/sheets';
+import {
+  findApprovalById,
+  mergeApprovalAttachmentsFromFileLinks,
+  parseAttachmentDriveUrlsJson,
+  updateApprovalRow,
+} from '@velo/tools/sheets';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../../lib/auth';
 
@@ -58,12 +63,19 @@ export async function PATCH(
       );
     }
 
+    // Merge Drive attachments from file_links into attachment_drive_urls_json on resolve
+    const mergedAttachmentsJson = await mergeApprovalAttachmentsFromFileLinks(
+      approvalId,
+      found.row.attachment_drive_urls_json ?? ''
+    );
+
     // Apply the resolution
     const updates: Record<string, unknown> = {
       status: body.resolution,
       resolved_by: resolvedBy,
       resolved_at: new Date().toISOString(),
       resolution_notes: body.resolution_notes ?? '',
+      attachment_drive_urls_json: mergedAttachmentsJson,
     };
 
     await updateApprovalRow(found.spreadsheetId, found.rowIndex, found.headers, updates);
@@ -75,6 +87,7 @@ export async function PATCH(
       resolved_by: resolvedBy,
       resolved_at: updates.resolved_at,
       previous_status: found.row.status,
+      attachments_merged: parseAttachmentDriveUrlsJson(mergedAttachmentsJson),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -92,7 +105,15 @@ export async function GET(
     if (!found) {
       return NextResponse.json({ error: `Approval not found: ${params.id}` }, { status: 404 });
     }
-    return NextResponse.json({ ok: true, approval: found.row });
+    const mergedJson = await mergeApprovalAttachmentsFromFileLinks(
+      params.id,
+      found.row.attachment_drive_urls_json ?? ''
+    );
+    return NextResponse.json({
+      ok: true,
+      approval: found.row,
+      attachments_merged: parseAttachmentDriveUrlsJson(mergedJson),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 500 });

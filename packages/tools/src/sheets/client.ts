@@ -3,6 +3,16 @@
 // Falls back to in-memory store when credentials are not configured (local dev without Sheets).
 
 import { google } from 'googleapis';
+import {
+  APPROVAL_FILE_LINK_SCOPE,
+  mergeFileLinkRowsIntoApprovalAttachmentsJson,
+  parseAttachmentDriveUrlsJson,
+} from './approval-attachments.js';
+export {
+  APPROVAL_FILE_LINK_SCOPE,
+  parseAttachmentDriveUrlsJson,
+  type DriveAttachmentRef,
+} from './approval-attachments.js';
 
 // ─── Table → Spreadsheet mapping ─────────────────────────────────────────────
 
@@ -42,6 +52,8 @@ const TABLE_MAP: Record<string, { envKey: string; sheetName: string }> = {
   policy_decisions: { envKey: 'SHEETS_LOGS_ID', sheetName: 'policy_decisions' },
   policy_documents: { envKey: 'SHEETS_LOGS_ID', sheetName: 'policy_documents' },
   notification_log: { envKey: 'SHEETS_LOGS_ID', sheetName: 'notification_log' },
+  /** Cross-entity index: Drive file ↔ Sheets row (tasks, invoices, imports, …) */
+  file_links:       { envKey: 'SHEETS_LOGS_ID', sheetName: 'file_links' },
 
   // CONFIG spreadsheet
   company_settings:  { envKey: 'SHEETS_CONFIG_ID', sheetName: 'company_settings' },
@@ -226,6 +238,20 @@ function runSpecialRead(
   payload: Record<string, unknown>
 ): Record<string, unknown> | null {
   const companyId = String(payload.company_id ?? '').toLowerCase();
+
+  if (table === 'file_links' && operation === 'get_by_scope') {
+    const st = String(payload.scope_table ?? '');
+    const sid = String(payload.scope_record_id ?? '');
+    const role = String(payload.role ?? '');
+    let filtered = rows;
+    if (st) filtered = filtered.filter((r) => r.scope_table === st);
+    if (sid) filtered = filtered.filter((r) => r.scope_record_id === sid);
+    if (role) filtered = filtered.filter((r) => r.role === role);
+    filtered.sort(
+      (a, b) => parseIsoDate(String(b.created_at ?? 0)) - parseIsoDate(String(a.created_at ?? 0))
+    );
+    return { ok: true, table, operation, count: filtered.length, rows: filtered };
+  }
 
   if (table === 'bank_transactions') {
     let txRows = companyId
@@ -593,7 +619,8 @@ async function executeSheetToolReal(
     operation === 'get_pending_hires' ||
     operation === 'get_blockers' ||
     operation === 'get_ytd_by_employee' ||
-    operation === 'get_by_employee_year'
+    operation === 'get_by_employee_year' ||
+    operation === 'get_by_scope'
   ) {
     const special = runSpecialRead(table, operation, rows, payload);
     if (special) return special;
@@ -655,6 +682,7 @@ function inferIdField(table: string): string {
     leave_balances: 'balance_id',
     hr_tasks: 'task_id',
     bank_transactions: 'txn_id',
+    file_links: 'link_id',
   };
   return idFieldMap[table] ?? 'id';
 }
@@ -715,6 +743,116 @@ function executeSheetToolInMemory(
 }
 
 // ─── Direct append for AuditLogger (bypasses tool dispatch) ───────────────────
+
+/** Canonical headers for file_links tab (Velo Data → LOGS workbook). */
+export const FILE_LINKS_COLUMN_ORDER = [
+  'link_id',
+  'scope_table',
+  'scope_record_id',
+  'role',
+  'drive_file_id',
+  'drive_web_view_url',
+  'mime',
+  'filename',
+  'local_upload_id',
+  'source',
+  'meta_json',
+  'created_at',
+] as const;
+
+export type VeloFileLinkInput = {
+  scope_table: string;
+  scope_record_id: string;
+  role: string;
+  drive_file_id: string;
+  drive_web_view_url: string;
+  mime?: string;
+  filename?: string;
+  local_upload_id?: string;
+  source?: string;
+  meta_json?: string;
+};
+
+/**
+ * Append one row to file_links (and in-memory when Sheets unavailable).
+ * Use this for every durable Drive file so Sheets stays cohesive with tasks / invoices / imports.
+ */
+export async function recordVeloFileLink(input: VeloFileLinkInput): Promise<void> {
+  const link_id = `fl_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+  const row: Record<string, unknown> = {
+    link_id,
+    scope_table: input.scope_table,
+    scope_record_id: input.scope_record_id,
+    role: input.role,
+    drive_file_id: input.drive_file_id,
+    drive_web_view_url: input.drive_web_view_url,
+    mime: input.mime ?? '',
+    filename: input.filename ?? '',
+    local_upload_id: input.local_upload_id ?? '',
+    source: input.source ?? '',
+    meta_json: input.meta_json ?? '',
+    created_at: new Date().toISOString(),
+  };
+
+  if (!useRealSheets() || !process.env.SHEETS_LOGS_ID) {
+    memCreate('file_links', row);
+    return;
+  }
+
+  const spreadsheetId = process.env.SHEETS_LOGS_ID;
+  try {
+    const { headers } = await readSheet(spreadsheetId, 'file_links');
+    if (!headers.length) {
+      console.warn(
+        '[sheets] file_links sheet missing or has no header row — run: node scripts/ensure-file-links-tab.js'
+      );
+      memCreate('file_links', row);
+      return;
+    }
+    await appendRow(spreadsheetId, 'file_links', headers, row);
+  } catch (err) {
+    console.error('[sheets] recordVeloFileLink failed:', err);
+    memCreate('file_links', row);
+  }
+}
+
+/** Rows from file_links for a scope (e.g. approval_request + approval_id). */
+export async function fetchFileLinksForScope(
+  scope_table: string,
+  scope_record_id: string
+): Promise<Record<string, string>[]> {
+  if (!useRealSheets() || !process.env.SHEETS_LOGS_ID) {
+    const all = (memStore.get('file_links') ?? []) as Array<Record<string, unknown>>;
+    return all
+      .filter(
+        (r) =>
+          String(r.scope_table ?? '') === scope_table &&
+          String(r.scope_record_id ?? '') === scope_record_id
+      )
+      .map((r) => {
+        const o: Record<string, string> = {};
+        for (const [k, v] of Object.entries(r)) o[k] = String(v ?? '');
+        return o;
+      });
+  }
+  try {
+    const { rows } = await readSheet(process.env.SHEETS_LOGS_ID, 'file_links');
+    return rows.filter(
+      (r) => r.scope_table === scope_table && r.scope_record_id === scope_record_id
+    );
+  } catch {
+    return [];
+  }
+}
+
+/** JSON string for approval_requests.attachment_drive_urls_json after merging file_links. */
+export async function mergeApprovalAttachmentsFromFileLinks(
+  approvalId: string,
+  existingAttachmentCell: string
+): Promise<string> {
+  const linkRows = await fetchFileLinksForScope(APPROVAL_FILE_LINK_SCOPE, approvalId);
+  return mergeFileLinkRowsIntoApprovalAttachmentsJson(existingAttachmentCell, linkRows);
+}
 
 export async function appendAuditRow(row: Record<string, unknown>): Promise<void> {
   const spreadsheetId = process.env.SHEETS_LOGS_ID;

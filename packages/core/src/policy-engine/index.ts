@@ -37,10 +37,18 @@ export class PolicyEngine {
   }): PolicyResult {
     const { action, confidence, actor_role, agent_id, metadata } = params;
     const actionType = this.resolveActionType(action.tool_id, agent_id);
+    const rbacKey = action.tool_id.startsWith('internal.')
+      ? action.tool_id
+      : actionType;
 
     // Step 1: RBAC check
-    if (!this.isAuthorized(actor_role, actionType)) {
+    if (!this.isAuthorized(actor_role, rbacKey)) {
       return 'REFUSE';
+    }
+
+    // Read-only platform probes — always auto-execute if authorized
+    if (action.tool_id === 'internal.platform.healthcheck') {
+      return 'AUTO_EXECUTE';
     }
 
     // Step 2: Confidence below floor → refuse
@@ -50,7 +58,10 @@ export class PolicyEngine {
 
     // Step 3: Check action_overrides first (highest priority)
     const override = this.policy.action_overrides.find(
-      (o) => o.action_type === actionType
+      (o) =>
+        o.action_type === actionType ||
+        actionType === `${o.action_type}.execute` ||
+        actionType.startsWith(`${o.action_type}.`)
     );
     if (override) {
       if (override.policy === 'NEVER_AUTO_EXECUTE') return 'REQUEST_APPROVAL';
@@ -74,7 +85,9 @@ export class PolicyEngine {
     }
 
     // Step 5: Default safe policy for uncovered high-impact actions
-    if (this.isHighImpactAction(actionType) && !override) {
+    const filingAllowsAuto =
+      Boolean(metadata?.is_filing_action) && this.policy.filing_auto_execute;
+    if (this.isHighImpactAction(actionType) && !override && !filingAllowsAuto) {
       if (confidence >= this.policy.confidence_thresholds.auto_execute_min) {
         return 'REQUEST_APPROVAL';
       }
@@ -103,16 +116,24 @@ export class PolicyEngine {
     );
   }
 
-  private resolveActionType(tool_id: string, agent_id: string): string {
-    // Map tool_id to action_type for policy matching
-    // e.g., "sheets.ap_invoices.create" → "ap_invoice.create"
+  private resolveActionType(tool_id: string, _agent_id: string): string {
+    // Map tool_id to action_type for policy matching.
+    // sheets.* → drop the sheets namespace (e.g. ap_invoices.create, bank_transactions.get_latest_balance).
+    // Other dotted ids → domain.verb (e.g. bank.transfer.initiate → bank.transfer).
     const parts = tool_id.split('.');
-    if (parts.length >= 2) return `${parts[1]}.${parts[2] ?? '*'}`;
+    if (parts[0] === 'sheets' && parts.length >= 2) {
+      return parts.slice(1).join('.');
+    }
+    if (parts.length >= 2) {
+      return `${parts[0]}.${parts[1]}`;
+    }
     return tool_id;
   }
 
   private isHighImpactAction(actionType: string): boolean {
-    const highImpactPrefixes = ['payroll.', 'compliance.', 'bank.', 'employee.'];
+    if (/^payroll/i.test(actionType)) return true;
+    if (/^bank/i.test(actionType)) return true;
+    const highImpactPrefixes = ['compliance.', 'employee.'];
     return highImpactPrefixes.some((prefix) => actionType.startsWith(prefix));
   }
 }
