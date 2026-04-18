@@ -10,9 +10,13 @@ import OpenAI from 'openai';
 import { loadAgentConfig, loadConfig, loadPrompt } from '@velo/core/config';
 import { PolicyEngine } from '@velo/core/policy-engine';
 import { deriveScoringInputs, scoreConfidence } from '@velo/core/confidence';
-import { appendDecisionMemory, createAuditEvent } from '@velo/core';
+import {
+  appendDecisionMemory,
+  createAuditEvent,
+  registerAuditSheetsFlush,
+} from '@velo/core';
 import { getRuntimeTools } from '@velo/tools';
-import { executeSheetTool } from '@velo/tools/sheets';
+import { appendAuditRow, executeSheetTool } from '@velo/tools/sheets';
 import { notifyApprovalRequestOutOfBand } from './approval-notify.js';
 import { adjustConfidenceForPolicyRisk } from './confidence-policy-bridge.js';
 import { scoringSignalsForTool } from './tool-confidence.js';
@@ -27,6 +31,8 @@ import type {
 import type { AgentRunEvent, RunAgentOptions } from './run-events.js';
 
 export type { AgentRunEvent, RunAgentOptions } from './run-events.js';
+
+registerAuditSheetsFlush(appendAuditRow);
 
 function shouldRecordAutoDecisionMemory(toolId: string): boolean {
   if (toolId === 'internal.platform.healthcheck') return false;

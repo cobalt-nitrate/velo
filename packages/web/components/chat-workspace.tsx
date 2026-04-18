@@ -529,9 +529,9 @@ export function ChatWorkspace() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col md:min-h-[480px]">
-      <div className="flex w-56 shrink-0 flex-col border-r border-velo-line bg-velo-panel-muted/90">
-        <div className="border-b border-velo-line p-2">
+    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden md:min-h-0 md:flex-row">
+      <div className="flex max-h-[min(38vh,22rem)] min-h-0 w-full shrink-0 flex-col border-b border-velo-line bg-velo-panel-muted/90 md:max-h-none md:h-full md:w-56 md:border-b-0 md:border-r">
+        <div className="shrink-0 border-b border-velo-line p-2">
           <button
             type="button"
             onClick={() => void createSession()}
@@ -548,6 +548,20 @@ export function ChatWorkspace() {
           )}
           {loadingSessions ? (
             <p className="text-xs text-velo-muted">Loading…</p>
+          ) : sessions.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-velo-line/60 p-4 text-center">
+              <p className="text-[11px] font-medium text-velo-muted">No conversations yet</p>
+              <p className="text-[10px] text-velo-muted/70">
+                Ask the orchestrator agent anything — payroll, invoices, compliance, HR.
+              </p>
+              <button
+                type="button"
+                onClick={() => void createSession()}
+                className="mt-1 rounded-md bg-velo-accent/10 px-3 py-1.5 text-[11px] font-semibold text-velo-accent hover:bg-velo-accent/20"
+              >
+                Start first chat
+              </button>
+            </div>
           ) : (
             <ul className="space-y-1">
               {sessions.map((s) => (

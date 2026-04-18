@@ -23,17 +23,21 @@ export interface AuditEvent {
 
 const auditStore = new Map<string, AuditEvent>();
 
-// Lazy import to avoid circular dependency. Only resolved once.
+/** Row writer from `@velo/tools/sheets` `appendAuditRow` — register via `registerAuditSheetsFlush` from agents (or any host that has tools). */
 let sheetsFlushFn: ((row: Record<string, unknown>) => Promise<void>) | null = null;
+
+/**
+ * Wire Sheets audit persistence. Call once from `@velo/agents` (or another package that depends on `@velo/tools`).
+ * `@velo/core` stays free of a tools dependency so Next/Webpack can bundle it without resolving `@velo/tools/sheets`.
+ */
+export function registerAuditSheetsFlush(
+  fn: ((row: Record<string, unknown>) => Promise<void>) | null
+): void {
+  sheetsFlushFn = fn;
+}
 
 async function flushToSheets(event: AuditEvent): Promise<void> {
   try {
-    if (!sheetsFlushFn) {
-      // Dynamic import — tools package is a peer, not a hard dep of core.
-      // If it's not available, this silently does nothing.
-      const mod = await import('@velo/tools/sheets' as string).catch(() => null);
-      sheetsFlushFn = mod?.appendAuditRow ?? null;
-    }
     if (sheetsFlushFn) {
       await sheetsFlushFn({
         entry_id: event.id,

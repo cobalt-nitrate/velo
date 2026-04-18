@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 
 type Ui = {
   companyName: string;
@@ -9,23 +9,67 @@ type Ui = {
   defaultActorRole: string;
 };
 
-type IntegrationSnapshot = {
-  connectors?: Record<
-    string,
-    {
-      configured?: boolean;
-      env_hint?: string;
-      spreadsheet_ids_present?: Record<string, boolean>;
-    }
-  >;
+type ConnectorFieldPayload = {
+  envKey: string;
+  label: string;
+  sensitive?: boolean;
+  multiline?: boolean;
+  placeholder?: string;
+  optional?: boolean;
+  status: { effectiveSet: boolean; source: string };
+  valueHint: string;
+};
+
+type ConnectorPayload = {
+  id: string;
+  title: string;
+  summary: string;
+  docsUrl?: string;
+  steps: string[];
+  ready: boolean;
+  fields: ConnectorFieldPayload[];
+};
+
+type IntegrationsResponse = {
+  ok: boolean;
+  storagePath?: string;
+  note?: string;
+  connectors?: ConnectorPayload[];
+  error?: string;
 };
 
 export default function SettingsPage() {
   const [ui, setUi] = useState<Ui | null>(null);
   const [sheets, setSheets] = useState<Array<Record<string, string>> | null>(null);
-  const [integrations, setIntegrations] = useState<IntegrationSnapshot | null>(null);
+  const [integrations, setIntegrations] = useState<IntegrationsResponse | null>(null);
+  const [connectorForm, setConnectorForm] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [connectorSaved, setConnectorSaved] = useState(false);
+  const [connectorSaving, setConnectorSaving] = useState(false);
+  const [testById, setTestById] = useState<Record<string, string | null>>({});
+
+  const loadIntegrations = useCallback(async () => {
+    const intRes = await fetch('/api/config/integrations');
+    const intData = (await intRes.json()) as IntegrationsResponse;
+    if (intData.ok && intData.connectors) {
+      setIntegrations(intData);
+      setFormFromConnectors(intData.connectors);
+    } else {
+      setIntegrations(intData.ok ? intData : { ok: false, error: intData.error });
+    }
+  }, []);
+
+  function setFormFromConnectors(list: ConnectorPayload[]) {
+    const next: Record<string, string> = {};
+    for (const c of list) {
+      for (const f of c.fields) {
+        if (f.sensitive) next[f.envKey] = '';
+        else next[f.envKey] = f.valueHint ?? '';
+      }
+    }
+    setConnectorForm((prev) => ({ ...next, ...prev }));
+  }
 
   useEffect(() => {
     (async () => {
@@ -39,8 +83,13 @@ export default function SettingsPage() {
       };
       setUi(data.ui ?? null);
       setSheets(data.sheetsRows ?? null);
-      const intData = (await intRes.json()) as IntegrationSnapshot & { ok?: boolean };
-      setIntegrations(intData.ok ? intData : null);
+      const intData = (await intRes.json()) as IntegrationsResponse;
+      if (intData.ok && intData.connectors) {
+        setIntegrations(intData);
+        setFormFromConnectors(intData.connectors);
+      } else {
+        setIntegrations(intData.ok ? intData : { ok: false, error: intData.error });
+      }
       setLoading(false);
     })();
   }, []);
@@ -59,6 +108,74 @@ export default function SettingsPage() {
     setSaved(true);
   }
 
+  function buildConnectorPutBody(): Record<string, string> {
+    const body: Record<string, string> = {};
+    if (!integrations?.connectors) return body;
+    for (const c of integrations.connectors) {
+      for (const f of c.fields) {
+        const raw = connectorForm[f.envKey] ?? '';
+        const trimmed = raw.trim();
+        if (f.sensitive) {
+          if (trimmed) body[f.envKey] = raw;
+        } else {
+          body[f.envKey] = trimmed;
+        }
+      }
+    }
+    return body;
+  }
+
+  async function saveConnectors(e: FormEvent) {
+    e.preventDefault();
+    setConnectorSaving(true);
+    setConnectorSaved(false);
+    try {
+      const res = await fetch('/api/config/integrations', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildConnectorPutBody()),
+      });
+      const data = (await res.json()) as IntegrationsResponse;
+      if (data.ok && data.connectors) {
+        setIntegrations(data);
+        setFormFromConnectors(data.connectors);
+        setConnectorSaved(true);
+      }
+    } finally {
+      setConnectorSaving(false);
+    }
+  }
+
+  async function runTest(connectorId: string) {
+    setTestById((m) => ({ ...m, [connectorId]: '…' }));
+    try {
+      const res = await fetch('/api/config/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ test: connectorId === 'auth' ? '' : connectorId }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        probe_ok?: boolean;
+        message?: string;
+        error?: string;
+      };
+      const prefix =
+        data.probe_ok === true ? 'OK — ' : data.probe_ok === false ? 'Failed — ' : '';
+      const msg =
+        prefix +
+        (data.message ??
+          data.error ??
+          (res.ok ? JSON.stringify(data) : `HTTP ${res.status}`));
+      setTestById((m) => ({ ...m, [connectorId]: msg }));
+    } catch (err) {
+      setTestById((m) => ({
+        ...m,
+        [connectorId]: err instanceof Error ? err.message : String(err),
+      }));
+    }
+  }
+
   if (loading || !ui) {
     return (
       <main className="p-6">
@@ -68,11 +185,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="p-6">
+    <main className="p-6 max-w-4xl">
       <h1 className="text-2xl font-semibold">Settings</h1>
       <p className="mt-1 text-sm text-velo-muted">
         Workspace preferences are stored locally in{' '}
-        <code className="rounded bg-velo-inset-deep px-1 text-velo-text">.velo/ui-settings.json</code> — no spreadsheet editing required for these fields.
+        <code className="rounded bg-velo-inset-deep px-1 text-velo-text">.velo/ui-settings.json</code>.
+        Connector credentials save to{' '}
+        <code className="rounded bg-velo-inset-deep px-1 text-velo-text">.velo/connector-env.json</code>{' '}
+        (gitignored) and load into the server on startup; saving below also applies immediately for this
+        process.
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 max-w-xl space-y-4">
@@ -117,17 +238,16 @@ export default function SettingsPage() {
           type="submit"
           className="rounded-md bg-velo-accent px-4 py-2 text-sm font-medium text-white shadow-soft hover:bg-velo-accent-hover"
         >
-          Save
+          Save preferences
         </button>
-        {saved && (
-          <span className="ml-2 text-xs text-emerald-700">Saved</span>
-        )}
+        {saved && <span className="ml-2 text-xs text-emerald-700">Saved</span>}
       </form>
 
       <section className="mt-10">
         <h2 className="text-lg font-medium">Google Sheets · company_settings</h2>
         <p className="mt-1 text-sm text-velo-muted">
-          Read-only snapshot from your CONFIG spreadsheet (when Sheets env is configured).
+          Read-only snapshot from your CONFIG spreadsheet when Sheets credentials and
+          SHEETS_CONFIG_ID are set.
         </p>
         {!sheets || sheets.length === 0 ? (
           <p className="mt-2 text-sm text-velo-muted">No rows returned or Sheets not connected.</p>
@@ -159,53 +279,168 @@ export default function SettingsPage() {
         )}
       </section>
 
-      <section className="mt-10">
+      <section className="mt-10 border-t border-velo-line pt-10">
         <h2 className="text-lg font-medium">Connectors</h2>
         <p className="mt-1 text-sm text-velo-muted">
-          Status of integration env vars (no secret values shown). Replace sheet tools with your own
-          HTTP connector by implementing{' '}
-          <code className="rounded bg-velo-inset-deep px-1 text-velo-text">
-            LedgerConnector
-          </code>{' '}
-          in <code className="rounded bg-velo-inset-deep px-1 text-velo-text">@velo/core</code>{' '}
-          (<code className="rounded bg-velo-inset-deep px-1 text-velo-text">integrations/connector-kit</code>
-          ).
+          {integrations?.note ??
+            'Configure integrations here or via `.env.local`. Host environment wins on server boot; the file fills any missing keys.'}
         </p>
+
         {!integrations?.connectors ? (
-          <p className="mt-2 text-sm text-velo-muted">Could not load connector status.</p>
+          <p className="mt-3 text-sm text-amber-800">
+            {integrations?.error ?? 'Could not load connectors.'}
+          </p>
         ) : (
-          <ul className="mt-4 space-y-3 text-sm">
-            {Object.entries(integrations.connectors).map(([id, c]) => (
-              <li
-                key={id}
-                className="flex flex-col gap-1 rounded-lg border border-velo-line bg-velo-panel px-3 py-2"
+          <form onSubmit={saveConnectors} className="mt-6 space-y-8">
+            {integrations.connectors.map((c) => (
+              <article
+                key={c.id}
+                className="rounded-xl border border-velo-line bg-velo-panel/60 p-4 shadow-sm"
               >
-                <span className="font-mono text-xs text-velo-text">{id}</span>
-                <span className="text-velo-muted">
-                  {c.configured ? (
-                    <span className="text-emerald-700">Ready</span>
-                  ) : (
-                    <span className="text-amber-800">Not configured</span>
-                  )}
-                  {c.env_hint ? ` · ${c.env_hint}` : ''}
-                </span>
-                {c.spreadsheet_ids_present &&
-                  Object.keys(c.spreadsheet_ids_present).length > 0 && (
-                    <span className="text-[11px] text-velo-muted">
-                      IDs:{' '}
-                      {Object.entries(c.spreadsheet_ids_present)
-                        .filter(([, v]) => v)
-                        .map(([k]) => k)
-                        .join(', ') || 'none set'}
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-velo-text">{c.title}</h3>
+                    <p className="mt-1 text-sm text-velo-muted">{c.summary}</p>
+                    {c.docsUrl && (
+                      <a
+                        href={c.docsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex text-xs font-medium text-teal-700 underline decoration-teal-700/30 hover:decoration-teal-700"
+                      >
+                        Provider documentation →
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        c.ready
+                          ? 'bg-emerald-500/15 text-emerald-800'
+                          : 'bg-amber-500/15 text-amber-900'
+                      }`}
+                    >
+                      {c.ready ? 'Minimum configured' : 'Incomplete'}
                     </span>
-                  )}
-              </li>
+                    {(c.id === 'google_workspace' ||
+                      c.id === 'llm' ||
+                      c.id === 'slack' ||
+                      c.id === 'email') && (
+                      <button
+                        type="button"
+                        onClick={() => runTest(c.id)}
+                        className="rounded-md border border-velo-line bg-velo-inset-deep px-3 py-1.5 text-xs font-medium text-velo-text hover:bg-velo-panel"
+                      >
+                        Test connection
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {testById[c.id] != null && (
+                  <p className="mt-3 rounded-md bg-velo-inset-deep px-3 py-2 font-mono text-[11px] text-velo-muted">
+                    {testById[c.id]}
+                  </p>
+                )}
+
+                <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-velo-muted">
+                  {c.steps.map((step, i) => (
+                    <li key={i}>{step}</li>
+                  ))}
+                </ol>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-1">
+                  {c.fields.map((f) => (
+                    <label key={f.envKey} className="block text-sm">
+                      <span className="flex flex-wrap items-center gap-2">
+                        {f.label}
+                        {f.optional && (
+                          <span className="text-[10px] font-medium uppercase tracking-wide text-velo-muted">
+                            optional
+                          </span>
+                        )}
+                        {f.status.effectiveSet ? (
+                          <span className="text-[10px] text-emerald-700">
+                            set
+                            {f.status.source !== 'none' && f.status.source !== 'file'
+                              ? ` (${f.status.source})`
+                              : f.status.source === 'file'
+                                ? ' (file)'
+                                : ''}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-velo-muted/80">empty</span>
+                        )}
+                      </span>
+                      {f.multiline ? (
+                        <textarea
+                          className="mt-1 w-full min-h-[88px] rounded-md border border-velo-line bg-velo-panel px-3 py-2 font-mono text-xs"
+                          autoComplete="off"
+                          placeholder={
+                            f.sensitive
+                              ? f.placeholder ?? 'Leave blank to keep existing value'
+                              : f.placeholder
+                          }
+                          value={connectorForm[f.envKey] ?? ''}
+                          onChange={(e) =>
+                            setConnectorForm((prev) => ({
+                              ...prev,
+                              [f.envKey]: e.target.value,
+                            }))
+                          }
+                        />
+                      ) : (
+                        <input
+                          className="mt-1 w-full rounded-md border border-velo-line bg-velo-panel px-3 py-2 font-mono text-xs"
+                          autoComplete={f.sensitive ? 'new-password' : 'off'}
+                          type={f.sensitive ? 'password' : 'text'}
+                          placeholder={
+                            f.sensitive
+                              ? f.placeholder ?? 'Leave blank to keep existing value'
+                              : f.placeholder
+                          }
+                          value={connectorForm[f.envKey] ?? ''}
+                          onChange={(e) =>
+                            setConnectorForm((prev) => ({
+                              ...prev,
+                              [f.envKey]: e.target.value,
+                            }))
+                          }
+                        />
+                      )}
+                      <span className="mt-0.5 block font-mono text-[10px] text-velo-muted/90">
+                        {f.envKey}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </article>
             ))}
-          </ul>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={connectorSaving}
+                className="rounded-md bg-velo-accent px-4 py-2 text-sm font-medium text-white shadow-soft hover:bg-velo-accent-hover disabled:opacity-60"
+              >
+                {connectorSaving ? 'Saving…' : 'Save connectors'}
+              </button>
+              <button
+                type="button"
+                onClick={() => loadIntegrations()}
+                className="rounded-md border border-velo-line px-3 py-2 text-sm text-velo-text hover:bg-velo-inset-deep"
+              >
+                Reload status
+              </button>
+              {connectorSaved && (
+                <span className="text-xs text-emerald-700">Connectors saved</span>
+              )}
+            </div>
+          </form>
         )}
 
-        <div className="mt-6 rounded-lg border border-velo-line bg-velo-inset-deep/40 px-3 py-3 text-xs text-velo-muted">
-          <p className="font-medium text-velo-text">Workflow API (Wave 1)</p>
+        <div className="mt-8 rounded-lg border border-velo-line bg-velo-inset-deep/40 px-3 py-3 text-xs text-velo-muted">
+          <p className="font-medium text-velo-text">Workflow API</p>
           <p className="mt-1 font-mono">
             POST /api/workflows/run — body:{' '}
             {`{ "workflowKey": "ap_invoice_processing", "context": { ... } }`}
@@ -215,7 +450,7 @@ export default function SettingsPage() {
             {`{ "run_id": "…", "companyId": "…" }`} after approval is APPROVED
           </p>
           <p className="mt-1 font-mono">GET /api/workflows/runs?status=WAITING_FOR_APPROVAL</p>
-          <p className="mt-2 font-medium text-velo-text">Cron (set VELO_CRON_SECRET)</p>
+          <p className="mt-2 font-medium text-velo-text">Cron</p>
           <p className="mt-1 font-mono">
             POST /api/cron/digest — header x-velo-cron-secret
           </p>
@@ -226,10 +461,10 @@ export default function SettingsPage() {
       </section>
 
       <section className="mt-10 text-sm text-velo-muted">
-        <h2 className="text-base font-medium text-velo-text">Environment</h2>
+        <h2 className="text-base font-medium text-velo-text">Production</h2>
         <p className="mt-2">
-          API keys and spreadsheet IDs stay in{' '}
-          <code className="rounded bg-velo-inset-deep px-1 text-velo-text">.env.local</code> — use your host or deployment secrets for production.
+          Prefer host secrets (e.g. Vercel / Fly / Kubernetes) for production. The file store is ideal
+          for local demos; restrict who can open this Settings page on a shared network.
         </p>
       </section>
     </main>

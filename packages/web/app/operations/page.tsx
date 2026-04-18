@@ -17,6 +17,7 @@ import type {
   OperationalSnapshot,
   PendingApprovalDetail,
 } from '@velo/tools/platform-health';
+import { EmptyState } from '@/components/empty-state';
 import Link from 'next/link';
 import { useCallback, useLayoutEffect, useState } from 'react';
 
@@ -166,11 +167,14 @@ export default function OperationsPage() {
       </div>
 
       {snapshot?.data_source === 'unavailable' && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          Sheets are not configured in this environment — snapshot is empty. Set Google service
-          account and <code className="rounded bg-velo-inset-deep px-1 text-velo-text">SHEETS_*_ID</code> in{' '}
-          <code className="rounded bg-velo-inset-deep px-1 text-velo-text">.env.local</code>.
-        </div>
+        <EmptyState
+          heading="Google Sheets not connected"
+          body="Operations data lives in your 5 Velo spreadsheets. Complete setup to see live data here."
+          actions={[
+            { label: 'Open setup wizard', href: '/onboarding', primary: true },
+            { label: 'Go to Settings', href: '/settings' },
+          ]}
+        />
       )}
 
       {error && (

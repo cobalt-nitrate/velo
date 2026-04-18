@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "dev:web": "npx --yes pnpm@9.15.0 --filter @velo/web dev",
+    "dev:web:clean": "npx --yes pnpm@9.15.0 --filter @velo/web dev:clean",
     "build": "npx --yes pnpm@9.15.0 -r run build",
     "build:turbo": "turbo run build",
     "test": "npx --yes pnpm@9.15.0 -r run test",

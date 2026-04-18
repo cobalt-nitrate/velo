@@ -2,9 +2,63 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 
 const LS_KEY = 'velo-sidebar-collapsed';
+const SETUP_BANNER_DISMISSED_KEY = 'velo-setup-banner-dismissed';
+
+function SetupBanner() {
+  const { data: session } = useSession();
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const role = (session?.user as { actor_role?: string } | undefined)?.actor_role;
+    if (role !== 'founder') return;
+
+    // Check localStorage dismiss flag first before fetching
+    try {
+      if (localStorage.getItem(SETUP_BANNER_DISMISSED_KEY) === '1') return;
+    } catch { /* ignore */ }
+
+    fetch('/api/onboarding/state')
+      .then((r) => r.json())
+      .then((data: { ok?: boolean; state?: { completed?: boolean } }) => {
+        if (data.ok && data.state && !data.state.completed) setShow(true);
+      })
+      .catch(() => { /* silently ignore network failures */ });
+  }, [session]);
+
+  function dismiss() {
+    setShow(false);
+    try { localStorage.setItem(SETUP_BANNER_DISMISSED_KEY, '1'); } catch { /* ignore */ }
+  }
+
+  if (!show) return null;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex items-center justify-between gap-2 border-b border-amber-400/30 bg-amber-50/10 px-4 py-2 text-xs text-amber-700"
+    >
+      <span>
+        Velo setup is incomplete.{' '}
+        <Link href="/onboarding" className="font-semibold underline underline-offset-2 hover:text-amber-900">
+          Open setup wizard
+        </Link>
+      </span>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Dismiss setup banner"
+        className="shrink-0 rounded p-0.5 hover:bg-amber-400/20"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
 
 function IconOverview({ className }: { className?: string }) {
   return (
@@ -160,7 +214,7 @@ const ICON_CLASS = 'h-[1.15rem] w-[1.15rem]';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const hideChrome = pathname?.startsWith('/auth');
+  const hideChrome = pathname?.startsWith('/auth') || pathname?.startsWith('/onboarding');
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -279,7 +333,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
       </aside>
-      <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+      <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col md:min-h-screen">
+        <SetupBanner />
+        {children}
+      </div>
     </div>
   );
 }

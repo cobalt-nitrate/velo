@@ -55,27 +55,39 @@ describe('scoreConfidence', () => {
 
   // ── Weight calculation ──────────────────────────────────────────────────────
 
-  it('calculates weighted overall correctly (default weights)', () => {
+  it('calculates weighted overall correctly (explicit weights)', () => {
     const inputs: ScoringInputs = {
-      extraction_completeness: 1.0,   // weight 0.30 → 0.30
-      entity_match_quality: 0.0,      // weight 0.20 → 0.00
-      category_match_quality: 0.0,    // weight 0.20 → 0.00
-      historical_pattern_match: 0.0,  // weight 0.15 → 0.00
-      data_freshness: 0.0,            // weight 0.15 → 0.00
+      extraction_completeness: 1.0,
+      entity_match_quality: 0.0,
+      category_match_quality: 0.0,
+      historical_pattern_match: 0.0,
+      data_freshness: 0.0,
     };
-    const result = scoreConfidence(inputs);
+    const result = scoreConfidence(inputs, {
+      extraction_completeness: 0.30,
+      entity_match_quality: 0.20,
+      category_match_quality: 0.20,
+      historical_pattern_match: 0.15,
+      data_freshness: 0.15,
+    });
     expect(result.overall).toBeCloseTo(0.30, 2);
   });
 
   it('calculates weighted overall correctly when entity match is perfect', () => {
     const inputs: ScoringInputs = {
-      extraction_completeness: 0.0,  // 0.30 → 0
-      entity_match_quality: 1.0,     // 0.20 → 0.20
+      extraction_completeness: 0.0,
+      entity_match_quality: 1.0,
       category_match_quality: 0.0,
       historical_pattern_match: 0.0,
       data_freshness: 0.0,
     };
-    const result = scoreConfidence(inputs);
+    const result = scoreConfidence(inputs, {
+      extraction_completeness: 0.30,
+      entity_match_quality: 0.20,
+      category_match_quality: 0.20,
+      historical_pattern_match: 0.15,
+      data_freshness: 0.15,
+    });
     expect(result.overall).toBeCloseTo(0.20, 2);
   });
 
