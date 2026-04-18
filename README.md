@@ -84,11 +84,129 @@ Not every suggestion becomes a bank transfer or a filed return. **Policy** encod
 
 Velo is a **monorepo**: **`packages/web`** (Next.js Command Center + APIs), **`packages/agents`** (agent runtime, streaming events, **config-driven workflows** with **pause/resume after approval**), **`packages/tools`** (Sheets, Drive, healthcheck, documents, OCR, email via Resend, Slack notifications), **`packages/core`** (policy, confidence, audit, workflow persistence, **connector-kit** TypeScript seams for your own HTTP ledger/notification adapters). Behavior is **config-driven** under **`configs/`** (agents, prompts, policies, workflows). The LLM uses an **OpenAI-compatible API** (`LLM_BASE_URL`; e.g. NVIDIA NIM). The default **system of record** is **Google Sheets** (workbooks keyed by `SHEETS_*_ID` in `.env.local`; see `.env.local.example`).
 
-### Quick start
+### Running Velo (development and Docker)
 
-1. `cp .env.local.example .env.local` and fill LLM, Google service account, and spreadsheet IDs.
-2. `pnpm install` → `pnpm run setup-sheets` → `pnpm run dev:web`.
-3. Optional: `ensure-bank-tab`, `ensure-file-links`, `seed-mock-data`, `seed-compliance`, `pnpm e2e:modules` (one tool + approval path per module).
+Velo is a **pnpm monorepo**. The **web app** is the only long-running server in development: **Next.js 14** in `packages/web` serves the UI and **Route Handlers / API routes** under `app/api`. There is **no separate backend process** — **`@velo/agents`**, **`@velo/core`**, and **`@velo/tools`** are libraries linked into the Next.js build.
+
+#### Prerequisites
+
+| Requirement | Notes |
+|-------------|--------|
+| **Node.js** | **>= 20** (`package.json` `engines`) |
+| **pnpm** | **>= 9** — pinned to **9.15.0** via `packageManager`. Use `corepack enable` then `corepack prepare pnpm@9.15.0 --activate` |
+| **PostgreSQL** | **16** recommended (see `docker-compose.yml`). Required for Prisma (users, invites, onboarding, app settings) |
+| **Docker** (optional) | Docker Engine + Compose for `docker compose` (bundled Postgres + production-style web image) |
+
+#### Install dependencies
+
+From the **repository root**:
+
+```bash
+corepack enable
+pnpm install
+pnpm --filter @velo/web exec prisma generate
+```
+
+#### Environment variables
+
+1. **Local dev:** Next.js loads **`.env.local` from `packages/web`** (that package is the cwd for `pnpm dev` / `pnpm dev:web`). Copy the template there:
+
+   ```bash
+   cp .env.local.example packages/web/.env.local
+   ```
+
+2. Edit **`packages/web/.env.local`**. At minimum set **`DATABASE_URL`**, **`NEXTAUTH_SECRET`**, **`NEXTAUTH_URL`**, and **LLM** settings (`LLM_API_KEY`, `LLM_BASE_URL`, model env vars). For Google Sheets, set **`GOOGLE_SERVICE_ACCOUNT_EMAIL`**, **`GOOGLE_PRIVATE_KEY`**, and **`SHEETS_*_ID`** (or use in-app onboarding to create/link workbooks). The full list and comments are in **`.env.local.example`**.
+
+3. **Docker Compose** reads **`.env.local` at the repo root** (`docker-compose.yml` `env_file`). Avoid drifting copies:
+
+   ```bash
+   ln -sf packages/web/.env.local .env.local   # macOS / Linux
+   ```
+
+   On Windows, keep **root** `.env.local` in sync with **`packages/web/.env.local`** when you change secrets.
+
+#### Database
+
+- **Schema:** `packages/web/prisma/schema.prisma` · **migrations:** `packages/web/prisma/migrations/`.
+
+**Run PostgreSQL**
+
+- **Docker (DB only):** `docker compose up postgres -d` — **`localhost:5432`**, user **`velo`**, password **`velo_local`**, database **`velo`** (matches `.env.local.example`).
+- **Native install:** create a role/database and set **`DATABASE_URL`** accordingly.
+
+**Apply migrations** (from repo root):
+
+```bash
+pnpm --filter @velo/web db:migrate
+# or non-interactive:
+pnpm --filter @velo/web exec prisma migrate deploy
+```
+
+#### Run the development server
+
+```bash
+pnpm dev          # turbo; only @velo/web defines `dev`
+pnpm dev:web      # same app, filter only the web package
+```
+
+- Default: **http://localhost:3000** (Next picks another port if busy).
+- Scripts use **`node -r ./lib/register-env.cjs … next dev`** so **`.velo/connector-env.json`** can fill unset keys; prefer **`pnpm dev:web`** over raw `next dev`.
+- Broken build cache: **`pnpm dev:web:clean`** (deletes `packages/web/.next`).
+
+#### Optional: Sheets scripts and agent E2E
+
+After Google and sheet IDs are configured:
+
+| Command | Purpose |
+|---------|---------|
+| `pnpm setup-sheets` | Create Velo workbooks/tabs (`scripts/setup-sheets-run.js`; may need local edits) |
+| `pnpm ensure-bank-tab` | Ensure bank transactions tab |
+| `pnpm ensure-file-links` | Ensure file links tab |
+| `pnpm seed-mock-data` | Seed mock Velo data |
+| `pnpm seed-mock:generate` | Generate demo seed JSON |
+| `pnpm seed-compliance` | Seed compliance calendar |
+| `pnpm audit-sheet-locations` | Audit configured sheet IDs |
+| `pnpm e2e:modules` | Agents package: one tool + approval path per module |
+
+#### Docker Compose (Postgres + web)
+
+Requires **repo root** `.env.local`. Compose overrides **`DATABASE_URL`** to the **`postgres`** service and sets **`NEXTAUTH_URL=http://localhost:3000`**.
+
+```bash
+docker compose up --build
+```
+
+The production **runner image** is Next **standalone** — it does **not** ship the Prisma CLI. Apply migrations **from the host** (or any checkout with `pnpm`) against the published DB port, e.g.:
+
+```bash
+DATABASE_URL=postgresql://velo:velo_local@localhost:5432/velo pnpm --filter @velo/web exec prisma migrate deploy
+```
+
+**Volumes:** `postgres_data` (database) · `velo_data` → `/app/.velo` (uploads, local connector overlay). See **`Dockerfile`** for build stages.
+
+#### Production mode (no Docker)
+
+```bash
+pnpm build
+pnpm --filter @velo/web start
+```
+
+#### Minimal quick reference
+
+1. `pnpm install` → `pnpm --filter @velo/web exec prisma generate`
+2. PostgreSQL up · **`DATABASE_URL`** in **`packages/web/.env.local`**
+3. `pnpm --filter @velo/web db:migrate`
+4. LLM + **`NEXTAUTH_*`** + Google/sheet IDs as needed
+5. `pnpm dev:web`
+
+#### Tests and lint
+
+```bash
+pnpm validate-configs   # Zod validation for configs/agents/workflows
+pnpm lint               # all workspaces that define `lint`
+pnpm test               # Vitest (e.g. `packages/core`, `packages/agents`, `packages/tools`)
+pnpm verify:ci          # validate-configs + `tsc --noEmit` on all TS packages (same as CI)
+```
 
 ### CI and config validation
 
