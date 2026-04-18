@@ -132,7 +132,7 @@ export async function POST(req: Request) {
 
     // 2. Concurrent-run guard
     applyStoredConnectorEnvAtStartup();
-    const state = getOnboardingState();
+    const state = await getOnboardingState();
     if (state.bootstrapInProgress) {
       return NextResponse.json(
         { ok: false, error: 'Bootstrap already in progress — wait for it to finish.' },
@@ -160,7 +160,7 @@ export async function POST(req: Request) {
       /* body is optional */
     }
 
-    patchOnboardingState({ bootstrapInProgress: true });
+    await patchOnboardingState({ bootstrapInProgress: true });
 
     // 5. Auth client
     const auth = new google.auth.GoogleAuth({
@@ -235,7 +235,7 @@ export async function POST(req: Request) {
     }
 
     // 8. Mark bootstrap complete
-    patchOnboardingState({
+    await patchOnboardingState({
       bootstrapInProgress: false,
       sheetsBootstrapped: true,
       steps: { google: { done: true } } as OnboardingState['steps'],
@@ -254,7 +254,7 @@ export async function POST(req: Request) {
       ),
     });
   } catch (e) {
-    patchOnboardingState({ bootstrapInProgress: false });
+    await patchOnboardingState({ bootstrapInProgress: false });
     const message = e instanceof Error ? e.message : String(e);
     const isQuota = /quota|429|RESOURCE_EXHAUSTED/i.test(message);
     return NextResponse.json(

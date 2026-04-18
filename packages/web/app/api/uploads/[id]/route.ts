@@ -8,7 +8,7 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const rec = getUpload(params.id);
+  const rec = await getUpload(params.id);
   if (!rec) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }

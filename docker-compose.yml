@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: velo
+      POSTGRES_USER: velo
+      POSTGRES_PASSWORD: velo_local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U velo -d velo']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env.local
+    environment:
+      # Overrides .env.local so the app connects to the docker postgres service
+      DATABASE_URL: postgresql://velo:velo_local@postgres:5432/velo
+      NEXTAUTH_URL: http://localhost:3000
+      NODE_ENV: production
+    volumes:
+      # Persist .velo/ data (uploads, connector-env.json) outside the container
+      - velo_data:/app/.velo
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  velo_data:

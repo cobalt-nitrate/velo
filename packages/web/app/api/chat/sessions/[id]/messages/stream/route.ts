@@ -15,7 +15,7 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = getChatSession(params.id);
+  const session = await getChatSession(params.id);
   if (!session) {
     return new Response(JSON.stringify({ error: 'Session not found' }), {
       status: 404,
@@ -47,22 +47,19 @@ export async function POST(
   }
 
   const agentId = String(body.agentId ?? session.agentId);
-  const { block, previews } = buildAttachmentContext(uploadIds);
+  const { block, previews } = await buildAttachmentContext(uploadIds);
   const fullInput = (text || '(see attachments)') + block;
 
-  const attachmentMeta = uploadIds
-    .map((id) => {
-      const u = getUpload(id);
-      return u
-        ? {
-            id,
-            name: u.name,
-            url: `/api/uploads/${id}`,
-            mime: u.mime,
-          }
-        : null;
-    })
-    .filter((x): x is NonNullable<typeof x> => x != null);
+  const attachmentMeta = (
+    await Promise.all(
+      uploadIds.map(async (id) => {
+        const u = await getUpload(id);
+        return u
+          ? { id, name: u.name, url: `/api/uploads/${id}`, mime: u.mime }
+          : null;
+      })
+    )
+  ).filter((x): x is NonNullable<typeof x> => x != null);
 
   const now = new Date().toISOString();
   const userArtifacts: ChatArtifact[] = previews.map((p) => ({
@@ -159,13 +156,13 @@ export async function POST(
           artifacts: artifacts.length ? artifacts : undefined,
         };
 
-        appendChatExchange({
+        await appendChatExchange({
           sessionId: session.id,
           userMessage: userMsg,
           assistantMessage: assistantMsg,
         });
 
-        const updated = getChatSession(session.id);
+        const updated = await getChatSession(session.id);
         send({ channel: 'done', ok: true, result, session: updated });
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);

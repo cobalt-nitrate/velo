@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
-  const local = listUploads().map((u) => ({
+  const local = (await listUploads()).map((u) => ({
     source: 'local' as const,
     id: u.id,
     name: u.name,

@@ -1,0 +1,34 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Next.js build output
+**/.next
+**/out
+
+# Secrets & local config
+.env
+.env.local
+.env.*.local
+
+# Velo data (uploaded files, connector secrets) — injected as volumes
+.velo
+
+# Dev tooling
+.git
+.github
+.vscode
+
+# Logs
+**/*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs / tests
+docs
+**/*.test.ts
+**/*.spec.ts

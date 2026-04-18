@@ -82,7 +82,7 @@ export async function POST(req: Request) {
     }
 
     applyStoredConnectorEnvAtStartup();
-    const state = getOnboardingState();
+    const state = await getOnboardingState();
 
     // 2. Must have bootstrapped sheets first
     if (!state.sheetsBootstrapped) {
@@ -198,7 +198,7 @@ export async function POST(req: Request) {
       await sleep(400);
     }
 
-    patchOnboardingState({ seedDataLoaded: true });
+    await patchOnboardingState({ seedDataLoaded: true });
 
     return NextResponse.json({
       ok: true,

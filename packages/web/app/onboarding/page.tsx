@@ -50,7 +50,7 @@ export default async function OnboardingPage() {
   }
 
   // Gate 3: already complete → send to dashboard
-  const state = getOnboardingState();
+  const state = await getOnboardingState();
   if (state.completed) {
     redirect('/');
   }

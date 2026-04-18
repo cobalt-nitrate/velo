@@ -6,15 +6,15 @@ const MAX_INLINE = 120_000;
 /**
  * Builds an optional plaintext block from uploaded files for the LLM prompt.
  */
-export function buildAttachmentContext(uploadIds: string[]): {
+export async function buildAttachmentContext(uploadIds: string[]): Promise<{
   block: string;
   previews: Array<{ id: string; name: string; snippet: string }>;
-} {
+}> {
   const previews: Array<{ id: string; name: string; snippet: string }> = [];
   const parts: string[] = [];
 
   for (const id of uploadIds) {
-    const rec = getUpload(id);
+    const rec = await getUpload(id);
     if (!rec) continue;
     const p = absUploadPath(rec);
     const isText =

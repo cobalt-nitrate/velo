@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  name         String?
+  image        String?
+  passwordHash String? @map("password_hash")
+
+  // Velo-specific fields
+  role           String    @default("employee")
+  sessionVersion Int       @default(1) @map("session_version")
+  revokedAt      DateTime? @map("revoked_at")
+  revokedBy      String?   @map("revoked_by")
+  firstSignIn    DateTime  @default(now()) @map("first_sign_in")
+  lastSignIn     DateTime  @default(now()) @map("last_sign_in")
+
+  sentInvites Invite[] @relation("InviteCreatedBy")
+
+  @@map("users")
+}
+
+// ─── Team Invites ─────────────────────────────────────────────────────────────
+
+model Invite {
+  id    String @id @default(cuid())
+  token String @unique // 64-char hex (32 random bytes)
+
+  role  String
+  email String? // null = any account may accept; non-null = only that email
+  note  String?
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  expiresAt   DateTime  @map("expires_at")
+  createdById String    @map("created_by_id")
+  consumedAt  DateTime? @map("consumed_at")
+  consumedBy  String?   @map("consumed_by")
+
+  createdBy User @relation("InviteCreatedBy", fields: [createdById], references: [id])
+
+  @@index([token])
+  @@map("invites")
+}
+
+// ─── Onboarding ───────────────────────────────────────────────────────────────
+
+model OnboardingState {
+  id                  String    @id @default(cuid())
+  completed           Boolean   @default(false)
+  completedAt         DateTime? @map("completed_at")
+  currentStep         Int       @default(0) @map("current_step")
+  bootstrapInProgress Boolean   @default(false) @map("bootstrap_in_progress")
+  steps               Json      @default("{}")
+  sheetsBootstrapped  Boolean   @default(false) @map("sheets_bootstrapped")
+  seedDataLoaded      Boolean   @default(false) @map("seed_data_loaded")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  @@map("onboarding_state")
+}
+
+// ─── App Settings ─────────────────────────────────────────────────────────────
+
+model AppSettings {
+  id               String @id @default(cuid())
+  companyName      String @default("Your company") @map("company_name")
+  defaultAgentId   String @default("orchestrator") @map("default_agent_id")
+  defaultCurrency  String @default("INR") @map("default_currency")
+  defaultActorRole String @default("founder") @map("default_actor_role")
+
+  @@map("app_settings")
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  title     String   @default("New conversation")
+  agentId   String   @default("orchestrator") @map("agent_id")
+  companyId String   @default("demo-company") @map("company_id")
+  actorRole String   @default("founder") @map("actor_role")
+  actorId   String   @default("web-user") @map("actor_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  messages ChatMessage[]
+
+  @@index([updatedAt(sort: Desc)])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  sessionId   String   @map("session_id")
+  role        String   // 'user' | 'assistant' | 'system'
+  content     String   @db.Text
+  attachments Json     @default("[]")
+  artifacts   Json     @default("[]")
+  timestamp   DateTime @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("chat_messages")
+}
+
+// ─── File Uploads ─────────────────────────────────────────────────────────────
+
+model Upload {
+  id        String   @id @default(cuid())
+  name      String
+  mime      String
+  size      Int
+  path      String   // relative path inside .velo/uploads/
+  checksum  String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("uploads")
+}
+
+// ─── Audit Events ─────────────────────────────────────────────────────────────
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  companyId String   @map("company_id")
+  actorId   String   @map("actor_id")
+  actorRole String   @map("actor_role")
+  agentId   String   @map("agent_id")
+  eventType String   @map("event_type")
+  sessionId String?  @map("session_id")
+  payload   Json     @default("{}")
+
+  @@index([companyId])
+  @@index([sessionId])
+  @@index([timestamp(sort: Desc)])
+  @@map("audit_events")
+}

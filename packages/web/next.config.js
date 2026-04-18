@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone', // enables Docker multi-stage builds
   reactStrictMode: true,
   transpilePackages: ['@velo/agents', '@velo/core', '@velo/tools'],
   webpack: (config, { dev }) => {

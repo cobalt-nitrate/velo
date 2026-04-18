@@ -261,6 +261,12 @@ export const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
         optional: true,
         placeholder: 'hr@acme.com',
       },
+      {
+        envKey: 'VELO_MANAGER_EMAILS',
+        label: 'Manager emails (comma-separated)',
+        optional: true,
+        placeholder: 'mgr@acme.com',
+      },
     ],
   },
   {

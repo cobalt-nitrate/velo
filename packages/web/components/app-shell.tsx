@@ -16,7 +16,6 @@ function SetupBanner() {
     const role = (session?.user as { actor_role?: string } | undefined)?.actor_role;
     if (role !== 'founder') return;
 
-    // Check localStorage dismiss flag first before fetching
     try {
       if (localStorage.getItem(SETUP_BANNER_DISMISSED_KEY) === '1') return;
     } catch { /* ignore */ }
@@ -60,18 +59,11 @@ function SetupBanner() {
   );
 }
 
+// --- Icons ---
+
 function IconOverview({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <rect x="3" y="3" width="7" height="9" rx="1.25" />
       <rect x="14" y="3" width="7" height="5" rx="1.25" />
       <rect x="14" y="12" width="7" height="9" rx="1.25" />
@@ -82,16 +74,7 @@ function IconOverview({ className }: { className?: string }) {
 
 function IconChat({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M21 11.5a8.5 8.5 0 01-8.5 8.5H7l-4 3v-3A8.5 8.5 0 013 11.5a8.5 8.5 0 018.5-8.5h.2a8.5 8.5 0 019.3 8.5z" />
       <path d="M8.5 11h.01M12 11h.01M15.5 11h.01" />
     </svg>
@@ -100,16 +83,7 @@ function IconChat({ className }: { className?: string }) {
 
 function IconFolder({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
     </svg>
   );
@@ -117,16 +91,7 @@ function IconFolder({ className }: { className?: string }) {
 
 function IconUpload({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
     </svg>
   );
@@ -134,16 +99,7 @@ function IconUpload({ className }: { className?: string }) {
 
 function IconTable({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M4 6h16M4 12h10M4 18h16M14 9h6M14 15h6" />
     </svg>
   );
@@ -151,34 +107,35 @@ function IconTable({ className }: { className?: string }) {
 
 function IconSettings({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="12" cy="12" r="3" />
       <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
     </svg>
   );
 }
 
+function IconTeam({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+}
+
+function IconProfile({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
 function IconChevronLeft({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M15 18l-6-6 6-6" />
     </svg>
   );
@@ -186,35 +143,68 @@ function IconChevronLeft({ className }: { className?: string }) {
 
 function IconChevronRight({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M9 18l6-6-6-6" />
     </svg>
   );
 }
 
-const NAV = [
+// --- Nav definitions ---
+
+type NavItem = {
+  href: string;
+  label: string;
+  Icon: (props: { className?: string }) => React.JSX.Element;
+  /**
+   * Roles that can see this item.
+   * undefined = all authenticated users.
+   * Empty array would hide from everyone — don't use that.
+   */
+  roles?: string[];
+};
+
+const NAV: NavItem[] = [
   { href: '/', label: 'Overview', Icon: IconOverview },
   { href: '/chat', label: 'Chat', Icon: IconChat },
-  { href: '/operations', label: 'Operations', Icon: IconTable },
-  { href: '/files', label: 'Files', Icon: IconFolder },
+  {
+    href: '/operations',
+    label: 'Operations',
+    Icon: IconTable,
+    // Employees only use self-service; operations data is for leads / founders
+    roles: ['founder', 'finance_lead', 'hr_lead', 'manager'],
+  },
+  {
+    href: '/files',
+    label: 'Files',
+    Icon: IconFolder,
+    roles: ['founder', 'finance_lead', 'hr_lead', 'manager'],
+  },
   { href: '/uploads', label: 'Uploads', Icon: IconUpload },
-  { href: '/settings', label: 'Settings', Icon: IconSettings },
-] as const;
+  { href: '/profile', label: 'Profile', Icon: IconProfile },
+  {
+    href: '/team',
+    label: 'Team',
+    Icon: IconTeam,
+    roles: ['founder'],
+  },
+  {
+    href: '/settings',
+    label: 'Settings',
+    Icon: IconSettings,
+    roles: ['founder'],
+  },
+];
 
 const ICON_CLASS = 'h-[1.15rem] w-[1.15rem]';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const hideChrome = pathname?.startsWith('/auth') || pathname?.startsWith('/onboarding');
+  const { data: session } = useSession();
+  const hideChrome =
+    pathname?.startsWith('/auth') ||
+    pathname?.startsWith('/onboarding') ||
+    pathname?.startsWith('/team/invite');
+
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -237,6 +227,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (hideChrome) {
     return <>{children}</>;
   }
+
+  const role = (session?.user as { actor_role?: string } | undefined)?.actor_role ?? 'employee';
+
+  // Filter nav to items visible for this role
+  const visibleNav = NAV.filter((item) => !item.roles || item.roles.includes(role));
 
   return (
     <div className="flex min-h-screen">
@@ -295,7 +290,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-2" aria-label="Main">
-          {NAV.map((item) => {
+          {visibleNav.map((item) => {
             const active =
               item.href === '/'
                 ? pathname === '/'

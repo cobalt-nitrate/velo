@@ -1,143 +1,159 @@
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import 'server-only';
+import { prisma } from './prisma';
 import type { ChatMessage, ChatSession } from './chat-types';
-import { chatsDir, veloDataDir } from './velo-data-dir';
 
 export type { ChatArtifact, ChatMessage, ChatSession } from './chat-types';
 
-interface IndexFile {
-  sessions: Array<{
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
+function rowToSession(row: {
+  id: string;
+  title: string;
+  agentId: string;
+  companyId: string;
+  actorRole: string;
+  actorId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  messages: Array<{
     id: string;
-    title: string;
-    updatedAt: string;
-    agentId: string;
+    role: string;
+    content: string;
+    attachments: unknown;
+    artifacts: unknown;
+    timestamp: Date;
   }>;
-}
-
-function indexPath(): string {
-  return join(chatsDir(), '_index.json');
-}
-
-function sessionPath(id: string): string {
-  return join(chatsDir(), `${id}.json`);
-}
-
-function readIndex(): IndexFile {
-  const p = indexPath();
-  if (!existsSync(p)) return { sessions: [] };
-  try {
-    return JSON.parse(readFileSync(p, 'utf-8')) as IndexFile;
-  } catch {
-    return { sessions: [] };
-  }
-}
-
-function writeIndex(idx: IndexFile): void {
-  writeFileSync(indexPath(), JSON.stringify(idx, null, 2), 'utf-8');
-}
-
-export function listChatSessions(): IndexFile['sessions'] {
-  return readIndex().sessions.sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  );
-}
-
-export function getChatSession(id: string): ChatSession | null {
-  const p = sessionPath(id);
-  if (!existsSync(p)) return null;
-  try {
-    return JSON.parse(readFileSync(p, 'utf-8')) as ChatSession;
-  } catch {
-    return null;
-  }
-}
-
-function writeSession(session: ChatSession): void {
-  writeFileSync(sessionPath(session.id), JSON.stringify(session, null, 2), 'utf-8');
-  const idx = readIndex();
-  const i = idx.sessions.findIndex((s) => s.id === session.id);
-  const meta = {
-    id: session.id,
-    title: session.title,
-    updatedAt: session.updatedAt,
-    agentId: session.agentId,
+}): ChatSession {
+  return {
+    id: row.id,
+    title: row.title,
+    agentId: row.agentId,
+    companyId: row.companyId,
+    actorRole: row.actorRole,
+    actorId: row.actorId,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    messages: row.messages.map((m) => ({
+      id: m.id,
+      role: m.role as ChatMessage['role'],
+      content: m.content,
+      timestamp: m.timestamp.toISOString(),
+      attachments: (m.attachments as ChatMessage['attachments']) ?? [],
+      artifacts: (m.artifacts as ChatMessage['artifacts']) ?? [],
+    })),
   };
-  if (i >= 0) idx.sessions[i] = meta;
-  else idx.sessions.unshift(meta);
-  writeIndex(idx);
 }
 
-export function createChatSession(params: {
+const WITH_MESSAGES = { messages: { orderBy: { timestamp: 'asc' as const } } };
+
+// ── Public API (mirrors the old file-based store, now async) ──────────────────
+
+export async function listChatSessions(): Promise<
+  Array<{ id: string; title: string; updatedAt: string; agentId: string }>
+> {
+  const rows = await prisma.chatSession.findMany({
+    orderBy: { updatedAt: 'desc' },
+    select: { id: true, title: true, updatedAt: true, agentId: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    updatedAt: r.updatedAt.toISOString(),
+    agentId: r.agentId,
+  }));
+}
+
+export async function getChatSession(id: string): Promise<ChatSession | null> {
+  const row = await prisma.chatSession.findUnique({
+    where: { id },
+    include: WITH_MESSAGES,
+  });
+  return row ? rowToSession(row) : null;
+}
+
+export async function createChatSession(params: {
   title?: string;
   agentId?: string;
   companyId?: string;
   actorId?: string;
   actorRole?: string;
-}): ChatSession {
-  const id = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-  const now = new Date().toISOString();
-  const session: ChatSession = {
-    id,
-    title: params.title?.trim() || 'New conversation',
-    agentId: params.agentId ?? 'orchestrator',
-    companyId: params.companyId ?? 'demo-company',
-    actorId: params.actorId ?? 'web-user',
-    actorRole: params.actorRole ?? 'founder',
-    createdAt: now,
-    updatedAt: now,
-    messages: [],
-  };
-  writeSession(session);
-  return session;
+}): Promise<ChatSession> {
+  const row = await prisma.chatSession.create({
+    data: {
+      title: params.title?.trim() || 'New conversation',
+      agentId: params.agentId ?? 'orchestrator',
+      companyId: params.companyId ?? 'demo-company',
+      actorId: params.actorId ?? 'web-user',
+      actorRole: params.actorRole ?? 'founder',
+    },
+    include: WITH_MESSAGES,
+  });
+  return rowToSession(row);
 }
 
-export function updateChatSessionMeta(
+export async function updateChatSessionMeta(
   id: string,
   patch: Partial<Pick<ChatSession, 'title' | 'agentId'>>
-): ChatSession | null {
-  const s = getChatSession(id);
-  if (!s) return null;
-  if (patch.title != null) s.title = patch.title;
-  if (patch.agentId != null) s.agentId = patch.agentId;
-  s.updatedAt = new Date().toISOString();
-  writeSession(s);
-  return s;
+): Promise<ChatSession | null> {
+  try {
+    const row = await prisma.chatSession.update({
+      where: { id },
+      data: {
+        ...(patch.title != null && { title: patch.title }),
+        ...(patch.agentId != null && { agentId: patch.agentId }),
+      },
+      include: WITH_MESSAGES,
+    });
+    return rowToSession(row);
+  } catch {
+    return null;
+  }
 }
 
-export function appendChatExchange(params: {
+export async function appendChatExchange(params: {
   sessionId: string;
   userMessage: ChatMessage;
   assistantMessage?: ChatMessage;
-}): ChatSession | null {
-  const s = getChatSession(params.sessionId);
-  if (!s) return null;
-  s.messages.push(params.userMessage);
-  if (params.assistantMessage) s.messages.push(params.assistantMessage);
-  s.updatedAt = new Date().toISOString();
-  if (s.title === 'New conversation' && params.userMessage.content.trim()) {
-    s.title =
-      params.userMessage.content.trim().slice(0, 52) +
-      (params.userMessage.content.length > 52 ? '…' : '');
-  }
-  writeSession(s);
-  return s;
+}): Promise<ChatSession | null> {
+  const session = await getChatSession(params.sessionId);
+  if (!session) return null;
+
+  // Auto-title from first user message
+  const needsTitle = session.title === 'New conversation' && params.userMessage.content.trim();
+  const newTitle = needsTitle
+    ? params.userMessage.content.trim().slice(0, 52) +
+      (params.userMessage.content.length > 52 ? '…' : '')
+    : undefined;
+
+  const messagesToCreate = [params.userMessage, ...(params.assistantMessage ? [params.assistantMessage] : [])];
+
+  await prisma.$transaction([
+    ...messagesToCreate.map((m) =>
+      prisma.chatMessage.create({
+        data: {
+          sessionId: params.sessionId,
+          role: m.role,
+          content: m.content,
+          attachments: (m.attachments ?? []) as object[],
+          artifacts: (m.artifacts ?? []) as object[],
+          timestamp: new Date(m.timestamp),
+        },
+      })
+    ),
+    prisma.chatSession.update({
+      where: { id: params.sessionId },
+      data: { ...(newTitle && { title: newTitle }) },
+    }),
+  ]);
+
+  return getChatSession(params.sessionId);
 }
 
-export function deleteChatSession(id: string): boolean {
-  const p = sessionPath(id);
-  if (!existsSync(p)) return false;
+export async function deleteChatSession(id: string): Promise<boolean> {
   try {
-    unlinkSync(p);
+    await prisma.chatSession.delete({ where: { id } });
+    return true;
   } catch {
     return false;
   }
-  const idx = readIndex();
-  idx.sessions = idx.sessions.filter((s) => s.id !== id);
-  writeIndex(idx);
-  return true;
-}
-
-/** Settings stored beside chats (company UI prefs). */
-export function settingsPath(): string {
-  return join(veloDataDir(), 'ui-settings.json');
 }
