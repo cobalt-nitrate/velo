@@ -8,15 +8,12 @@
  * - Password must be at least 10 characters
  */
 
+import { splitEmails } from '@/lib/auth';
 import { createUser } from '@/lib/users-registry';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-
-function splitEmails(raw: string): Set<string> {
-  return new Set(raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean));
-}
 
 export async function POST(req: Request) {
   try {

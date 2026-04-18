@@ -415,7 +415,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
   let bank_transactions_detail: BankTransactionSummary[] = [];
   const bank = await safeSheetRead('sheets.bank_transactions.get_latest_balance');
   if (bank.ok === false) probe_errors.push(`bank: ${String(bank.error ?? '')}`);
-  else if (bank.ok !== false) {
+  else {
     bank_txn_count = typeof bank.transaction_count === 'number' ? bank.transaction_count : 0;
     bank_balance_inr = typeof bank.balance_inr === 'number' ? bank.balance_inr : null;
     bank_as_of_date = bank.as_of_date != null ? String(bank.as_of_date) : null;

@@ -21,7 +21,19 @@ export interface AuditEvent {
   payload: Record<string, unknown>;
 }
 
+const MAX_AUDIT_STORE = 2_000;
 const auditStore = new Map<string, AuditEvent>();
+
+function evictOldestAuditEvents(): void {
+  if (auditStore.size <= MAX_AUDIT_STORE) return;
+  const toDelete = auditStore.size - MAX_AUDIT_STORE;
+  let deleted = 0;
+  for (const key of auditStore.keys()) {
+    if (deleted >= toDelete) break;
+    auditStore.delete(key);
+    deleted++;
+  }
+}
 
 /** Row writer from `@velo/tools/sheets` `appendAuditRow` — register via `registerAuditSheetsFlush` from agents (or any host that has tools). */
 let sheetsFlushFn: ((row: Record<string, unknown>) => Promise<void>) | null = null;
@@ -69,8 +81,9 @@ export function createAuditEvent(
   };
 
   auditStore.set(event.id, event);
+  evictOldestAuditEvents();
 
-  // Fire-and-forget Sheets flush — never awaited so it never blocks the agent
+  // Fire-and-forget DB flush — never awaited so it never blocks the agent
   void flushToSheets(event);
 
   return event;
@@ -88,8 +101,6 @@ export function listAuditEventsByCompany(companyId: string): AuditEvent[] {
 
 export function listAuditEventsBySession(sessionId: string): AuditEvent[] {
   return Array.from(auditStore.values()).filter(
-    (event) =>
-      event.payload.session_id === sessionId ||
-      event.id.includes(sessionId)
+    (event) => event.payload.session_id === sessionId
   );
 }

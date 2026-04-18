@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Users ────────────────────────────────────────────────────────────────────
+// ─── Auth / App State ─────────────────────────────────────────────────────────
 
 model User {
   id           String  @id @default(cuid())
@@ -16,7 +16,6 @@ model User {
   image        String?
   passwordHash String? @map("password_hash")
 
-  // Velo-specific fields
   role           String    @default("employee")
   sessionVersion Int       @default(1) @map("session_version")
   revokedAt      DateTime? @map("revoked_at")
@@ -29,14 +28,12 @@ model User {
   @@map("users")
 }
 
-// ─── Team Invites ─────────────────────────────────────────────────────────────
-
 model Invite {
   id    String @id @default(cuid())
-  token String @unique // 64-char hex (32 random bytes)
+  token String @unique
 
   role  String
-  email String? // null = any account may accept; non-null = only that email
+  email String?
   note  String?
 
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -50,8 +47,6 @@ model Invite {
   @@index([token])
   @@map("invites")
 }
-
-// ─── Onboarding ───────────────────────────────────────────────────────────────
 
 model OnboardingState {
   id                  String    @id @default(cuid())
@@ -67,8 +62,6 @@ model OnboardingState {
   @@map("onboarding_state")
 }
 
-// ─── App Settings ─────────────────────────────────────────────────────────────
-
 model AppSettings {
   id               String @id @default(cuid())
   companyName      String @default("Your company") @map("company_name")
@@ -78,8 +71,6 @@ model AppSettings {
 
   @@map("app_settings")
 }
-
-// ─── Chat ─────────────────────────────────────────────────────────────────────
 
 model ChatSession {
   id        String   @id @default(cuid())
@@ -100,7 +91,7 @@ model ChatSession {
 model ChatMessage {
   id          String   @id @default(cuid())
   sessionId   String   @map("session_id")
-  role        String   // 'user' | 'assistant' | 'system'
+  role        String
   content     String   @db.Text
   attachments Json     @default("[]")
   artifacts   Json     @default("[]")
@@ -112,21 +103,17 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
-// ─── File Uploads ─────────────────────────────────────────────────────────────
-
 model Upload {
   id        String   @id @default(cuid())
   name      String
   mime      String
   size      Int
-  path      String   // relative path inside .velo/uploads/
+  path      String
   checksum  String?
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("uploads")
 }
-
-// ─── Audit Events ─────────────────────────────────────────────────────────────
 
 model AuditEvent {
   id        String   @id @default(cuid())
@@ -143,4 +130,640 @@ model AuditEvent {
   @@index([sessionId])
   @@index([timestamp(sort: Desc)])
   @@map("audit_events")
+}
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+
+model CompanySetting {
+  id          String @id @default(cuid())
+  key         String @unique
+  value       String @default("")
+  description String @default("")
+  lastUpdated String @default("") @map("last_updated")
+
+  @@map("company_settings")
+}
+
+model TaxRate {
+  id        String @id @default(cuid())
+  type      String @default("")
+  subtype   String @default("")
+  ratePct   String @default("") @map("rate_pct")
+  stateCode String @default("") @map("state_code")
+  salaryMin String @default("") @map("salary_min")
+  salaryMax String @default("") @map("salary_max")
+  notes     String @default("")
+
+  @@map("tax_rates")
+}
+
+model ExpenseCategory {
+  id             String @id @default(cuid())
+  categoryId     String @unique @map("category_id")
+  label          String @default("")
+  gstRate        String @default("") @map("gst_rate")
+  itcClaimable   String @default("") @map("itc_claimable")
+  itcBlockReason String @default("") @map("itc_block_reason")
+  parentCategory String @default("") @map("parent_category")
+
+  @@map("expense_categories")
+}
+
+model PayrollComponent {
+  id          String @id @default(cuid())
+  componentId String @unique @map("component_id")
+  label       String @default("")
+  type        String @default("")
+  pctOfCtc    String @default("") @map("pct_of_ctc")
+  pctOfBasic  String @default("") @map("pct_of_basic")
+  taxable     String @default("")
+  pfApplicable String @default("") @map("pf_applicable")
+  notes       String @default("")
+
+  @@map("payroll_components")
+}
+
+model LeaveType {
+  id                    String @id @default(cuid())
+  leaveTypeId           String @unique @map("leave_type_id")
+  label                 String @default("")
+  annualEntitlementDays String @default("") @map("annual_entitlement_days")
+  carryForwardMax       String @default("") @map("carry_forward_max")
+  encashable            String @default("")
+  paid                  String @default("")
+  accrual               String @default("")
+  notes                 String @default("")
+
+  @@map("leave_types")
+}
+
+model ComplianceRule {
+  id               String @id @default(cuid())
+  ruleId           String @unique @map("rule_id")
+  label            String @default("")
+  frequency        String @default("")
+  dueDayOfMonth    String @default("") @map("due_day_of_month")
+  applicableMonths String @default("") @map("applicable_months")
+  applicableStates String @default("") @map("applicable_states")
+  portal           String @default("")
+  penaltyNotes     String @default("") @map("penalty_notes")
+
+  @@map("compliance_rules")
+}
+
+// ─── MASTER ───────────────────────────────────────────────────────────────────
+
+model Employee {
+  id                String @id @default(cuid())
+  employeeId        String @unique @map("employee_id")
+  fullName          String @default("") @map("full_name")
+  email             String @default("")
+  personalEmail     String @default("") @map("personal_email")
+  phone             String @default("")
+  dob               String @default("")
+  gender            String @default("")
+  pan               String @default("")
+  aadhaar           String @default("")
+  address           String @default("")
+  designation       String @default("")
+  department        String @default("")
+  reportsTo         String @default("") @map("reports_to")
+  doj               String @default("")
+  doe               String @default("")
+  status            String @default("active")
+  employmentType    String @default("") @map("employment_type")
+  salaryStructureId String @default("") @map("salary_structure_id")
+  ctcAnnualInr      String @default("") @map("ctc_annual_inr")
+  pfUan             String @default("") @map("pf_uan")
+  esicIpNumber      String @default("") @map("esic_ip_number")
+  ptApplicable      String @default("") @map("pt_applicable")
+  tdsRegime         String @default("") @map("tds_regime")
+  bankAccountNumber String @default("") @map("bank_account_number")
+  bankIfsc          String @default("") @map("bank_ifsc")
+  bankName          String @default("") @map("bank_name")
+  createdAt         String @default("") @map("created_at")
+  updatedAt         String @default("") @map("updated_at")
+
+  @@index([status])
+  @@map("employees")
+}
+
+model SalaryStructure {
+  id                       String @id @default(cuid())
+  structureId              String @unique @map("structure_id")
+  label                    String @default("")
+  description              String @default("")
+  basicPctOfCtc            String @default("") @map("basic_pct_of_ctc")
+  hraPctOfBasic            String @default("") @map("hra_pct_of_basic")
+  ltaPctOfCtc              String @default("") @map("lta_pct_of_ctc")
+  specialAllowanceResidual String @default("") @map("special_allowance_residual")
+  effectiveFrom            String @default("") @map("effective_from")
+  createdAt                String @default("") @map("created_at")
+
+  @@map("salary_structures")
+}
+
+model Vendor {
+  id               String @id @default(cuid())
+  vendorId         String @unique @map("vendor_id")
+  vendorName       String @default("") @map("vendor_name")
+  gstin            String @default("")
+  pan              String @default("")
+  bankAccount      String @default("") @map("bank_account")
+  ifsc             String @default("")
+  bankName         String @default("") @map("bank_name")
+  paymentTermsDays String @default("") @map("payment_terms_days")
+  isPayeeAdded     String @default("") @map("is_payee_added")
+  contactEmail     String @default("") @map("contact_email")
+  contactPhone     String @default("") @map("contact_phone")
+  createdAt        String @default("") @map("created_at")
+  updatedAt        String @default("") @map("updated_at")
+
+  @@map("vendor_master")
+}
+
+model Client {
+  id               String @id @default(cuid())
+  clientId         String @unique @map("client_id")
+  clientName       String @default("") @map("client_name")
+  gstin            String @default("")
+  pan              String @default("")
+  billingAddress   String @default("") @map("billing_address")
+  state            String @default("")
+  contactEmail     String @default("") @map("contact_email")
+  contactPhone     String @default("") @map("contact_phone")
+  paymentTermsDays String @default("") @map("payment_terms_days")
+  createdAt        String @default("") @map("created_at")
+  updatedAt        String @default("") @map("updated_at")
+
+  @@map("client_master")
+}
+
+model BankPayee {
+  id         String @id @default(cuid())
+  payeeId    String @unique @map("payee_id")
+  vendorId   String @default("") @map("vendor_id")
+  vendorName String @default("") @map("vendor_name")
+  bankAccount String @default("") @map("bank_account")
+  ifsc       String @default("")
+  bankName   String @default("") @map("bank_name")
+  addedDate  String @default("") @map("added_date")
+  status     String @default("")
+  notes      String @default("")
+
+  @@map("bank_payees")
+}
+
+// ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
+
+model BankTransaction {
+  id        String @id @default(cuid())
+  txnId     String @unique @map("txn_id")
+  companyId String @default("") @map("company_id")
+  date      String @default("")
+  narration String @default("")
+  refNumber String @default("") @map("ref_number")
+  amount    String @default("")
+  balance   String @default("")
+  type      String @default("")
+  mode      String @default("")
+  source    String @default("")
+  createdAt String @default("") @map("created_at")
+
+  @@index([date])
+  @@index([companyId])
+  @@map("bank_transactions")
+}
+
+model ApInvoice {
+  id              String @id @default(cuid())
+  invoiceId       String @unique @map("invoice_id")
+  vendorId        String @default("") @map("vendor_id")
+  vendorName      String @default("") @map("vendor_name")
+  invoiceNumber   String @default("") @map("invoice_number")
+  invoiceDate     String @default("") @map("invoice_date")
+  dueDate         String @default("") @map("due_date")
+  lineItemsJson   String @default("") @map("line_items_json") @db.Text
+  subtotal        String @default("")
+  gstAmount       String @default("") @map("gst_amount")
+  totalAmount     String @default("") @map("total_amount")
+  expenseCategory String @default("") @map("expense_category")
+  subCategory     String @default("") @map("sub_category")
+  itcClaimable    String @default("") @map("itc_claimable")
+  itcAmount       String @default("") @map("itc_amount")
+  paymentStatus   String @default("") @map("payment_status")
+  paymentDate     String @default("") @map("payment_date")
+  bankReference   String @default("") @map("bank_reference")
+  approver        String @default("")
+  approvedAt      String @default("") @map("approved_at")
+  sourceFileUrl   String @default("") @map("source_file_url")
+  notes           String @default("")
+  createdAt       String @default("") @map("created_at")
+
+  @@index([paymentStatus])
+  @@map("ap_invoices")
+}
+
+model ArInvoice {
+  id                  String @id @default(cuid())
+  invoiceId           String @unique @map("invoice_id")
+  clientId            String @default("") @map("client_id")
+  clientName          String @default("") @map("client_name")
+  invoiceNumber       String @default("") @map("invoice_number")
+  invoiceDate         String @default("") @map("invoice_date")
+  dueDate             String @default("") @map("due_date")
+  serviceDescription  String @default("") @map("service_description")
+  subtotal            String @default("")
+  igst                String @default("")
+  cgst                String @default("")
+  sgst                String @default("")
+  totalAmount         String @default("") @map("total_amount")
+  status              String @default("")
+  paymentReceivedDate String @default("") @map("payment_received_date")
+  bankReference       String @default("") @map("bank_reference")
+  followupCount       String @default("0") @map("followup_count")
+  lastFollowupDate    String @default("") @map("last_followup_date")
+  invoicePdfUrl       String @default("") @map("invoice_pdf_url")
+  createdAt           String @default("") @map("created_at")
+
+  @@index([status])
+  @@index([dueDate])
+  @@map("ar_invoices")
+}
+
+model PayrollRun {
+  id                String @id @default(cuid())
+  runId             String @unique @map("run_id")
+  month             String @default("")
+  year              String @default("")
+  employeeCount     String @default("") @map("employee_count")
+  totalGross        String @default("") @map("total_gross")
+  totalDeductions   String @default("") @map("total_deductions")
+  totalNet          String @default("") @map("total_net")
+  pfEmployerTotal   String @default("") @map("pf_employer_total")
+  esicEmployerTotal String @default("") @map("esic_employer_total")
+  status            String @default("")
+  approvedBy        String @default("") @map("approved_by")
+  approvedAt        String @default("") @map("approved_at")
+  createdAt         String @default("") @map("created_at")
+
+  @@map("payroll_runs")
+}
+
+model SalarySlip {
+  id               String @id @default(cuid())
+  slipId           String @unique @map("slip_id")
+  runId            String @default("") @map("run_id")
+  employeeId       String @default("") @map("employee_id")
+  employeeName     String @default("") @map("employee_name")
+  month            String @default("")
+  year             String @default("")
+  basic            String @default("")
+  hra              String @default("")
+  lta              String @default("")
+  specialAllowance String @default("") @map("special_allowance")
+  grossSalary      String @default("") @map("gross_salary")
+  pfEmployee       String @default("") @map("pf_employee")
+  esicEmployee     String @default("") @map("esic_employee")
+  pt               String @default("")
+  tds              String @default("")
+  lopDeduction     String @default("") @map("lop_deduction")
+  totalDeductions  String @default("") @map("total_deductions")
+  netSalary        String @default("") @map("net_salary")
+  workingDays      String @default("") @map("working_days")
+  lopDays          String @default("") @map("lop_days")
+  driveUrl         String @default("") @map("drive_url")
+  createdAt        String @default("") @map("created_at")
+
+  @@index([employeeId])
+  @@map("salary_slips")
+}
+
+model LeaveRecord {
+  id           String @id @default(cuid())
+  recordId     String @unique @map("record_id")
+  employeeId   String @default("") @map("employee_id")
+  employeeName String @default("") @map("employee_name")
+  leaveType    String @default("") @map("leave_type")
+  fromDate     String @default("") @map("from_date")
+  toDate       String @default("") @map("to_date")
+  days         String @default("")
+  reason       String @default("")
+  status       String @default("")
+  approver     String @default("")
+  approvedAt   String @default("") @map("approved_at")
+  createdAt    String @default("") @map("created_at")
+
+  @@map("leave_records")
+}
+
+model LeaveBalance {
+  id             String @id @default(cuid())
+  balanceId      String @unique @map("balance_id")
+  employeeId     String @default("") @map("employee_id")
+  leaveType      String @default("") @map("leave_type")
+  year           String @default("")
+  openingBalance String @default("") @map("opening_balance")
+  accrued        String @default("")
+  used           String @default("")
+  closingBalance String @default("") @map("closing_balance")
+  lastUpdated    String @default("") @map("last_updated")
+
+  @@map("leave_balances")
+}
+
+model Attendance {
+  id                 String @id @default(cuid())
+  recordId           String @unique @map("record_id")
+  employeeId         String @default("") @map("employee_id")
+  month              String @default("")
+  year               String @default("")
+  workingDaysInMonth String @default("") @map("working_days_in_month")
+  daysPresent        String @default("") @map("days_present")
+  daysAbsent         String @default("") @map("days_absent")
+  lopDays            String @default("") @map("lop_days")
+  wfhDays            String @default("") @map("wfh_days")
+  updatedAt          String @default("") @map("updated_at")
+
+  @@map("attendance")
+}
+
+model ApprovalRequest {
+  id                      String @id @default(cuid())
+  approvalId              String @unique @map("approval_id")
+  agentId                 String @default("") @map("agent_id")
+  actionType              String @default("") @map("action_type")
+  actionPayloadJson       String @default("{}") @map("action_payload_json") @db.Text
+  confidenceScore         String @default("") @map("confidence_score")
+  evidenceJson            String @default("[]") @map("evidence_json") @db.Text
+  proposedActionText      String @default("") @map("proposed_action_text")
+  createdAt               String @default("") @map("created_at")
+  expiresAt               String @default("") @map("expires_at")
+  status                  String @default("PENDING")
+  approverRole            String @default("") @map("approver_role")
+  resolvedBy              String @default("") @map("resolved_by")
+  resolvedAt              String @default("") @map("resolved_at")
+  resolutionNotes         String @default("") @map("resolution_notes")
+  attachmentDriveUrlsJson String @default("") @map("attachment_drive_urls_json") @db.Text
+
+  @@index([status])
+  @@map("approval_requests")
+}
+
+model HrTask {
+  id                 String @id @default(cuid())
+  taskId             String @unique @map("task_id")
+  employeeId         String @default("") @map("employee_id")
+  taskType           String @default("") @map("task_type")
+  description        String @default("")
+  dueDate            String @default("") @map("due_date")
+  status             String @default("")
+  completedAt        String @default("") @map("completed_at")
+  notes              String @default("")
+  primaryDriveUrl    String @default("") @map("primary_drive_url")
+  primaryDriveFileId String @default("") @map("primary_drive_file_id")
+
+  @@index([status])
+  @@map("hr_tasks")
+}
+
+model ExpenseEntry {
+  id                String @id @default(cuid())
+  entryId           String @unique @map("entry_id")
+  date              String @default("")
+  sourceApInvoiceId String @default("") @map("source_ap_invoice_id")
+  vendorName        String @default("") @map("vendor_name")
+  category          String @default("")
+  subCategory       String @default("") @map("sub_category")
+  amount            String @default("")
+  gstAmount         String @default("") @map("gst_amount")
+  gstRate           String @default("") @map("gst_rate")
+  itcClaimable      String @default("") @map("itc_claimable")
+  itcAmount         String @default("") @map("itc_amount")
+  notes             String @default("")
+  createdAt         String @default("") @map("created_at")
+
+  @@map("expense_entries")
+}
+
+// ─── COMPLIANCE ───────────────────────────────────────────────────────────────
+
+model GstInputLedger {
+  id            String @id @default(cuid())
+  ledgerId      String @unique @map("ledger_id")
+  apInvoiceId   String @default("") @map("ap_invoice_id")
+  vendorName    String @default("") @map("vendor_name")
+  invoiceDate   String @default("") @map("invoice_date")
+  periodMonth   String @default("") @map("period_month")
+  periodYear    String @default("") @map("period_year")
+  invoiceAmount String @default("") @map("invoice_amount")
+  gstAmount     String @default("") @map("gst_amount")
+  gstRate       String @default("") @map("gst_rate")
+  itcClaimable  String @default("") @map("itc_claimable")
+  itcClaimed    String @default("") @map("itc_claimed")
+  itcAmount     String @default("") @map("itc_amount")
+  category      String @default("")
+  createdAt     String @default("") @map("created_at")
+
+  @@map("gst_input_ledger")
+}
+
+model GstOutputLedger {
+  id            String @id @default(cuid())
+  ledgerId      String @unique @map("ledger_id")
+  arInvoiceId   String @default("") @map("ar_invoice_id")
+  clientName    String @default("") @map("client_name")
+  invoiceDate   String @default("") @map("invoice_date")
+  periodMonth   String @default("") @map("period_month")
+  periodYear    String @default("") @map("period_year")
+  taxableAmount String @default("") @map("taxable_amount")
+  igst          String @default("")
+  cgst          String @default("")
+  sgst          String @default("")
+  totalGst      String @default("") @map("total_gst")
+  createdAt     String @default("") @map("created_at")
+
+  @@map("gst_output_ledger")
+}
+
+model ComplianceCalendar {
+  id              String @id @default(cuid())
+  calendarId      String @unique @map("calendar_id")
+  type            String @default("")
+  label           String @default("")
+  periodMonth     String @default("") @map("period_month")
+  periodYear      String @default("") @map("period_year")
+  dueDate         String @default("") @map("due_date")
+  status          String @default("")
+  alertSent7d     String @default("") @map("alert_sent_7d")
+  alertSent2d     String @default("") @map("alert_sent_2d")
+  completedDate   String @default("") @map("completed_date")
+  filingReference String @default("") @map("filing_reference")
+  notes           String @default("")
+
+  @@index([dueDate])
+  @@map("compliance_calendar")
+}
+
+model TaxObligation {
+  id               String @id @default(cuid())
+  obligationId     String @unique @map("obligation_id")
+  type             String @default("")
+  periodMonth      String @default("") @map("period_month")
+  periodYear       String @default("") @map("period_year")
+  dueDate          String @default("") @map("due_date")
+  amountInr        String @default("") @map("amount_inr")
+  status           String @default("")
+  paidDate         String @default("") @map("paid_date")
+  paymentReference String @default("") @map("payment_reference")
+  payrollRunId     String @default("") @map("payroll_run_id")
+  createdAt        String @default("") @map("created_at")
+
+  @@map("tax_obligations")
+}
+
+model TdsRecord {
+  id               String @id @default(cuid())
+  recordId         String @unique @map("record_id")
+  employeeId       String @default("") @map("employee_id")
+  employeeName     String @default("") @map("employee_name")
+  periodMonth      String @default("") @map("period_month")
+  periodYear       String @default("") @map("period_year")
+  taxableIncomeYtd String @default("") @map("taxable_income_ytd")
+  tdsDeducted      String @default("") @map("tds_deducted")
+  tdsDeposited     String @default("") @map("tds_deposited")
+  quarter          String @default("")
+  challanReference String @default("") @map("challan_reference")
+  createdAt        String @default("") @map("created_at")
+
+  @@map("tds_records")
+}
+
+model FilingHistory {
+  id                    String @id @default(cuid())
+  filingId              String @unique @map("filing_id")
+  type                  String @default("")
+  period                String @default("")
+  filedDate             String @default("") @map("filed_date")
+  acknowledgementNumber String @default("") @map("acknowledgement_number")
+  filedBy               String @default("") @map("filed_by")
+  status                String @default("")
+  notes                 String @default("")
+
+  @@map("filing_history")
+}
+
+// ─── LOGS ─────────────────────────────────────────────────────────────────────
+
+model AuditTrailEntry {
+  id          String @id @default(cuid())
+  entryId     String @unique @map("entry_id")
+  timestamp   String @default("")
+  actorId     String @default("") @map("actor_id")
+  actorRole   String @default("") @map("actor_role")
+  agentId     String @default("") @map("agent_id")
+  actionType  String @default("") @map("action_type")
+  module      String @default("")
+  recordId    String @default("") @map("record_id")
+  oldValueJson String @default("") @map("old_value_json") @db.Text
+  newValueJson String @default("") @map("new_value_json") @db.Text
+  status      String @default("")
+  sessionId   String @default("") @map("session_id")
+
+  @@index([sessionId])
+  @@map("audit_trail")
+}
+
+model ChatLog {
+  id            String @id @default(cuid())
+  logId         String @unique @map("log_id")
+  timestamp     String @default("")
+  sessionId     String @default("") @map("session_id")
+  actorId       String @default("") @map("actor_id")
+  actorRole     String @default("") @map("actor_role")
+  userMessage   String @default("") @map("user_message") @db.Text
+  aiResponse    String @default("") @map("ai_response") @db.Text
+  agentRoutedTo String @default("") @map("agent_routed_to")
+  actionTaken   String @default("") @map("action_taken")
+  actionStatus  String @default("") @map("action_status")
+
+  @@map("chat_log")
+}
+
+model AgentRunLog {
+  id              String @id @default(cuid())
+  runId           String @unique @map("run_id")
+  timestamp       String @default("")
+  agentId         String @default("") @map("agent_id")
+  sessionId       String @default("") @map("session_id")
+  inputJson       String @default("") @map("input_json") @db.Text
+  outputJson      String @default("") @map("output_json") @db.Text
+  iterations      String @default("")
+  status          String @default("")
+  confidenceScore String @default("") @map("confidence_score")
+  policyResult    String @default("") @map("policy_result")
+  durationMs      String @default("") @map("duration_ms")
+
+  @@map("agent_run_log")
+}
+
+model PolicyDecision {
+  id              String @id @default(cuid())
+  decisionId      String @unique @map("decision_id")
+  timestamp       String @default("")
+  agentId         String @default("") @map("agent_id")
+  actionType      String @default("") @map("action_type")
+  confidenceScore String @default("") @map("confidence_score")
+  actorRole       String @default("") @map("actor_role")
+  policyResult    String @default("") @map("policy_result")
+  overrideApplied String @default("") @map("override_applied")
+  notes           String @default("")
+
+  @@map("policy_decisions")
+}
+
+model PolicyDocument {
+  id              String @id @default(cuid())
+  docId           String @unique @map("doc_id")
+  docType         String @default("") @map("doc_type")
+  version         String @default("")
+  generatedAt     String @default("") @map("generated_at")
+  generatedBy     String @default("") @map("generated_by")
+  contentMarkdown String @default("") @map("content_markdown") @db.Text
+  gdriveUrl       String @default("") @map("gdrive_url")
+
+  @@map("policy_documents")
+}
+
+model NotificationLog {
+  id              String @id @default(cuid())
+  notificationId  String @unique @map("notification_id")
+  timestamp       String @default("")
+  type            String @default("")
+  channel         String @default("")
+  recipient       String @default("")
+  subject         String @default("")
+  status          String @default("")
+  relatedRecordId String @default("") @map("related_record_id")
+
+  @@map("notification_log")
+}
+
+model FileLink {
+  id              String @id @default(cuid())
+  linkId          String @unique @map("link_id")
+  scopeTable      String @default("") @map("scope_table")
+  scopeRecordId   String @default("") @map("scope_record_id")
+  role            String @default("")
+  driveFileId     String @default("") @map("drive_file_id")
+  driveWebViewUrl String @default("") @map("drive_web_view_url")
+  mime            String @default("")
+  filename        String @default("")
+  localUploadId   String @default("") @map("local_upload_id")
+  source          String @default("")
+  metaJson        String @default("") @map("meta_json")
+  createdAt       String @default("") @map("created_at")
+
+  @@index([scopeTable, scopeRecordId])
+  @@map("file_links")
 }

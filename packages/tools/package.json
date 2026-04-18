@@ -21,6 +21,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
     "@velo/core": "workspace:*",
     "googleapis": "^140.0.0",
     "resend": "^3.0.0",
@@ -28,6 +29,7 @@
     "tesseract.js": "^5.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   }

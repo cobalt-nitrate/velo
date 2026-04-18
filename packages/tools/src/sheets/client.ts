@@ -1,15 +1,15 @@
-// Google Sheets client for Velo.
-// Uses service account credentials from env vars.
-// Falls back to in-memory store when credentials are not configured (local dev without Sheets).
+// Velo data client — all business data now stored in PostgreSQL.
+// The Google Sheets fallback (in-memory store) remains for local dev without DATABASE_URL.
+// Public API surface is unchanged so all agent tools and API routes continue to work.
 
-import { google } from 'googleapis';
+import { prisma } from './prisma.js';
 import { isApprovalPendingStatus } from './approval-status.js';
 import {
   APPROVAL_FILE_LINK_SCOPE,
   mergeFileLinkRowsIntoApprovalAttachmentsJson,
   parseAttachmentDriveUrlsJson,
 } from './approval-attachments.js';
-import { withGoogleSheetsRetry } from './google-sheets-retry.js';
+
 export {
   APPROVAL_FILE_LINK_SCOPE,
   parseAttachmentDriveUrlsJson,
@@ -20,231 +20,203 @@ export {
   isApprovalPendingStatus,
 } from './approval-status.js';
 
-// ─── Table → Spreadsheet mapping ─────────────────────────────────────────────
+// ─── Table → Prisma model name ────────────────────────────────────────────────
 
-const TABLE_MAP: Record<string, { envKey: string; sheetName: string }> = {
-  // TRANSACTIONS spreadsheet
-  ap_invoices:       { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'ap_invoices' },
-  ar_invoices:       { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'ar_invoices' },
-  expense_entries:   { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'expense_entries' },
-  approval_requests: { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'approval_requests' },
-  payroll_runs:      { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'payroll_runs' },
-  salary_slips:      { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'salary_slips' },
-  leave_records:     { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'leave_records' },
-  leave_balances:    { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'leave_balances' },
-  attendance:        { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'attendance' },
-  hr_tasks:          { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'hr_tasks' },
-  bank_transactions: { envKey: 'SHEETS_TRANSACTIONS_ID', sheetName: 'bank_transactions' },
-
-  // MASTER spreadsheet
-  employees:         { envKey: 'SHEETS_MASTER_ID', sheetName: 'employees' },
-  salary_structures: { envKey: 'SHEETS_MASTER_ID', sheetName: 'salary_structures' },
-  vendor_master:     { envKey: 'SHEETS_MASTER_ID', sheetName: 'vendor_master' },
-  client_master:     { envKey: 'SHEETS_MASTER_ID', sheetName: 'client_master' },
-  bank_payees:       { envKey: 'SHEETS_MASTER_ID', sheetName: 'bank_payees' },
-
-  // COMPLIANCE spreadsheet
-  tax_obligations:      { envKey: 'SHEETS_COMPLIANCE_ID', sheetName: 'tax_obligations' },
-  gst_input_ledger:     { envKey: 'SHEETS_COMPLIANCE_ID', sheetName: 'gst_input_ledger' },
-  gst_output_ledger:    { envKey: 'SHEETS_COMPLIANCE_ID', sheetName: 'gst_output_ledger' },
-  compliance_calendar:  { envKey: 'SHEETS_COMPLIANCE_ID', sheetName: 'compliance_calendar' },
-  tds_records:          { envKey: 'SHEETS_COMPLIANCE_ID', sheetName: 'tds_records' },
-  filing_history:       { envKey: 'SHEETS_COMPLIANCE_ID', sheetName: 'filing_history' },
-
-  // LOGS spreadsheet
-  audit_trail:      { envKey: 'SHEETS_LOGS_ID', sheetName: 'audit_trail' },
-  chat_log:         { envKey: 'SHEETS_LOGS_ID', sheetName: 'chat_log' },
-  agent_run_log:    { envKey: 'SHEETS_LOGS_ID', sheetName: 'agent_run_log' },
-  policy_decisions: { envKey: 'SHEETS_LOGS_ID', sheetName: 'policy_decisions' },
-  policy_documents: { envKey: 'SHEETS_LOGS_ID', sheetName: 'policy_documents' },
-  notification_log: { envKey: 'SHEETS_LOGS_ID', sheetName: 'notification_log' },
-  /** Cross-entity index: Drive file ↔ Sheets row (tasks, invoices, imports, …) */
-  file_links:       { envKey: 'SHEETS_LOGS_ID', sheetName: 'file_links' },
-
-  // CONFIG spreadsheet
-  company_settings:  { envKey: 'SHEETS_CONFIG_ID', sheetName: 'company_settings' },
-  tax_rates:         { envKey: 'SHEETS_CONFIG_ID', sheetName: 'tax_rates' },
-  expense_categories:{ envKey: 'SHEETS_CONFIG_ID', sheetName: 'expense_categories' },
-  payroll_components:{ envKey: 'SHEETS_CONFIG_ID', sheetName: 'payroll_components' },
-  leave_types:       { envKey: 'SHEETS_CONFIG_ID', sheetName: 'leave_types' },
-  compliance_rules:  { envKey: 'SHEETS_CONFIG_ID', sheetName: 'compliance_rules' },
+const TABLE_TO_MODEL: Record<string, string> = {
+  // Config
+  company_settings: 'companySetting',
+  tax_rates: 'taxRate',
+  expense_categories: 'expenseCategory',
+  payroll_components: 'payrollComponent',
+  leave_types: 'leaveType',
+  compliance_rules: 'complianceRule',
+  // Master
+  employees: 'employee',
+  salary_structures: 'salaryStructure',
+  vendor_master: 'vendor',
+  client_master: 'client',
+  bank_payees: 'bankPayee',
+  // Transactions
+  bank_transactions: 'bankTransaction',
+  ap_invoices: 'apInvoice',
+  ar_invoices: 'arInvoice',
+  payroll_runs: 'payrollRun',
+  salary_slips: 'salarySlip',
+  leave_records: 'leaveRecord',
+  leave_balances: 'leaveBalance',
+  attendance: 'attendance',
+  approval_requests: 'approvalRequest',
+  hr_tasks: 'hrTask',
+  expense_entries: 'expenseEntry',
+  // Compliance
+  gst_input_ledger: 'gstInputLedger',
+  gst_output_ledger: 'gstOutputLedger',
+  compliance_calendar: 'complianceCalendar',
+  tax_obligations: 'taxObligation',
+  tds_records: 'tdsRecord',
+  filing_history: 'filingHistory',
+  // Logs
+  audit_trail: 'auditTrailEntry',
+  chat_log: 'chatLog',
+  agent_run_log: 'agentRunLog',
+  policy_decisions: 'policyDecision',
+  policy_documents: 'policyDocument',
+  notification_log: 'notificationLog',
+  file_links: 'fileLink',
 };
 
-// ─── In-memory fallback ────────────────────────────────────────────────────
+// The camelCase Prisma field name that holds the business-domain unique key
+// (separate from the internal cuid `id`).
+const TABLE_UNIQUE_FIELD: Record<string, string> = {
+  company_settings: 'key',
+  expense_categories: 'categoryId',
+  payroll_components: 'componentId',
+  leave_types: 'leaveTypeId',
+  compliance_rules: 'ruleId',
+  employees: 'employeeId',
+  salary_structures: 'structureId',
+  vendor_master: 'vendorId',
+  client_master: 'clientId',
+  bank_payees: 'payeeId',
+  bank_transactions: 'txnId',
+  ap_invoices: 'invoiceId',
+  ar_invoices: 'invoiceId',
+  payroll_runs: 'runId',
+  salary_slips: 'slipId',
+  leave_records: 'recordId',
+  leave_balances: 'balanceId',
+  attendance: 'recordId',
+  approval_requests: 'approvalId',
+  hr_tasks: 'taskId',
+  expense_entries: 'entryId',
+  gst_input_ledger: 'ledgerId',
+  gst_output_ledger: 'ledgerId',
+  compliance_calendar: 'calendarId',
+  tax_obligations: 'obligationId',
+  tds_records: 'recordId',
+  filing_history: 'filingId',
+  audit_trail: 'entryId',
+  chat_log: 'logId',
+  agent_run_log: 'runId',
+  policy_decisions: 'decisionId',
+  policy_documents: 'docId',
+  notification_log: 'notificationId',
+  file_links: 'linkId',
+};
+
+// The corresponding snake_case name (how callers identify rows in payloads)
+function inferIdField(table: string): string {
+  const camel = TABLE_UNIQUE_FIELD[table];
+  if (!camel) return 'id';
+  return camelToSnake(camel);
+}
+
+// ─── Case conversion helpers ──────────────────────────────────────────────────
+
+function camelToSnake(s: string): string {
+  return s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+}
+
+function snakeToCamel(s: string): string {
+  return s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
+/** Convert Prisma's camelCase row to the snake_case Record<string,string> the rest of the code expects. */
+function rowToRecord(row: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (k === 'id') continue; // internal cuid — not exposed
+    out[camelToSnake(k)] = String(v ?? '');
+  }
+  return out;
+}
+
+/** Convert a snake_case payload to camelCase data object for Prisma writes. */
+function payloadToPrismaData(payload: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(payload)) {
+    // Strip tool dispatch / company filter fields that aren't schema columns
+    if (k === 'tool_id' || k === 'id_field') continue;
+    out[snakeToCamel(k)] = v ?? '';
+  }
+  return out;
+}
+
+// ─── In-memory fallback (no DATABASE_URL) ────────────────────────────────────
 
 const memStore = new Map<string, Array<Record<string, unknown>>>();
 
-function useRealSheets(): boolean {
-  return !!(
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-    process.env.GOOGLE_PRIVATE_KEY &&
-    process.env.SHEETS_TRANSACTIONS_ID
-  );
+function useDatabase(): boolean {
+  return Boolean(process.env.DATABASE_URL?.trim());
 }
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
-
-let cachedAuthClient: ReturnType<typeof google.auth.GoogleAuth.prototype.getClient> | null = null;
-
-async function getSheetsClient() {
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-  const authClient = await auth.getClient();
-  return google.sheets({ version: 'v4', auth: authClient as Parameters<typeof google.sheets>[0]['auth'] });
+function memCreate(table: string, row: Record<string, unknown>): Record<string, unknown> {
+  const rows = memStore.get(table) ?? [];
+  const newRow = { ...row, _id: `${table}_${Date.now()}_${rows.length}`, created_at: new Date().toISOString() };
+  rows.push(newRow);
+  memStore.set(table, rows);
+  return newRow;
 }
 
-/** Max data rows read in one request (rectangle A1:ZZ…); keeps responses well under API size limits. */
-const SHEET_READ_MAX_ROW = 20_000;
-
-const sheetTabTitlesCache = new Map<string, { titles: Set<string>; at: number }>();
-const SHEET_TAB_TITLES_TTL_MS = 30_000;
-
-async function getSheetTabTitles(spreadsheetId: string): Promise<Set<string>> {
-  const now = Date.now();
-  const hit = sheetTabTitlesCache.get(spreadsheetId);
-  if (hit && now - hit.at < SHEET_TAB_TITLES_TTL_MS) return hit.titles;
-
-  const sheets = await getSheetsClient();
-  const meta = await withGoogleSheetsRetry('spreadsheets.get(tabTitles)', () =>
-    sheets.spreadsheets.get({
-      spreadsheetId,
-      fields: 'sheets.properties.title',
-    })
-  );
-  const titles = new Set(
-    (meta.data.sheets ?? [])
-      .map((s) => s.properties?.title)
-      .filter((t): t is string => typeof t === 'string' && t.length > 0)
-  );
-  sheetTabTitlesCache.set(spreadsheetId, { titles, at: now });
-  return titles;
-}
-
-// ─── Core read/write helpers ──────────────────────────────────────────────────
-
-function sheetRangeA1(sheetName: string): string {
-  if (sheetName.includes('!')) return sheetName;
-  const q = sheetName.includes(' ')
-    ? `'${sheetName.replace(/'/g, "''")}'`
-    : sheetName;
-  // Bounded A1 rectangle (API is picky; missing tabs also surface as "Unable to parse range").
-  return `${q}!A1:ZZ${SHEET_READ_MAX_ROW}`;
-}
-
-async function readSheet(
-  spreadsheetId: string,
-  sheetName: string
-): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
-  const tabTitles = await getSheetTabTitles(spreadsheetId);
-  if (!tabTitles.has(sheetName)) {
-    console.warn(
-      `[sheets] Tab "${sheetName}" is not in spreadsheet ${spreadsheetId}; returning empty rows (add the tab or run setup).`
-    );
-    return { headers: [], rows: [] };
-  }
-
-  const sheets = await getSheetsClient();
-  const res = await withGoogleSheetsRetry(`values.get(${sheetName})`, () =>
-    sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: sheetRangeA1(sheetName),
-    })
-  );
-  const values = res.data.values ?? [];
-  if (values.length === 0) return { headers: [], rows: [] };
-  const headers = values[0] as string[];
-  const rows = values.slice(1).map((row) => {
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => {
-      obj[h] = (row[i] ?? '') as string;
-    });
-    return obj;
-  });
-  return { headers, rows };
-}
-
-async function appendRow(
-  spreadsheetId: string,
-  sheetName: string,
-  headers: string[],
-  rowData: Record<string, unknown>
-): Promise<void> {
-  const sheets = await getSheetsClient();
-  const row = headers.map((h) => String(rowData[h] ?? ''));
-  const base = sheetName.includes(' ')
-    ? `'${sheetName.replace(/'/g, "''")}'`
-    : sheetName;
-  await withGoogleSheetsRetry(`values.append(${sheetName})`, () =>
-    sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `${base}!A:A`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values: [row] },
+function memFind(table: string, payload: Record<string, unknown>): Record<string, unknown>[] {
+  return (memStore.get(table) ?? []).filter((r) =>
+    Object.entries(payload).every(([k, v]) => {
+      if (v === null || v === undefined || k === 'tool_id' || k === 'company_id') return true;
+      return String(r[k] ?? '').toLowerCase() === String(v).toLowerCase();
     })
   );
 }
 
-async function updateRow(
-  spreadsheetId: string,
-  sheetName: string,
-  headers: string[],
-  rowIndex: number, // 0-based data row (excludes header row)
-  updates: Record<string, unknown>
-): Promise<void> {
-  const sheets = await getSheetsClient();
-  // Row 1 = header, so data row 0 = sheet row 2
-  const sheetRowNumber = rowIndex + 2;
-  const requests = Object.entries(updates)
-    .map(([key, value]) => {
-      const colIndex = headers.indexOf(key);
-      if (colIndex < 0) return null;
-      const colLetter = columnLetter(colIndex + 1);
-      const base = sheetName.includes(' ')
-        ? `'${sheetName.replace(/'/g, "''")}'`
-        : sheetName;
-      return {
-        range: `${base}!${colLetter}${sheetRowNumber}`,
-        values: [[String(value ?? '')]],
-      };
-    })
-    .filter(Boolean) as Array<{ range: string; values: string[][] }>;
-
-  if (requests.length === 0) return;
-  await withGoogleSheetsRetry(`values.batchUpdate(${sheetName})`, () =>
-    sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        valueInputOption: 'RAW',
-        data: requests,
-      },
-    })
-  );
-}
-
-function columnLetter(n: number): string {
-  let result = '';
-  while (n > 0) {
-    const rem = (n - 1) % 26;
-    result = String.fromCharCode(65 + rem) + result;
-    n = Math.floor((n - 1) / 26);
-  }
-  return result;
-}
-
-// ─── Filter helpers ───────────────────────────────────────────────────────────
+// ─── Shared filter / special-read logic ──────────────────────────────────────
 
 function parseIsoDate(s: string): number {
   const t = new Date(s).getTime();
   return isNaN(t) ? 0 : t;
 }
 
-/** Shared read logic for synthetic sheet operations (used by real Sheets + in-memory). */
+function filterRows(
+  rows: Record<string, string>[],
+  payload: Record<string, unknown>
+): Record<string, string>[] {
+  return rows.filter((row) =>
+    Object.entries(payload).every(([k, v]) => {
+      if (v === null || v === undefined || k === 'tool_id' || k === 'company_id') return true;
+      return row[k]?.toLowerCase() === String(v).toLowerCase();
+    })
+  );
+}
+
+function normalizeVendorName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/(private limited|pvt\.?\s*ltd\.?|llp|& co\.?|inc\.?|corp\.?|technologies|technology|tech|services|svcs|solutions|infra|infrastructure)/gi, '')
+    .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function charSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0;
+  const longer = a.length > b.length ? a : b;
+  const shorter = a.length > b.length ? b : a;
+  if (longer.length === 0) return 1;
+  let matches = 0;
+  for (let i = 0; i < shorter.length; i++) {
+    if (longer.includes(shorter[i])) matches++;
+  }
+  return matches / longer.length;
+}
+
+function fuzzyNameMatch(rows: Record<string, string>[], nameQuery: string): Record<string, string>[] {
+  const normalized = normalizeVendorName(nameQuery);
+  return rows
+    .filter((row) => {
+      const name = normalizeVendorName(row.vendor_name ?? row.name ?? '');
+      return name.includes(normalized) || normalized.includes(name) || charSimilarity(name, normalized) >= 0.7;
+    })
+    .slice(0, 5);
+}
+
 function runSpecialRead(
   table: string,
   operation: string,
@@ -261,9 +233,7 @@ function runSpecialRead(
     if (st) filtered = filtered.filter((r) => r.scope_table === st);
     if (sid) filtered = filtered.filter((r) => r.scope_record_id === sid);
     if (role) filtered = filtered.filter((r) => r.role === role);
-    filtered.sort(
-      (a, b) => parseIsoDate(String(b.created_at ?? 0)) - parseIsoDate(String(a.created_at ?? 0))
-    );
+    filtered.sort((a, b) => parseIsoDate(String(b.created_at ?? 0)) - parseIsoDate(String(a.created_at ?? 0)));
     return { ok: true, table, operation, count: filtered.length, rows: filtered };
   }
 
@@ -277,58 +247,35 @@ function runSpecialRead(
       const to = String(payload.to_date ?? '');
       const fromT = from ? parseIsoDate(from) : 0;
       const toT = to ? parseIsoDate(to) + 86400000 : Number.MAX_SAFE_INTEGER;
-      txRows = txRows.filter((r) => {
-        const d = parseIsoDate(String(r.date ?? ''));
-        return d >= fromT && d < toT;
-      });
+      txRows = txRows.filter((r) => { const d = parseIsoDate(String(r.date ?? '')); return d >= fromT && d < toT; });
       txRows.sort((a, b) => parseIsoDate(String(b.date)) - parseIsoDate(String(a.date)));
       return { ok: true, table, operation, count: txRows.length, rows: txRows };
     }
-
     if (operation === 'get_latest_balance') {
       txRows.sort((a, b) => parseIsoDate(String(b.date)) - parseIsoDate(String(a.date)));
       const latest = txRows[0];
       const balance = latest ? parseFloat(String(latest.balance ?? '0')) || 0 : 0;
-      return {
-        ok: true,
-        table,
-        operation,
-        balance_inr: balance,
-        as_of_date: latest?.date ?? null,
-        last_txn: latest ?? null,
-        transaction_count: txRows.length,
-      };
+      return { ok: true, table, operation, balance_inr: balance, as_of_date: latest?.date ?? null, last_txn: latest ?? null, transaction_count: txRows.length };
     }
-
     if (operation === 'get_recent') {
       const limit = Number(payload.limit ?? 50);
       txRows.sort((a, b) => parseIsoDate(String(b.date)) - parseIsoDate(String(a.date)));
-      const sliced = txRows.slice(0, Math.max(1, limit));
-      return { ok: true, table, operation, count: sliced.length, rows: sliced };
+      return { ok: true, table, operation, count: Math.min(txRows.length, limit), rows: txRows.slice(0, Math.max(1, limit)) };
     }
   }
 
   if (table === 'payroll_runs' && operation === 'get_committed_salaries') {
-    const committed = rows.filter((r) => {
-      const s = (r.status ?? '').toLowerCase();
-      return s === 'approved' || s === 'committed' || s === 'paid' || s === 'complete';
-    });
+    const committed = rows.filter((r) => { const s = (r.status ?? '').toLowerCase(); return s === 'approved' || s === 'committed' || s === 'paid' || s === 'complete'; });
     return { ok: true, table, operation, count: committed.length, rows: committed };
   }
 
   if (table === 'ap_invoices' && operation === 'get_pending_payables') {
-    const pending = rows.filter((r) => {
-      const ps = (r.payment_status ?? r.status ?? '').toLowerCase();
-      return ps !== 'paid' && ps !== 'cleared' && ps !== 'cancelled';
-    });
+    const pending = rows.filter((r) => { const ps = (r.payment_status ?? r.status ?? '').toLowerCase(); return ps !== 'paid' && ps !== 'cleared' && ps !== 'cancelled'; });
     return { ok: true, table, operation, count: pending.length, rows: pending };
   }
 
   if (table === 'ar_invoices' && operation === 'get_pending_receivables') {
-    const pend = rows.filter((r) => {
-      const s = (r.status ?? '').toLowerCase();
-      return s !== 'paid' && s !== 'cancelled';
-    });
+    const pend = rows.filter((r) => { const s = (r.status ?? '').toLowerCase(); return s !== 'paid' && s !== 'cancelled'; });
     return { ok: true, table, operation, count: pend.length, rows: pend };
   }
 
@@ -356,52 +303,30 @@ function runSpecialRead(
 
   if (table === 'employees' && operation === 'get_active_headcount') {
     const active = rows.filter((r) => (r.status ?? '').toLowerCase() === 'active');
-    return {
-      ok: true,
-      table,
-      operation,
-      headcount: active.length,
-      rows: active,
-    };
+    return { ok: true, table, operation, headcount: active.length, rows: active };
   }
 
   if (table === 'hr_tasks' && operation === 'get_pending_hires') {
     const tasks = rows.filter((r) => {
       const tt = String(r.task_type ?? '').toLowerCase();
       const st = String(r.status ?? '').toLowerCase();
-      const isHire = tt.includes('onboard') || tt.includes('hire') || tt.includes('join');
-      return isHire && st !== 'completed' && st !== 'done' && st !== 'cancelled';
+      return (tt.includes('onboard') || tt.includes('hire') || tt.includes('join')) && st !== 'completed' && st !== 'done' && st !== 'cancelled';
     });
     return { ok: true, table, operation, count: tasks.length, rows: tasks };
   }
 
   if (table === 'hr_tasks' && operation === 'get_blockers') {
-    const blockers = rows.filter((r) => {
-      const st = String(r.status ?? '').toLowerCase();
-      return st === 'blocked' || st === 'pending' || st === 'open';
-    });
+    const blockers = rows.filter((r) => { const st = String(r.status ?? '').toLowerCase(); return st === 'blocked' || st === 'pending' || st === 'open'; });
     return { ok: true, table, operation, count: blockers.length, rows: blockers };
   }
 
   if (table === 'salary_slips' && operation === 'get_ytd_by_employee') {
     const eid = String(payload.employee_id ?? '');
     const year = String(payload.year ?? new Date().getFullYear());
-    const ytd = rows.filter(
-      (r) => r.employee_id === eid && String(r.year ?? '') === year
-    );
+    const ytd = rows.filter((r) => r.employee_id === eid && String(r.year ?? '') === year);
     const grossYtd = ytd.reduce((s, r) => s + (parseFloat(r.gross_salary ?? '0') || 0), 0);
     const netYtd = ytd.reduce((s, r) => s + (parseFloat(r.net_salary ?? '0') || 0), 0);
-    return {
-      ok: true,
-      table,
-      operation,
-      employee_id: eid,
-      year,
-      slip_count: ytd.length,
-      gross_ytd_inr: Math.round(grossYtd * 100) / 100,
-      net_ytd_inr: Math.round(netYtd * 100) / 100,
-      rows: ytd,
-    };
+    return { ok: true, table, operation, employee_id: eid, year, slip_count: ytd.length, gross_ytd_inr: Math.round(grossYtd * 100) / 100, net_ytd_inr: Math.round(netYtd * 100) / 100, rows: ytd };
   }
 
   if (table === 'tds_records' && operation === 'get_by_employee_year') {
@@ -411,120 +336,205 @@ function runSpecialRead(
     return { ok: true, table, operation, count: found.length, rows: found };
   }
 
+  if (table === 'gst_input_ledger' && operation === 'get_balance') {
+    const period_month = String(payload.period_month ?? '');
+    const period_year = String(payload.period_year ?? '');
+    const periodRows = rows.filter((r) => r.period_month === period_month && r.period_year === period_year);
+    const itc_total = periodRows.reduce((sum, r) => sum + (parseFloat(r.itc_amount ?? '0') || 0), 0);
+    return { ok: true, table, operation, period_month, period_year, itc_total, rows: periodRows };
+  }
+
   return null;
 }
 
-async function getOwnSalaryStructureCombo(
+// ─── Postgres-backed employee + salary_structure combo ───────────────────────
+
+async function getOwnSalaryStructureDb(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const employeeId = String(payload.employee_id ?? '');
+  if (!employeeId) return { ok: false, error: 'employee_id is required' };
+  try {
+    const emp = await prisma.employee.findUnique({ where: { employeeId } });
+    if (!emp) return { ok: false, error: `Employee not found: ${employeeId}` };
+    const sid = emp.salaryStructureId;
+    const st = sid ? await prisma.salaryStructure.findUnique({ where: { structureId: sid } }) : null;
+    return { ok: true, employee: rowToRecord(emp as unknown as Record<string, unknown>), salary_structure: st ? rowToRecord(st as unknown as Record<string, unknown>) : null };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// ─── Main Prisma dispatch ─────────────────────────────────────────────────────
+
+type PrismaDelegate = {
+  findMany: (args?: Record<string, unknown>) => Promise<Record<string, unknown>[]>;
+  create: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  update: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  findUnique: (args: Record<string, unknown>) => Promise<Record<string, unknown> | null>;
+  updateMany: (args: Record<string, unknown>) => Promise<{ count: number }>;
+};
+
+function getModel(modelName: string): PrismaDelegate {
+  return (prisma as unknown as Record<string, PrismaDelegate>)[modelName];
+}
+
+async function executeDbCreate(
+  model: PrismaDelegate,
+  table: string,
   payload: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-  const employeeId = String(payload.employee_id ?? '');
-  if (!employeeId) {
-    return { ok: false, error: 'employee_id is required' };
-  }
+  const rowsInput: Record<string, unknown>[] = Array.isArray(payload.rows)
+    ? (payload.rows as Record<string, unknown>[])
+    : [payload];
 
-  if (!useRealSheets()) {
-    const emps = memStore.get('employees') ?? [];
-    const emp = emps.find((r) => String(r.employee_id ?? '') === employeeId);
-    if (!emp) return { ok: false, error: `Employee not found: ${employeeId}` };
-    const structs = memStore.get('salary_structures') ?? [];
-    const sid = String(emp.salary_structure_id ?? '');
-    const st = structs.find((r) => String(r.structure_id ?? '') === sid);
-    return { ok: true, employee: emp, salary_structure: st ?? null };
+  for (const row of rowsInput) {
+    const data = payloadToPrismaData({
+      ...row,
+      created_at: row.created_at ?? new Date().toISOString(),
+    });
+    await model.create({ data });
   }
+  return { ok: true, table, operation: 'create', count: rowsInput.length };
+}
 
-  const masterId = process.env.SHEETS_MASTER_ID;
-  if (!masterId) {
-    return { ok: false, error: 'SHEETS_MASTER_ID not configured' };
-  }
+async function executeDbUpdate(
+  model: PrismaDelegate,
+  table: string,
+  operation: string,
+  payload: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const idFieldSnake = String(payload.id_field ?? inferIdField(table));
+  const idFieldCamel = snakeToCamel(idFieldSnake);
+  const idValue = String(payload[idFieldSnake] ?? payload.id ?? '');
+  if (!idValue) return { ok: false, error: `ID field '${idFieldSnake}' not provided` };
+
+  const updates = payloadToPrismaData({
+    ...payload,
+    updated_at: new Date().toISOString(),
+  });
+  delete updates[snakeToCamel(idFieldSnake)]; // don't overwrite the unique key
 
   try {
-    const { rows: empRows } = await readSheet(masterId, 'employees');
-    const emp = empRows.find((r) => r.employee_id === employeeId);
-    if (!emp) return { ok: false, error: `Employee not found: ${employeeId}` };
-    const sid = emp.salary_structure_id ?? '';
-    const { rows: structRows } = await readSheet(masterId, 'salary_structures');
-    const st = structRows.find((r) => r.structure_id === sid);
-    return {
-      ok: true,
-      employee: emp as unknown as Record<string, string>,
-      salary_structure: st ?? null,
-    };
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
-    };
+    await model.update({ where: { [idFieldCamel]: idValue }, data: updates });
+    return { ok: true, table, operation, updated_id: idValue };
+  } catch {
+    return { ok: false, error: `Row not found: ${idFieldSnake}=${idValue}` };
   }
 }
 
-function filterRows(
-  rows: Record<string, string>[],
+async function executeDbRead(
+  model: PrismaDelegate,
+  table: string,
+  operation: string,
   payload: Record<string, unknown>
-): Record<string, string>[] {
-  return rows.filter((row) =>
-    Object.entries(payload).every(([k, v]) => {
-      if (v === null || v === undefined || k === 'tool_id' || k === 'company_id') return true;
-      return row[k]?.toLowerCase() === String(v).toLowerCase();
-    })
-  );
-}
+): Promise<Record<string, unknown>> {
+  const allRows = await model.findMany({});
+  const strRows = allRows.map((r: Record<string, unknown>) => rowToRecord(r));
 
-function fuzzyNameMatch(rows: Record<string, string>[], nameQuery: string): Record<string, string>[] {
-  const normalized = normalizeVendorName(nameQuery);
-  return rows
-    .filter((row) => {
-      const name = normalizeVendorName(row.vendor_name ?? row.name ?? '');
-      return name.includes(normalized) || normalized.includes(name) || similarity(name, normalized) >= 0.7;
-    })
-    .slice(0, 5);
-}
+  const special = runSpecialRead(table, operation, strRows, payload);
+  if (special) return special;
 
-function normalizeVendorName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/(private limited|pvt\.?\s*ltd\.?|llp|& co\.?|inc\.?|corp\.?|technologies|technology|tech|services|svcs|solutions|infra|infrastructure)/gi, '')
-    .replace(/[^a-z0-9 ]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+  let filtered = strRows;
 
-function similarity(a: string, b: string): number {
-  if (!a || !b) return 0;
-  const longer = a.length > b.length ? a : b;
-  const shorter = a.length > b.length ? b : a;
-  if (longer.length === 0) return 1;
-  let matches = 0;
-  for (let i = 0; i < shorter.length; i++) {
-    if (longer.includes(shorter[i])) matches++;
+  if (operation === 'lookup_by_name_fuzzy') {
+    filtered = fuzzyNameMatch(strRows, String(payload.vendor_name ?? payload.name ?? ''));
+  } else if (operation === 'get_active') {
+    filtered = strRows.filter((r) => r.status?.toLowerCase() === 'active');
+  } else if (operation === 'get_outstanding') {
+    filtered = strRows.filter((r) => { const s = r.status?.toLowerCase() ?? ''; return s !== 'paid' && s !== 'cancelled'; });
+  } else if (operation === 'get_upcoming') {
+    const daysAhead = Number(payload.days_ahead ?? 30);
+    const now = Date.now();
+    filtered = strRows.filter((r) => {
+      if (r.status?.toLowerCase() === 'done') return false;
+      const due = new Date(r.due_date ?? '').getTime();
+      return !isNaN(due) && due >= now && due <= now + daysAhead * 86400000;
+    });
+  } else if (operation === 'lookup_by_gstin') {
+    const gstin = String(payload.gstin ?? '').toLowerCase();
+    filtered = strRows.filter((r) => r.gstin?.toLowerCase() === gstin);
+  } else {
+    const searchPayload = { ...payload };
+    delete searchPayload.tool_id;
+    delete searchPayload.company_id;
+    filtered = filterRows(strRows, searchPayload);
   }
-  return matches / longer.length;
+
+  return { ok: true, table, operation, count: filtered.length, rows: filtered };
 }
 
-// ─── In-memory fallback ops ────────────────────────────────────────────────
+async function executeSheetToolDb(
+  table: string,
+  operation: string,
+  payload: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  if (table === 'employees' && operation === 'get_own_salary_structure') {
+    return getOwnSalaryStructureDb({ ...payload });
+  }
 
-function memCreate(table: string, row: Record<string, unknown>) {
+  const modelName = TABLE_TO_MODEL[table];
+  if (!modelName) return { ok: false, error: `Unknown table: ${table}`, table };
+
+  const model = getModel(modelName);
+
+  if (operation === 'create' || operation === 'create_batch') {
+    return executeDbCreate(model, table, payload);
+  }
+  if (operation === 'update' || operation === 'update_status' || operation === 'mark_done') {
+    return executeDbUpdate(model, table, operation, payload);
+  }
+  return executeDbRead(model, table, operation, payload);
+}
+
+// ─── In-memory fallback ───────────────────────────────────────────────────────
+
+function executeSheetToolInMemory(
+  table: string,
+  operation: string,
+  payload: Record<string, unknown>
+): Record<string, unknown> {
+  if (operation === 'create' || operation === 'create_batch') {
+    const rowsInput: Record<string, unknown>[] = Array.isArray(payload.rows)
+      ? (payload.rows as Record<string, unknown>[])
+      : [payload];
+    const created = rowsInput.map((r) => memCreate(table, r));
+    return { ok: true, table, operation, count: created.length, rows: created };
+  }
+  if (operation === 'update' || operation === 'update_status' || operation === 'mark_done') {
+    const tableRows = memStore.get(table) ?? [];
+    const idField = String(payload.id_field ?? inferIdField(table));
+    const idValue = String(payload[idField] ?? payload.id ?? '');
+    const idx = tableRows.findIndex((r) => String(r[idField] ?? r.id ?? r._id) === idValue);
+    if (idx < 0) return { ok: false, error: `Row not found: ${idField}=${idValue}` };
+    tableRows[idx] = { ...tableRows[idx], ...payload, updated_at: new Date().toISOString() };
+    memStore.set(table, tableRows);
+    return { ok: true, table, operation, updated_id: idValue };
+  }
+
   const tableRows = memStore.get(table) ?? [];
-  const newRow = {
-    ...row,
-    id: `${table}_${Date.now()}_${tableRows.length + 1}`,
-    created_at: new Date().toISOString(),
-  };
-  tableRows.push(newRow);
-  memStore.set(table, tableRows);
-  return newRow;
+  const strRows = tableRows.map((r) => {
+    const o: Record<string, string> = {};
+    for (const [k, v] of Object.entries(r)) o[k] = String(v ?? '');
+    return o;
+  });
+  const specialMem = runSpecialRead(table, operation, strRows, payload);
+  if (specialMem) return specialMem;
+
+  if (operation === 'lookup_by_name_fuzzy') {
+    const matched = fuzzyNameMatch(strRows, String(payload.vendor_name ?? payload.name ?? ''));
+    return { ok: true, table, operation, count: matched.length, rows: matched };
+  }
+  if (operation === 'get_active') {
+    const active = strRows.filter((r) => String(r.status ?? '').toLowerCase() === 'active');
+    return { ok: true, table, operation, count: active.length, rows: active };
+  }
+  const searchPayload = { ...payload };
+  delete searchPayload.tool_id;
+  delete searchPayload.company_id;
+  const found = memFind(table, searchPayload);
+  return { ok: true, table, operation, count: found.length, rows: found };
 }
 
-function memFind(table: string, payload: Record<string, unknown>) {
-  const tableRows = memStore.get(table) ?? [];
-  return tableRows.filter((r) =>
-    Object.entries(payload).every(([k, v]) => {
-      if (v === null || v === undefined || k === 'tool_id' || k === 'company_id') return true;
-      return String(r[k] ?? '').toLowerCase() === String(v).toLowerCase();
-    })
-  );
-}
-
-// ─── Main entry point ─────────────────────────────────────────────────────────
+// ─── Public entry point ───────────────────────────────────────────────────────
 
 export async function executeSheetTool(
   params: Record<string, unknown>
@@ -535,246 +545,23 @@ export async function executeSheetTool(
   const operation = parts[2] ?? 'create';
   const payload = (params.payload ?? params) as Record<string, unknown>;
 
-  if (table === 'employees' && operation === 'get_own_salary_structure') {
-    return getOwnSalaryStructureCombo({ ...payload, ...params });
-  }
-
-  // Fall back to in-memory when Sheets credentials aren't configured
-  if (!useRealSheets()) {
-    return executeSheetToolInMemory(table, operation, payload);
-  }
-
-  const mapping = TABLE_MAP[table];
-  if (!mapping) {
-    // Unknown table → in-memory fallback
-    return executeSheetToolInMemory(table, operation, payload);
-  }
-
-  const spreadsheetId = process.env[mapping.envKey];
-  if (!spreadsheetId) {
+  if (!useDatabase()) {
     return executeSheetToolInMemory(table, operation, payload);
   }
 
   try {
-    return await executeSheetToolReal(spreadsheetId, mapping.sheetName, table, operation, payload);
+    return await executeSheetToolDb(table, operation, payload);
   } catch (err) {
-    // Log and fall back gracefully
-    console.error(`[sheets] Real API failed for ${toolId}:`, err);
+    console.error(`[db] executeSheetTool failed for ${toolId}:`, err);
     return executeSheetToolInMemory(table, operation, payload);
   }
 }
 
-async function executeSheetToolReal(
-  spreadsheetId: string,
-  sheetName: string,
-  table: string,
-  operation: string,
-  payload: Record<string, unknown>
-): Promise<Record<string, unknown>> {
-  const { headers, rows } = await readSheet(spreadsheetId, sheetName);
+// ─── file_links helpers ───────────────────────────────────────────────────────
 
-  // ── CREATE ────────────────────────────────────────────────────────────────
-  if (operation === 'create' || operation === 'create_batch') {
-    const rowsToCreate = Array.isArray(payload.rows)
-      ? (payload.rows as Record<string, unknown>[])
-      : [payload];
-
-    for (const row of rowsToCreate) {
-      const newRow: Record<string, unknown> = {
-        ...row,
-        created_at: row.created_at ?? new Date().toISOString(),
-      };
-      await appendRow(spreadsheetId, sheetName, headers, newRow);
-    }
-    return { ok: true, table, operation, count: rowsToCreate.length };
-  }
-
-  // ── UPDATE ─────────────────────────────────────────────────────────────────
-  if (operation === 'update' || operation === 'update_status' || operation === 'mark_done') {
-    const idField = payload.id_field as string | undefined ?? inferIdField(table);
-    const idValue = String(payload[idField] ?? payload.id ?? '');
-    const rowIndex = rows.findIndex((r) => r[idField] === idValue);
-    if (rowIndex < 0) {
-      return { ok: false, error: `Row not found: ${idField}=${idValue}` };
-    }
-    const updates = { ...payload, updated_at: new Date().toISOString() };
-    delete (updates as Record<string, unknown>).id_field;
-    await updateRow(spreadsheetId, sheetName, headers, rowIndex, updates);
-    return { ok: true, table, operation, updated_id: idValue };
-  }
-
-  // ── READS ──────────────────────────────────────────────────────────────────
-  if (
-    operation === 'find_by_vendor_amount_date' ||
-    operation === 'lookup_by_gstin' ||
-    operation === 'lookup_by_name_fuzzy' ||
-    operation === 'lookup' ||
-    operation === 'get_by_period' ||
-    operation === 'get_by_id' ||
-    operation === 'get_by_quarter' ||
-    operation === 'get_by_employee' ||
-    operation === 'get_by_employee_month' ||
-    operation === 'get_by_type' ||
-    operation === 'get_upcoming' ||
-    operation === 'get_balance' ||
-    operation === 'get_active' ||
-    operation === 'get_own_record' ||
-    operation === 'get_outstanding' ||
-    operation === 'get_recent' ||
-    operation === 'get_by_period' ||
-    operation === 'get_latest_balance' ||
-    operation === 'get_by_date_range' ||
-    operation === 'get_committed_salaries' ||
-    operation === 'get_pending_payables' ||
-    operation === 'get_pending_receivables' ||
-    operation === 'get_overdue' ||
-    operation === 'get_upcoming_obligations' ||
-    operation === 'get_active_headcount' ||
-    operation === 'get_pending_hires' ||
-    operation === 'get_blockers' ||
-    operation === 'get_ytd_by_employee' ||
-    operation === 'get_by_employee_year' ||
-    operation === 'get_by_scope'
-  ) {
-    const special = runSpecialRead(table, operation, rows, payload);
-    if (special) return special;
-
-    let filtered = rows;
-
-    if (operation === 'lookup_by_name_fuzzy') {
-      filtered = fuzzyNameMatch(rows, String(payload.vendor_name ?? payload.name ?? ''));
-    } else if (operation === 'get_active') {
-      filtered = rows.filter((r) => r.status?.toLowerCase() === 'active');
-    } else if (operation === 'get_outstanding') {
-      filtered = rows.filter((r) => {
-        const s = r.status?.toLowerCase() ?? '';
-        return s !== 'paid' && s !== 'cancelled';
-      });
-    } else if (operation === 'get_upcoming') {
-      const daysAhead = Number(payload.days_ahead ?? 30);
-      const now = Date.now();
-      filtered = rows.filter((r) => {
-        if (r.status?.toLowerCase() === 'done') return false;
-        const due = new Date(r.due_date ?? '').getTime();
-        return !isNaN(due) && due >= now && due <= now + daysAhead * 86400000;
-      });
-    } else if (operation === 'get_balance') {
-      // Sum ITC amounts
-      const period_month = String(payload.period_month ?? '');
-      const period_year = String(payload.period_year ?? '');
-      const periodRows = rows.filter(
-        (r) => r.period_month === period_month && r.period_year === period_year
-      );
-      const itc_total = periodRows.reduce((sum, r) => sum + (parseFloat(r.itc_amount ?? '0') || 0), 0);
-      return { ok: true, table, operation, period_month, period_year, itc_total, rows: periodRows };
-    } else {
-      // Generic filter on payload fields
-      const searchPayload = { ...payload };
-      delete searchPayload.tool_id;
-      delete searchPayload.company_id;
-      filtered = filterRows(rows, searchPayload);
-    }
-
-    return { ok: true, table, operation, count: filtered.length, rows: filtered };
-  }
-
-  // ── FALLBACK ───────────────────────────────────────────────────────────────
-  return { ok: false, error: `Unknown operation: ${operation}`, table };
-}
-
-function inferIdField(table: string): string {
-  const idFieldMap: Record<string, string> = {
-    ap_invoices: 'invoice_id',
-    ar_invoices: 'invoice_id',
-    employees: 'employee_id',
-    approval_requests: 'approval_id',
-    payroll_runs: 'run_id',
-    salary_slips: 'slip_id',
-    vendor_master: 'vendor_id',
-    compliance_calendar: 'calendar_id',
-    tax_obligations: 'obligation_id',
-    filing_history: 'filing_id',
-    leave_records: 'record_id',
-    leave_balances: 'balance_id',
-    hr_tasks: 'task_id',
-    bank_transactions: 'txn_id',
-    file_links: 'link_id',
-    policy_documents: 'doc_id',
-  };
-  return idFieldMap[table] ?? 'id';
-}
-
-function executeSheetToolInMemory(
-  table: string,
-  operation: string,
-  payload: Record<string, unknown>
-): Record<string, unknown> {
-  if (operation === 'create' || operation === 'create_batch') {
-    const rowsToCreate = Array.isArray(payload.rows)
-      ? (payload.rows as Record<string, unknown>[])
-      : [payload];
-    const created = rowsToCreate.map((r) => memCreate(table, r));
-    return { ok: true, table, operation, count: created.length, rows: created };
-  }
-
-  if (operation === 'update' || operation === 'update_status' || operation === 'mark_done') {
-    const tableRows = memStore.get(table) ?? [];
-    const idField = String(payload.id_field ?? inferIdField(table));
-    const idValue = String(payload[idField] ?? payload.id ?? '');
-    const idx = tableRows.findIndex((r) => String(r[idField] ?? r.id) === idValue);
-    if (idx < 0) return { ok: false, error: `Row not found: ${idField}=${idValue}` };
-    tableRows[idx] = { ...tableRows[idx], ...payload, updated_at: new Date().toISOString() };
-    memStore.set(table, tableRows);
-    return { ok: true, table, operation, updated_id: idValue };
-  }
-
-  // All read operations
-  const tableRows = memStore.get(table) ?? [];
-  const strRows: Record<string, string>[] = tableRows.map((r) => {
-    const o: Record<string, string> = {};
-    for (const [k, v] of Object.entries(r))
-      o[k] = String(v ?? '');
-    return o;
-  });
-  const specialMem = runSpecialRead(table, operation, strRows, payload);
-  if (specialMem) return specialMem;
-
-  if (operation === 'lookup_by_name_fuzzy') {
-    const name = String(payload.vendor_name ?? payload.name ?? '');
-    const matched = tableRows.filter((r) => {
-      const rowName = String(r.vendor_name ?? r.name ?? '');
-      return normalizeVendorName(rowName).includes(normalizeVendorName(name));
-    });
-    return { ok: true, table, operation, count: matched.length, rows: matched };
-  }
-  if (operation === 'get_active') {
-    const active = tableRows.filter((r) => String(r.status ?? '').toLowerCase() === 'active');
-    return { ok: true, table, operation, count: active.length, rows: active };
-  }
-
-  const searchPayload = { ...payload };
-  delete searchPayload.tool_id;
-  delete searchPayload.company_id;
-  const found = memFind(table, searchPayload);
-  return { ok: true, table, operation, count: found.length, rows: found };
-}
-
-// ─── Direct append for AuditLogger (bypasses tool dispatch) ───────────────────
-
-/** Canonical headers for file_links tab (Velo Data → LOGS workbook). */
 export const FILE_LINKS_COLUMN_ORDER = [
-  'link_id',
-  'scope_table',
-  'scope_record_id',
-  'role',
-  'drive_file_id',
-  'drive_web_view_url',
-  'mime',
-  'filename',
-  'local_upload_id',
-  'source',
-  'meta_json',
-  'created_at',
+  'link_id', 'scope_table', 'scope_record_id', 'role', 'drive_file_id',
+  'drive_web_view_url', 'mime', 'filename', 'local_upload_id', 'source', 'meta_json', 'created_at',
 ] as const;
 
 export type VeloFileLinkInput = {
@@ -790,79 +577,53 @@ export type VeloFileLinkInput = {
   meta_json?: string;
 };
 
-/**
- * Append one row to file_links (and in-memory when Sheets unavailable).
- * Use this for every durable Drive file so Sheets stays cohesive with tasks / invoices / imports.
- */
 export async function recordVeloFileLink(input: VeloFileLinkInput): Promise<void> {
-  const link_id = `fl_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
-  const row: Record<string, unknown> = {
-    link_id,
-    scope_table: input.scope_table,
-    scope_record_id: input.scope_record_id,
+  const linkId = `fl_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+  const row = {
+    linkId,
+    scopeTable: input.scope_table,
+    scopeRecordId: input.scope_record_id,
     role: input.role,
-    drive_file_id: input.drive_file_id,
-    drive_web_view_url: input.drive_web_view_url,
+    driveFileId: input.drive_file_id,
+    driveWebViewUrl: input.drive_web_view_url,
     mime: input.mime ?? '',
     filename: input.filename ?? '',
-    local_upload_id: input.local_upload_id ?? '',
+    localUploadId: input.local_upload_id ?? '',
     source: input.source ?? '',
-    meta_json: input.meta_json ?? '',
-    created_at: new Date().toISOString(),
+    metaJson: input.meta_json ?? '',
+    createdAt: new Date().toISOString(),
   };
 
-  if (!useRealSheets() || !process.env.SHEETS_LOGS_ID) {
-    memCreate('file_links', row);
+  if (!useDatabase()) {
+    memCreate('file_links', { link_id: linkId, ...payloadToPrismaData(row) });
     return;
   }
-
-  const spreadsheetId = process.env.SHEETS_LOGS_ID;
   try {
-    const { headers } = await readSheet(spreadsheetId, 'file_links');
-    if (!headers.length) {
-      console.warn(
-        '[sheets] file_links sheet missing or has no header row — run: node scripts/ensure-file-links-tab.js'
-      );
-      memCreate('file_links', row);
-      return;
-    }
-    await appendRow(spreadsheetId, 'file_links', headers, row);
+    await prisma.fileLink.create({ data: row });
   } catch (err) {
-    console.error('[sheets] recordVeloFileLink failed:', err);
-    memCreate('file_links', row);
+    console.error('[db] recordVeloFileLink failed:', err);
+    memCreate('file_links', { link_id: linkId, ...payloadToPrismaData(row) });
   }
 }
 
-/** Rows from file_links for a scope (e.g. approval_request + approval_id). */
 export async function fetchFileLinksForScope(
   scope_table: string,
   scope_record_id: string
 ): Promise<Record<string, string>[]> {
-  if (!useRealSheets() || !process.env.SHEETS_LOGS_ID) {
-    const all = (memStore.get('file_links') ?? []) as Array<Record<string, unknown>>;
-    return all
-      .filter(
-        (r) =>
-          String(r.scope_table ?? '') === scope_table &&
-          String(r.scope_record_id ?? '') === scope_record_id
-      )
-      .map((r) => {
-        const o: Record<string, string> = {};
-        for (const [k, v] of Object.entries(r)) o[k] = String(v ?? '');
-        return o;
-      });
+  if (!useDatabase()) {
+    return (memStore.get('file_links') ?? [])
+      .filter((r) => String(r.scope_table ?? '') === scope_table && String(r.scope_record_id ?? '') === scope_record_id)
+      .map((r) => { const o: Record<string, string> = {}; for (const [k, v] of Object.entries(r)) o[k] = String(v ?? ''); return o; });
   }
   try {
-    const { rows } = await readSheet(process.env.SHEETS_LOGS_ID, 'file_links');
-    return rows.filter(
-      (r) => r.scope_table === scope_table && r.scope_record_id === scope_record_id
-    );
-  } catch {
-    return [];
-  }
+    const rows = await prisma.fileLink.findMany({
+      where: { scopeTable: scope_table, scopeRecordId: scope_record_id },
+    });
+    type Row = (typeof rows)[number];
+    return rows.map((r: Row) => rowToRecord(r as unknown as Record<string, unknown>));
+  } catch { return []; }
 }
 
-/** JSON string for approval_requests.attachment_drive_urls_json after merging file_links. */
 export async function mergeApprovalAttachmentsFromFileLinks(
   approvalId: string,
   existingAttachmentCell: string
@@ -871,111 +632,118 @@ export async function mergeApprovalAttachmentsFromFileLinks(
   return mergeFileLinkRowsIntoApprovalAttachmentsJson(existingAttachmentCell, linkRows);
 }
 
-/** Serialize audit appends so bursts of AGENT_* events don't stampede Sheets write quota. */
-let auditAppendChain: Promise<void> = Promise.resolve();
+// ─── Audit trail append ───────────────────────────────────────────────────────
 
 export async function appendAuditRow(row: Record<string, unknown>): Promise<void> {
-  const spreadsheetId = process.env.SHEETS_LOGS_ID;
-  if (!spreadsheetId || !useRealSheets()) {
+  if (!useDatabase()) {
     memCreate('audit_trail', row);
     return;
   }
-
-  const run = async (): Promise<void> => {
-    try {
-      await withGoogleSheetsRetry('audit_trail.append', async () => {
-        const { headers } = await readSheet(spreadsheetId, 'audit_trail');
-        if (headers.length > 0) {
-          await appendRow(spreadsheetId, 'audit_trail', headers, row);
-        }
-      });
-    } catch (err) {
-      console.error('[sheets] audit_trail append failed:', err);
-    }
-  };
-
-  auditAppendChain = auditAppendChain.then(run, run);
-  return auditAppendChain;
+  try {
+    const entryId = String(row.entry_id ?? `at_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`);
+    await prisma.auditTrailEntry.create({
+      data: {
+        entryId,
+        timestamp: String(row.timestamp ?? new Date().toISOString()),
+        actorId: String(row.actor_id ?? ''),
+        actorRole: String(row.actor_role ?? ''),
+        agentId: String(row.agent_id ?? ''),
+        actionType: String(row.action_type ?? ''),
+        module: String(row.module ?? ''),
+        recordId: String(row.record_id ?? ''),
+        oldValueJson: String(row.old_value_json ?? ''),
+        newValueJson: String(row.new_value_json ?? ''),
+        status: String(row.status ?? ''),
+        sessionId: String(row.session_id ?? ''),
+      },
+    });
+  } catch (err) {
+    console.error('[db] appendAuditRow failed:', err);
+  }
 }
 
-// ─── Direct read for approval resolution ──────────────────────────────────────
+// ─── Approval helpers ─────────────────────────────────────────────────────────
 
 export async function findApprovalById(
   approvalId: string
 ): Promise<{ row: Record<string, string>; rowIndex: number; headers: string[]; spreadsheetId: string } | null> {
   const normalizedId = String(approvalId).trim();
-  const spreadsheetId = process.env.SHEETS_TRANSACTIONS_ID;
-  if (!spreadsheetId || !useRealSheets()) {
+
+  if (!useDatabase()) {
     const rows = memStore.get('approval_requests') ?? [];
-    const idx = rows.findIndex(
-      (r) => String(r.approval_id ?? r.id).trim() === normalizedId
-    );
+    const idx = rows.findIndex((r) => String(r.approval_id ?? r.id).trim() === normalizedId);
     if (idx < 0) return null;
-    return {
-      row: rows[idx] as Record<string, string>,
-      rowIndex: idx,
-      headers: Object.keys(rows[idx]),
-      spreadsheetId: 'mem',
-    };
+    return { row: rows[idx] as Record<string, string>, rowIndex: idx, headers: Object.keys(rows[idx]), spreadsheetId: 'mem' };
   }
+
   try {
-    const { headers, rows } = await readSheet(spreadsheetId, 'approval_requests');
-    const idx = rows.findIndex((r) => String(r.approval_id ?? '').trim() === normalizedId);
-    if (idx < 0) return null;
-    return { row: rows[idx], rowIndex: idx, headers, spreadsheetId };
-  } catch {
-    return null;
-  }
+    const rec = await prisma.approvalRequest.findUnique({ where: { approvalId: normalizedId } });
+    if (!rec) return null;
+    return { row: rowToRecord(rec as unknown as Record<string, unknown>), rowIndex: 0, headers: [], spreadsheetId: 'pg' };
+  } catch { return null; }
 }
 
 export async function updateApprovalRow(
   spreadsheetId: string,
-  rowIndex: number,
-  headers: string[],
+  _rowIndex: number,
+  _headers: string[],
   updates: Record<string, unknown>
 ): Promise<void> {
+  const approvalId = String(updates.approval_id ?? updates.approvalId ?? '');
+
   if (spreadsheetId === 'mem') {
     const rows = memStore.get('approval_requests') ?? [];
-    rows[rowIndex] = { ...rows[rowIndex], ...updates };
+    const idx = rows.findIndex((r) => String(r.approval_id ?? '') === approvalId);
+    if (idx >= 0) rows[idx] = { ...rows[idx], ...updates };
     memStore.set('approval_requests', rows);
     return;
   }
-  await updateRow(spreadsheetId, 'approval_requests', headers, rowIndex, updates);
+
+  if (!approvalId) return;
+  try {
+    const data = payloadToPrismaData(updates);
+    delete data.approvalId; // don't overwrite the unique key
+    await prisma.approvalRequest.update({ where: { approvalId }, data });
+  } catch (err) {
+    console.error('[db] updateApprovalRow failed:', err);
+  }
 }
 
-// Legacy export so existing in-memory callers still work
-export function listSheetTable(table: string): Array<Record<string, unknown>> {
-  return memStore.get(table) ?? [];
+export async function listPendingApprovals(limit = 10): Promise<Record<string, string>[]> {
+  const cap = Math.max(1, Math.min(100, limit));
+
+  if (!useDatabase()) {
+    const rows = memStore.get('approval_requests') ?? [];
+    return rows
+      .filter((r) => isApprovalPendingStatus(r.status))
+      .slice(-cap)
+      .reverse()
+      .map((r) => { const o: Record<string, string> = {}; for (const [k, v] of Object.entries(r)) o[k] = String(v ?? ''); return o; });
+  }
+
+  try {
+    const rows = await prisma.approvalRequest.findMany({
+      where: { status: { in: ['PENDING', 'pending', 'Pending'] } },
+      orderBy: { createdAt: 'desc' },
+      take: cap,
+    });
+    type Row = (typeof rows)[number];
+    return rows.map((r: Row) => rowToRecord(r as unknown as Record<string, unknown>));
+  } catch { return []; }
 }
 
-/**
- * Mark PENDING rows past expires_at as EXPIRED (Wave 2 escalation v1).
- * Idempotent for rows already resolved.
- */
-export async function expireStalePendingApprovals(): Promise<{
-  count: number;
-  approval_ids: string[];
-}> {
-  const now = Date.now();
+export async function expireStalePendingApprovals(): Promise<{ count: number; approval_ids: string[] }> {
+  const now = new Date().toISOString();
   const approval_ids: string[] = [];
 
-  if (!useRealSheets() || !process.env.SHEETS_TRANSACTIONS_ID) {
-    const rows = (memStore.get('approval_requests') ?? []) as Record<
-      string,
-      unknown
-    >[];
+  if (!useDatabase()) {
+    const rows = (memStore.get('approval_requests') ?? []) as Record<string, unknown>[];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (!isApprovalPendingStatus(r.status)) continue;
       const exp = Date.parse(String(r.expires_at ?? ''));
-      if (!Number.isNaN(exp) && exp < now) {
-        rows[i] = {
-          ...r,
-          status: 'EXPIRED',
-          resolved_at: new Date().toISOString(),
-          resolution_notes: 'auto_expired_velo_cron',
-          resolved_by: 'system',
-        };
+      if (!Number.isNaN(exp) && exp < Date.now()) {
+        rows[i] = { ...r, status: 'EXPIRED', resolved_at: now, resolution_notes: 'auto_expired_velo_cron', resolved_by: 'system' };
         approval_ids.push(String(r.approval_id ?? ''));
       }
     }
@@ -984,48 +752,28 @@ export async function expireStalePendingApprovals(): Promise<{
   }
 
   try {
-    const spreadsheetId = process.env.SHEETS_TRANSACTIONS_ID;
-    const { headers, rows } = await readSheet(
-      spreadsheetId,
-      'approval_requests'
-    );
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      if (!isApprovalPendingStatus(r.status)) continue;
-      const exp = Date.parse(String(r.expires_at ?? ''));
-      if (!Number.isNaN(exp) && exp < now) {
-        await updateRow(spreadsheetId, 'approval_requests', headers, i, {
-          status: 'EXPIRED',
-          resolved_at: new Date().toISOString(),
-          resolution_notes: 'auto_expired_velo_cron',
-          resolved_by: 'system',
-        });
-        approval_ids.push(String(r.approval_id ?? ''));
-      }
+    // Find all PENDING rows that have expired
+    const pending = await prisma.approvalRequest.findMany({
+      where: { status: { in: ['PENDING', 'pending', 'Pending'] } },
+      select: { approvalId: true, expiresAt: true },
+    });
+    type PendingRow = (typeof pending)[number];
+    const toExpire = pending.filter((r: PendingRow) => {
+      const exp = Date.parse(r.expiresAt);
+      return !Number.isNaN(exp) && exp < Date.now();
+    });
+    for (const r of toExpire) {
+      await prisma.approvalRequest.update({
+        where: { approvalId: r.approvalId },
+        data: { status: 'EXPIRED', resolvedAt: now, resolutionNotes: 'auto_expired_velo_cron', resolvedBy: 'system' },
+      });
+      approval_ids.push(r.approvalId);
     }
     return { count: approval_ids.length, approval_ids };
-  } catch {
-    return { count: 0, approval_ids: [] };
-  }
+  } catch { return { count: 0, approval_ids: [] }; }
 }
 
-/** Pending approval rows for dashboards (newest first). */
-export async function listPendingApprovals(limit = 10): Promise<Record<string, string>[]> {
-  const cap = Math.max(1, Math.min(100, limit));
-  if (!useRealSheets() || !process.env.SHEETS_TRANSACTIONS_ID) {
-    const rows = memStore.get('approval_requests') ?? [];
-    const pending = rows.filter((r) => isApprovalPendingStatus(r.status));
-    return pending.slice(-cap).reverse().map((r) => {
-      const o: Record<string, string> = {};
-      for (const [k, v] of Object.entries(r)) o[k] = String(v ?? '');
-      return o;
-    });
-  }
-  try {
-    const { rows } = await readSheet(process.env.SHEETS_TRANSACTIONS_ID, 'approval_requests');
-    const pending = rows.filter((r) => isApprovalPendingStatus(r.status));
-    return pending.slice(-cap).reverse();
-  } catch {
-    return [];
-  }
+// Legacy in-memory list (kept for any internal callers)
+export function listSheetTable(table: string): Array<Record<string, unknown>> {
+  return memStore.get(table) ?? [];
 }

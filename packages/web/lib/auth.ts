@@ -116,7 +116,7 @@ export function resolveRole(email: string): string {
   return 'employee';
 }
 
-function splitEmails(raw: string): Set<string> {
+export function splitEmails(raw: string): Set<string> {
   return new Set(
     raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
   );
