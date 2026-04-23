@@ -501,11 +501,21 @@ const NOTIFY_DIGEST_SCHEMA: ToolSchema['input_schema'] = {
 
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
-const toolDefinitions: ToolDefinition[] = [
-  // ── CONFIG (company_settings in Sheets) ─────────────────────────────────────
+function withDataPlaneAliases(defs: ToolDefinition[]): ToolDefinition[] {
+  const extra: ToolDefinition[] = [];
+  for (const d of defs) {
+    if (d.id.startsWith('sheets.')) {
+      extra.push({ ...d, id: `data.${d.id.slice(7)}` });
+    }
+  }
+  return [...defs, ...extra];
+}
+
+const baseToolDefinitions: ToolDefinition[] = [
+  // ── CONFIG (company_settings in Postgres) ───────────────────────────────────
   {
     id: 'sheets.company_settings.lookup',
-    description: 'Read company_settings key/value rows from CONFIG spreadsheet',
+    description: 'Read company_settings key/value rows from the database',
     schema: LOOKUP_SCHEMA,
     handler: executeSheetTool,
   },
@@ -513,13 +523,13 @@ const toolDefinitions: ToolDefinition[] = [
   // ── AP Invoice tools ────────────────────────────────────────────────────────
   {
     id: 'sheets.ap_invoices.create',
-    description: 'Create AP invoice row in sheet',
+    description: 'Create AP invoice row',
     schema: AP_INVOICE_ROW_SCHEMA,
     handler: executeSheetTool,
   },
   {
     id: 'sheets.ap_invoices.update',
-    description: 'Update AP invoice row in sheet',
+    description: 'Update AP invoice row',
     schema: AP_INVOICE_UPDATE_SCHEMA,
     handler: executeSheetTool,
   },
@@ -615,7 +625,7 @@ const toolDefinitions: ToolDefinition[] = [
   // ── Approval tools ────────────────────────────────────────────────────────────
   {
     id: 'sheets.approval_requests.create',
-    description: 'Create approval request entry in Sheets',
+    description: 'Create approval request record',
     schema: APPROVAL_REQUEST_ROW_SCHEMA,
     handler: executeSheetTool,
   },
@@ -1350,7 +1360,7 @@ const toolDefinitions: ToolDefinition[] = [
   {
     id: 'internal.platform.healthcheck',
     description:
-      'Full Velo health: integration probes (Sheets IDs, Drive, LLM) plus operational_snapshot from live Sheets — pending approvals (with texts), compliance due soon, AP/AR/bank/employees/HR blockers. Read-only.',
+      'Full Velo health: integration probes (Postgres, optional Google Drive, LLM) plus operational snapshot from the database — pending approvals, compliance, AP/AR, bank, employees, HR. Read-only.',
     schema: {
       type: 'object',
       properties: {
@@ -1377,6 +1387,8 @@ const toolDefinitions: ToolDefinition[] = [
     }),
   },
 ];
+
+const toolDefinitions = withDataPlaneAliases(baseToolDefinitions);
 
 export function getRuntimeTools(): ToolDefinition[] {
   return toolDefinitions;

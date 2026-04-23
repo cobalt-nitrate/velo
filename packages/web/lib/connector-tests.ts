@@ -1,28 +1,38 @@
 /** Live checks using current process.env (after connector file applied). */
 
-export async function testGoogleSheetsConnect(): Promise<{
+import { prisma } from './prisma';
+
+export async function testPostgresConnect(): Promise<{
+  ok: boolean;
+  message: string;
+}> {
+  if (!process.env.DATABASE_URL?.trim()) {
+    return { ok: false, message: 'DATABASE_URL is not set.' };
+  }
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return { ok: true, message: 'PostgreSQL reachable.' };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, message: `Database error: ${msg}` };
+  }
+}
+
+/** Validates Google service account + Drive folder access for document uploads. */
+export async function testGoogleDriveConnect(): Promise<{
   ok: boolean;
   message: string;
 }> {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
   const rawKey = process.env.GOOGLE_PRIVATE_KEY?.trim();
   const key = rawKey?.replace(/\\n/g, '\n');
-  const sid =
-    process.env.SHEETS_CONFIG_ID?.trim() ||
-    process.env.SHEETS_TRANSACTIONS_ID?.trim() ||
-    process.env.SHEETS_MASTER_ID?.trim();
   if (!email || !key) {
     return {
       ok: false,
-      message: 'Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY first.',
+      message: 'Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY.',
     };
   }
-  if (!sid) {
-    return {
-      ok: false,
-      message: 'Set at least one spreadsheet id (e.g. SHEETS_TRANSACTIONS_ID).',
-    };
-  }
+
   try {
     const { google } = await import('googleapis');
     const auth = new google.auth.GoogleAuth({
@@ -30,23 +40,35 @@ export async function testGoogleSheetsConnect(): Promise<{
         client_email: email,
         private_key: key,
       },
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
     });
     const authClient = await auth.getClient();
-    const sheets = google.sheets({
-      version: 'v4',
-      auth: authClient as Parameters<typeof google.sheets>[0]['auth'],
-    });
-    await sheets.spreadsheets.get({ spreadsheetId: sid, fields: 'spreadsheetId' });
+    const authParam = authClient as Parameters<typeof google.drive>[0]['auth'];
+    const drive = google.drive({ version: 'v3', auth: authParam });
+
+    const folderId = process.env.VELO_DRIVE_FOLDER_ID?.trim();
+    if (folderId) {
+      const res = await drive.files.get({
+        fileId: folderId,
+        fields: 'id,name',
+      });
+      return {
+        ok: true,
+        message: `Drive folder OK: ${res.data.name ?? folderId.slice(0, 12)}…`,
+      };
+    }
+
+    await drive.about.get({ fields: 'user' });
     return {
       ok: true,
-      message: `Connected — spreadsheet ${sid.slice(0, 8)}… is readable.`,
+      message:
+        'Service account accepted by Drive API. Set VELO_DRIVE_FOLDER_ID to verify your output folder.',
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return {
       ok: false,
-      message: `Sheets API error: ${msg}`,
+      message: `Google Drive API error: ${msg}`,
     };
   }
 }

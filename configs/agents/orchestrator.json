@@ -33,5 +33,5 @@
   },
   "max_iterations": 5,
   "timeout_seconds": 30,
-  "notes": "Orchestrator itself does not execute tools — it only routes. All execution happens in specialist agents."
+  "notes": "Orchestrator uses read tools + healthcheck directly; for specialist work it must call internal.sub_agent.invoke (see prompts/orchestrator.md)—not ask the user which agent to pick."
 }

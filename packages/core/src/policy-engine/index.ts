@@ -3,6 +3,7 @@
 // This is the last gate before tool execution.
 
 import type { PolicyResult, ToolActionMetadata, ToolCall } from '../types/agent.js';
+import { canonicalVeloDataToolId } from '../tool-id.js';
 
 interface AutopilotPolicy {
   payment_auto_threshold_inr: number;
@@ -21,29 +22,30 @@ interface AutopilotPolicy {
   rbac: Record<string, string[]>;
 }
 
-/** Matches sheet tools that only read data (aligned with tool-confidence read heuristic). */
-function isReadOnlySheetsTool(toolId: string): boolean {
-  if (!toolId.startsWith('sheets.')) return false;
+/** Matches Velo Postgres-backed data tools that only read (aligned with tool-confidence read heuristic). */
+function isReadOnlyVeloDataTool(toolId: string): boolean {
+  const id = canonicalVeloDataToolId(toolId);
+  if (!id.startsWith('sheets.')) return false;
   if (
-    toolId.includes('.create') ||
-    toolId.includes('.update') ||
-    toolId.includes('mark_done') ||
-    toolId.includes('.delete')
+    id.includes('.create') ||
+    id.includes('.update') ||
+    id.includes('mark_done') ||
+    id.includes('.delete')
   ) {
     return false;
   }
   return (
-    /\.(get_|lookup|find_)/.test(toolId) ||
-    toolId.includes('.get_active') ||
-    toolId.includes('get_recent') ||
-    toolId.includes('get_pending') ||
-    toolId.includes('get_latest') ||
-    toolId.includes('get_by_') ||
-    toolId.includes('get_ytd') ||
-    toolId.includes('get_blockers') ||
-    toolId.includes('get_committed') ||
-    toolId.includes('get_outstanding') ||
-    toolId.includes('get_overdue')
+    /\.(get_|lookup|find_)/.test(id) ||
+    id.includes('.get_active') ||
+    id.includes('get_recent') ||
+    id.includes('get_pending') ||
+    id.includes('get_latest') ||
+    id.includes('get_by_') ||
+    id.includes('get_ytd') ||
+    id.includes('get_blockers') ||
+    id.includes('get_committed') ||
+    id.includes('get_outstanding') ||
+    id.includes('get_overdue')
   );
 }
 
@@ -77,8 +79,8 @@ export class PolicyEngine {
       return 'AUTO_EXECUTE';
     }
 
-    // Sheets reads (list/get/lookup) — no mutation; safe to auto-run when RBAC passes
-    if (isReadOnlySheetsTool(action.tool_id)) {
+    // Postgres-backed data reads — no mutation; safe to auto-run when RBAC passes
+    if (isReadOnlyVeloDataTool(action.tool_id)) {
       return 'AUTO_EXECUTE';
     }
 
@@ -148,7 +150,8 @@ export class PolicyEngine {
   }
 
   private resolveActionType(tool_id: string, _agent_id: string): string {
-    const parts = tool_id.split('.');
+    const id = canonicalVeloDataToolId(tool_id);
+    const parts = id.split('.');
     if (parts[0] === 'sheets' && parts.length >= 2) {
       return parts.slice(1).join('.');
     }

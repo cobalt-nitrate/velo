@@ -246,8 +246,7 @@ export default function SettingsPage() {
       <section className="mt-10">
         <h2 className="text-lg font-medium">Google Sheets · company_settings</h2>
         <p className="mt-1 text-sm text-velo-muted">
-          Read-only snapshot from your CONFIG spreadsheet when Sheets credentials and
-          SHEETS_CONFIG_ID are set.
+          Read-only snapshot of company_settings rows from PostgreSQL (via the data API).
         </p>
         {!sheets || sheets.length === 0 ? (
           <p className="mt-2 text-sm text-velo-muted">No rows returned or Sheets not connected.</p>
@@ -322,7 +321,8 @@ export default function SettingsPage() {
                     >
                       {c.ready ? 'Minimum configured' : 'Incomplete'}
                     </span>
-                    {(c.id === 'google_workspace' ||
+                    {(c.id === 'postgresql' ||
+                      c.id === 'google_drive' ||
                       c.id === 'llm' ||
                       c.id === 'slack' ||
                       c.id === 'email') && (

@@ -22,11 +22,13 @@
     "seed-mock-data": "node scripts/seed-mock-velo-data.js",
     "seed-mock:generate": "node scripts/gen-velo-demo-seed.js",
     "validate-configs": "pnpm --filter @velo/core validate-configs",
-    "verify:ci": "pnpm validate-configs && pnpm exec tsc --noEmit -p packages/core && pnpm exec tsc --noEmit -p packages/agents && pnpm exec tsc --noEmit -p packages/tools && pnpm exec tsc --noEmit -p packages/web",
+    "verify:ci": "pnpm validate-configs && pnpm exec tsc --noEmit -p packages/core && pnpm exec tsc --noEmit -p packages/agents && pnpm exec tsc --noEmit -p packages/tools && pnpm exec tsc --noEmit -p packages/web && pnpm exec tsc --noEmit -p scripts",
     "e2e:modules": "pnpm --filter @velo/agents e2e:modules",
-    "seed-compliance": "node scripts/seed-compliance-calendar.js"
+    "seed-compliance": "node scripts/seed-compliance-calendar.js",
+    "db:seed": "pnpm --filter @velo/web db:seed"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "googleapis": "^171.4.0",
     "tsx": "^4.0.0",
     "turbo": "^2.0.0",

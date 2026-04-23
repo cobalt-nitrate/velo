@@ -1,7 +1,8 @@
-// Non-destructive probes for Velo platform integrations (Sheets, Drive, LLM, auth env).
+// Non-destructive probes for Velo platform integrations (PostgreSQL, optional Google Drive for uploads, LLM, auth env).
 // Used by GET /api/health and the internal.platform.healthcheck agent tool.
 
 import { google } from 'googleapis';
+import { prisma } from './sheets/prisma.js';
 import { executeSheetTool, listPendingApprovals } from './sheets/client.js';
 
 export type HealthStatus = 'ok' | 'warn' | 'fail' | 'skipped';
@@ -14,7 +15,7 @@ export interface HealthCheck {
   ms?: number;
 }
 
-/** What is in Velo Sheets / pending work — not just “can we ping Google”. */
+/** What is in Velo Postgres / pending work — not just “can we ping Google”. */
 export interface PendingApprovalDetail {
   approval_id: string;
   action_type: string;
@@ -96,7 +97,8 @@ export interface BankTransactionSummary {
 }
 
 export interface OperationalSnapshot {
-  data_source: 'sheets' | 'unavailable';
+  /** Business data is read via executeSheetTool backed by PostgreSQL when DATABASE_URL is set. */
+  data_source: 'postgresql' | 'unavailable';
   /** Rows the user may need to approve / review */
   pending_approvals: PendingApprovalDetail[];
   /** compliance_calendar obligations due in window, not marked done */
@@ -136,17 +138,19 @@ export interface PlatformHealthReport {
   checks: HealthCheck[];
   /** Short line for LLM to quote */
   summary: string;
-  /** Live data + “what needs you” — populated when Sheets is configured */
+  /** Live data + “what needs you” — populated when PostgreSQL is reachable */
   operational_snapshot?: OperationalSnapshot;
 }
 
-const SHEET_ENV_KEYS = [
-  ['SHEETS_CONFIG_ID', 'CONFIG'],
-  ['SHEETS_MASTER_ID', 'MASTER'],
-  ['SHEETS_TRANSACTIONS_ID', 'TRANSACTIONS'],
-  ['SHEETS_COMPLIANCE_ID', 'COMPLIANCE'],
-  ['SHEETS_LOGS_ID', 'LOGS'],
-] as const;
+async function isPostgresReachable(): Promise<boolean> {
+  if (!process.env.DATABASE_URL?.trim()) return false;
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function worst(a: HealthStatus, b: HealthStatus): HealthStatus {
   const rank: Record<HealthStatus, number> = {
@@ -306,11 +310,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
     employees_detail: [],
   });
 
-  if (
-    !process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() ||
-    !process.env.GOOGLE_PRIVATE_KEY?.trim() ||
-    !process.env.SHEETS_TRANSACTIONS_ID?.trim()
-  ) {
+  if (!(await isPostgresReachable())) {
     return {
       data_source: 'unavailable',
       pending_approvals: [],
@@ -325,7 +325,9 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
       hr_open_blockers: 0,
       hr_pending_hires: 0,
       attention_items: [
-        'Operational snapshot skipped: Google Sheets env not fully configured (service account or SHEETS_*_ID).',
+        process.env.DATABASE_URL?.trim()
+          ? 'Operational snapshot skipped: DATABASE_URL is set but PostgreSQL is not reachable.'
+          : 'Operational snapshot skipped: set DATABASE_URL and ensure the database is migrated.',
       ],
       ...emptyDetail(),
     };
@@ -481,12 +483,12 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
 
   if (attention_items.length === 0) {
     attention_items.push(
-      'No urgent operational flags from sampled Sheets data — still review pending_approvals and compliance_upcoming regularly.'
+      'No urgent operational flags from sampled database rows — still review pending_approvals and compliance_upcoming regularly.'
     );
   }
 
   return {
-    data_source: 'sheets',
+    data_source: 'postgresql',
     pending_approvals,
     compliance_upcoming,
     open_ap_payables,
@@ -510,52 +512,17 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
   };
 }
 
-async function getGoogleClients() {
+async function getGoogleDriveClient(): Promise<ReturnType<typeof google.drive> | null> {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const rawKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   if (!email || !rawKey) return null;
   const auth = new google.auth.GoogleAuth({
     credentials: { client_email: email, private_key: rawKey },
-    scopes: [
-      'https://www.googleapis.com/auth/spreadsheets.readonly',
-      'https://www.googleapis.com/auth/drive.readonly',
-    ],
+    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
   });
   const client = await auth.getClient();
-  const authParam = client as Parameters<typeof google.sheets>[0]['auth'];
-  return {
-    sheets: google.sheets({ version: 'v4', auth: authParam }),
-    drive: google.drive({ version: 'v3', auth: authParam }),
-  };
-}
-
-async function probeSpreadsheet(
-  sheets: ReturnType<typeof google.sheets>,
-  spreadsheetId: string,
-  label: string
-): Promise<HealthCheck> {
-  const t0 = Date.now();
-  try {
-    const res = await sheets.spreadsheets.get({
-      spreadsheetId,
-      fields: 'properties.title,spreadsheetId',
-    });
-    const title = res.data.properties?.title ?? '(no title)';
-    return {
-      id: `sheets_workbook_${label}`,
-      status: 'ok',
-      message: `Workbook reachable: ${title}`,
-      ms: Date.now() - t0,
-    };
-  } catch (e) {
-    return {
-      id: `sheets_workbook_${label}`,
-      status: 'fail',
-      message: `Cannot access ${label} spreadsheet`,
-      detail: e instanceof Error ? e.message : String(e),
-      ms: Date.now() - t0,
-    };
-  }
+  const authParam = client as Parameters<typeof google.drive>[0]['auth'];
+  return google.drive({ version: 'v3', auth: authParam });
 }
 
 async function probeDriveFolder(
@@ -615,21 +582,50 @@ export async function runIntegrationHealthQuick(): Promise<{
 async function buildIntegrationChecks(): Promise<HealthCheck[]> {
   const checks: HealthCheck[] = [];
 
-  // —— Google service account ——
+  // —— Google Drive (optional — PDF / file uploads) ——
   const gEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const gKey = process.env.GOOGLE_PRIVATE_KEY;
   if (gEmail && gKey) {
     checks.push({
       id: 'google_service_account',
       status: 'ok',
-      message: 'GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY are set',
+      message: 'Google service account credentials are set (Drive API)',
     });
+    try {
+      const drive = await getGoogleDriveClient();
+      if (drive) {
+        const driveFolder = process.env.VELO_DRIVE_FOLDER_ID?.trim();
+        if (driveFolder) {
+          checks.push(await probeDriveFolder(drive, driveFolder));
+        } else {
+          checks.push({
+            id: 'drive_documents_root',
+            status: 'skipped',
+            message:
+              'VELO_DRIVE_FOLDER_ID not set — add a Drive folder id if you use generated PDF uploads',
+          });
+        }
+      }
+    } catch (e) {
+      checks.push({
+        id: 'google_drive_api',
+        status: 'warn',
+        message: 'Could not initialize Google Drive client',
+        detail: e instanceof Error ? e.message : String(e),
+      });
+    }
   } else {
     checks.push({
       id: 'google_service_account',
-      status: 'fail',
-      message: 'Google service account env missing',
+      status: 'skipped',
+      message:
+        'Google Drive not configured — optional; set service account + VELO_DRIVE_FOLDER_ID for document uploads',
       detail: !gEmail ? 'GOOGLE_SERVICE_ACCOUNT_EMAIL unset' : 'GOOGLE_PRIVATE_KEY unset',
+    });
+    checks.push({
+      id: 'drive_documents_root',
+      status: 'skipped',
+      message: 'Drive folder probe skipped — service account not configured',
     });
   }
 
@@ -652,63 +648,27 @@ async function buildIntegrationChecks(): Promise<HealthCheck[]> {
     });
   }
 
-  // —— Sheet IDs ——
-  const missingIds = SHEET_ENV_KEYS.filter(([k]) => !process.env[k]?.trim()).map(
-    ([k, lab]) => `${k} (${lab})`
-  );
-  if (missingIds.length === 0) {
+  // —— PostgreSQL (required for Velo business data) ——
+  const tDb = Date.now();
+  if (!process.env.DATABASE_URL?.trim()) {
     checks.push({
-      id: 'sheets_env_ids',
+      id: 'postgres_data_plane',
+      status: 'fail',
+      message: 'DATABASE_URL not set — business data tools cannot persist',
+    });
+  } else if (await isPostgresReachable()) {
+    checks.push({
+      id: 'postgres_data_plane',
       status: 'ok',
-      message: 'All SHEETS_*_ID variables are set',
+      message: 'PostgreSQL reachable (DATABASE_URL)',
+      ms: Date.now() - tDb,
     });
   } else {
     checks.push({
-      id: 'sheets_env_ids',
+      id: 'postgres_data_plane',
       status: 'fail',
-      message: 'Some spreadsheet env IDs are missing',
-      detail: missingIds.join(', '),
-    });
-  }
-
-  // —— Per-workbook reachability (only if credentials + that id exist) ——
-  let clients: Awaited<ReturnType<typeof getGoogleClients>> = null;
-  if (gEmail && gKey) {
-    try {
-      clients = await getGoogleClients();
-    } catch (e) {
-      checks.push({
-        id: 'google_auth',
-        status: 'fail',
-        message: 'Failed to build Google Auth client',
-        detail: e instanceof Error ? e.message : String(e),
-      });
-    }
-  }
-
-  if (clients) {
-    for (const [envKey, label] of SHEET_ENV_KEYS) {
-      const id = process.env[envKey]?.trim();
-      if (id) {
-        checks.push(await probeSpreadsheet(clients.sheets, id, label));
-      }
-    }
-
-    const driveFolder = process.env.VELO_DRIVE_FOLDER_ID?.trim();
-    if (driveFolder) {
-      checks.push(await probeDriveFolder(clients.drive, driveFolder));
-    } else {
-      checks.push({
-        id: 'drive_documents_root',
-        status: 'skipped',
-        message: 'VELO_DRIVE_FOLDER_ID not set — Drive document uploads optional',
-      });
-    }
-  } else if (missingIds.length === 0 && gEmail && gKey) {
-    checks.push({
-      id: 'google_auth',
-      status: 'warn',
-      message: 'Could not initialize Google client for workbook probes',
+      message: 'DATABASE_URL set but database ping failed',
+      ms: Date.now() - tDb,
     });
   }
 
@@ -788,7 +748,7 @@ export async function runPlatformHealthcheck(): Promise<PlatformHealthReport> {
   let operational_snapshot: OperationalSnapshot | undefined;
   try {
     operational_snapshot = await gatherOperationalSnapshot();
-    if (operational_snapshot.data_source === 'sheets') {
+    if (operational_snapshot.data_source === 'postgresql') {
       const bits = operational_snapshot.attention_items.slice(0, 4);
       summary += ` Data ops: ${bits.join(' ')}`;
     }

@@ -134,12 +134,11 @@ pnpm --filter @velo/web exec prisma generate
 - **Docker (DB only):** `docker compose up postgres -d` — **`localhost:5432`**, user **`velo`**, password **`velo_local`**, database **`velo`** (matches `.env.local.example`).
 - **Native install:** create a role/database and set **`DATABASE_URL`** accordingly.
 
-**Apply migrations** (from repo root):
+**Apply migrations** (from repo root). Use the **`run` scripts** so **`packages/web/.env.local`** is loaded — raw `pnpm exec prisma …` does **not** read `.env.local` (only `.env`).
 
 ```bash
-pnpm --filter @velo/web db:migrate
-# or non-interactive:
-pnpm --filter @velo/web exec prisma migrate deploy
+pnpm --filter @velo/web run db:migrate          # interactive (migrate dev)
+pnpm --filter @velo/web run db:migrate:deploy   # non-interactive (CI / deploy)
 ```
 
 #### Run the development server
@@ -179,6 +178,8 @@ docker compose up --build
 The production **runner image** is Next **standalone** — it does **not** ship the Prisma CLI. Apply migrations **from the host** (or any checkout with `pnpm`) against the published DB port, e.g.:
 
 ```bash
+pnpm --filter @velo/web run db:migrate:deploy
+# or inline (no .env files):
 DATABASE_URL=postgresql://velo:velo_local@localhost:5432/velo pnpm --filter @velo/web exec prisma migrate deploy
 ```
 

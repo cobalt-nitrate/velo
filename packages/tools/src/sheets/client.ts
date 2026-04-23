@@ -1,7 +1,7 @@
-// Velo data client — all business data now stored in PostgreSQL.
-// The Google Sheets fallback (in-memory store) remains for local dev without DATABASE_URL.
-// Public API surface is unchanged so all agent tools and API routes continue to work.
+// Velo data client — all business data is stored in PostgreSQL.
+// In-memory fallback exists only for local dev when DATABASE_URL is unset (disabled in production).
 
+import { canonicalVeloDataToolId } from '@velo/core';
 import { prisma } from './prisma.js';
 import { isApprovalPendingStatus } from './approval-status.js';
 import {
@@ -150,6 +150,15 @@ function useDatabase(): boolean {
   return Boolean(process.env.DATABASE_URL?.trim());
 }
 
+/** In production, DB errors do not silently fall back to memory unless VELO_ALLOW_MEM_DATA_FALLBACK=1. */
+function allowInMemoryDataFallback(): boolean {
+  if (process.env.VELO_ALLOW_MEM_DATA_FALLBACK === '0') return false;
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.VELO_ALLOW_MEM_DATA_FALLBACK === '1';
+  }
+  return true;
+}
+
 function memCreate(table: string, row: Record<string, unknown>): Record<string, unknown> {
   const rows = memStore.get(table) ?? [];
   const newRow = { ...row, _id: `${table}_${Date.now()}_${rows.length}`, created_at: new Date().toISOString() };
@@ -161,7 +170,12 @@ function memCreate(table: string, row: Record<string, unknown>): Record<string, 
 function memFind(table: string, payload: Record<string, unknown>): Record<string, unknown>[] {
   return (memStore.get(table) ?? []).filter((r) =>
     Object.entries(payload).every(([k, v]) => {
-      if (v === null || v === undefined || k === 'tool_id' || k === 'company_id') return true;
+      if (v === null || v === undefined || k === 'tool_id') return true;
+      if (k === 'company_id') {
+        const want = String(v).trim();
+        if (!want) return true;
+        return String(r.company_id ?? '').toLowerCase() === want.toLowerCase();
+      }
       return String(r[k] ?? '').toLowerCase() === String(v).toLowerCase();
     })
   );
@@ -180,7 +194,12 @@ function filterRows(
 ): Record<string, string>[] {
   return rows.filter((row) =>
     Object.entries(payload).every(([k, v]) => {
-      if (v === null || v === undefined || k === 'tool_id' || k === 'company_id') return true;
+      if (v === null || v === undefined || k === 'tool_id') return true;
+      if (k === 'company_id') {
+        const want = String(v).trim();
+        if (!want) return true;
+        return String(row.company_id ?? '').toLowerCase() === want.toLowerCase();
+      }
       return row[k]?.toLowerCase() === String(v).toLowerCase();
     })
   );
@@ -427,7 +446,14 @@ async function executeDbRead(
   operation: string,
   payload: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-  const allRows = await model.findMany({});
+  const companyIdFilter = String(payload.company_id ?? '').trim();
+  /** Only bank_transactions currently stores company_id in Postgres (multi-tenant column). */
+  const findManyArg =
+    table === 'bank_transactions' && companyIdFilter
+      ? { where: { companyId: companyIdFilter } }
+      : {};
+
+  const allRows = await model.findMany(findManyArg);
   const strRows = allRows.map((r: Record<string, unknown>) => rowToRecord(r));
 
   const special = runSpecialRead(table, operation, strRows, payload);
@@ -455,7 +481,6 @@ async function executeDbRead(
   } else {
     const searchPayload = { ...payload };
     delete searchPayload.tool_id;
-    delete searchPayload.company_id;
     filtered = filterRows(strRows, searchPayload);
   }
 
@@ -529,7 +554,6 @@ function executeSheetToolInMemory(
   }
   const searchPayload = { ...payload };
   delete searchPayload.tool_id;
-  delete searchPayload.company_id;
   const found = memFind(table, searchPayload);
   return { ok: true, table, operation, count: found.length, rows: found };
 }
@@ -539,13 +563,25 @@ function executeSheetToolInMemory(
 export async function executeSheetTool(
   params: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-  const toolId = String(params.tool_id ?? 'sheets.unknown.create');
+  const rawToolId = String(params.tool_id ?? 'sheets.unknown.create');
+  const toolId = canonicalVeloDataToolId(rawToolId);
   const parts = toolId.split('.');
   const table = parts[1] ?? 'default';
   const operation = parts[2] ?? 'create';
   const payload = (params.payload ?? params) as Record<string, unknown>;
 
   if (!useDatabase()) {
+    if (process.env.NODE_ENV === 'production') {
+      return {
+        ok: false,
+        error: 'DATABASE_URL is required in production.',
+        table,
+        operation,
+      };
+    }
+    if (!allowInMemoryDataFallback()) {
+      return { ok: false, error: 'DATABASE_URL is not configured.', table, operation };
+    }
     return executeSheetToolInMemory(table, operation, payload);
   }
 
@@ -553,6 +589,14 @@ export async function executeSheetTool(
     return await executeSheetToolDb(table, operation, payload);
   } catch (err) {
     console.error(`[db] executeSheetTool failed for ${toolId}:`, err);
+    if (!allowInMemoryDataFallback()) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+        table,
+        operation,
+      };
+    }
     return executeSheetToolInMemory(table, operation, payload);
   }
 }

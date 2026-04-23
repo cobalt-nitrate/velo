@@ -12,6 +12,7 @@ import { PolicyEngine } from '@velo/core/policy-engine';
 import { deriveScoringInputs, scoreConfidence } from '@velo/core/confidence';
 import {
   appendDecisionMemory,
+  canonicalVeloDataToolId,
   createAuditEvent,
   registerAuditSheetsFlush,
 } from '@velo/core';
@@ -707,7 +708,8 @@ function deriveActionMetadata(toolCall: {
   tool_id: string;
   parameters: Record<string, unknown>;
 }): ToolActionMetadata {
-  const parts = toolCall.tool_id.split('.');
+  const canonId = canonicalVeloDataToolId(toolCall.tool_id);
+  const parts = canonId.split('.');
   const module = parts[1] ?? 'unknown';
   const action = parts[2] ?? 'execute';
   const amount =
@@ -715,7 +717,7 @@ function deriveActionMetadata(toolCall: {
     numberOrDefault(toolCall.parameters.amount, NaN);
 
   const isFilingAction =
-    toolCall.tool_id.includes('file_') || toolCall.tool_id.includes('filing');
+    canonId.includes('file_') || canonId.includes('filing');
 
   return {
     amount_inr: Number.isFinite(amount) ? amount : undefined,

@@ -352,7 +352,7 @@ function StepGoogle({
       const res = await fetch('/api/config/integrations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ test: 'google_workspace' }),
+        body: JSON.stringify({ test: 'google_drive' }),
       });
       const data = (await res.json()) as { probe_ok: boolean; message: string };
       setTestResult({ ok: data.probe_ok, message: data.message });
@@ -374,17 +374,16 @@ function StepGoogle({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      const data = (await res.json()) as { ok: boolean; created: string[]; skipped: string[]; error?: string };
+      const data = (await res.json()) as {
+        ok: boolean;
+        message?: string;
+        data_store?: string;
+        error?: string;
+      };
       if (!data.ok) {
         setBootstrapError(data.error ?? 'Bootstrap failed');
       } else {
-        const msg = [
-          data.created.length > 0 ? `Created: ${data.created.join(', ')}` : null,
-          data.skipped.length > 0 ? `Already set: ${data.skipped.join(', ')}` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ');
-        setBootstrapResult(msg || 'All spreadsheets ready.');
+        setBootstrapResult(data.message ?? 'PostgreSQL connectivity verified.');
         onBootstrapped();
       }
     } catch {
@@ -403,9 +402,9 @@ function StepGoogle({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold text-velo-text">Connect Google Sheets</h2>
+        <h2 className="text-base font-semibold text-velo-text">Google Drive (optional)</h2>
         <p className="mt-0.5 text-xs text-velo-muted">
-          Velo stores all business data in 5 Google Sheets workbooks. Create a service account in Google Cloud, then paste its credentials below.
+          Business data lives in PostgreSQL. Use a Google service account only if you want Velo to upload generated PDFs and files to a Drive folder you control.
         </p>
       </div>
 
@@ -437,9 +436,9 @@ function StepGoogle({
       {testResult && <StatusBadge ok={testResult.ok} message={testResult.message} />}
 
       <div className="rounded-xl border border-velo-line bg-velo-inset/60 p-3 text-xs text-velo-muted">
-        <p className="font-medium text-velo-text">One-click workbook creation</p>
+        <p className="font-medium text-velo-text">Verify PostgreSQL</p>
         <p className="mt-0.5">
-          After verifying the service account, click below to create all 5 spreadsheets (CONFIG, MASTER, TRANSACTIONS, COMPLIANCE, LOGS) with tabs and header rows. This saves the IDs automatically.
+          Confirms DATABASE_URL is set and migrations have been applied. Do this after your database is running.
         </p>
         {bootstrapResult && (
           <p className="mt-1.5 font-medium text-emerald-600">✓ {bootstrapResult}</p>
@@ -448,9 +447,9 @@ function StepGoogle({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <StepButton label="Test connection" onClick={testGoogle} loading={testing} variant="ghost" />
+        <StepButton label="Test Drive API" onClick={testGoogle} loading={testing} variant="ghost" />
         <StepButton
-          label="Create all 5 workbooks"
+          label="Verify database"
           onClick={bootstrap}
           loading={bootstrapping}
           variant="ghost"
@@ -705,7 +704,7 @@ function StepReady({
       .catch(() => {/* silently ignore */});
   }, []);
 
-  const coreConnectors = ['llm', 'google_workspace', 'slack', 'email'];
+  const coreConnectors = ['postgresql', 'llm', 'google_drive', 'slack', 'email'];
   const displayConnectors = connectors.filter((c) => coreConnectors.includes(c.id));
 
   async function handleSeed() {
@@ -731,8 +730,9 @@ function StepReady({
     onComplete();
   }
 
-  const allCriticalReady = connectors.some((c) => c.id === 'llm' && c.ready) &&
-    connectors.some((c) => c.id === 'google_workspace' && c.ready);
+  const allCriticalReady =
+    connectors.some((c) => c.id === 'postgresql' && c.ready) &&
+    connectors.some((c) => c.id === 'llm' && c.ready);
 
   return (
     <div className="space-y-5">
@@ -772,7 +772,7 @@ function StepReady({
             {sheetsBootstrapped ? '✓' : '○'}
           </span>
           <span className={sheetsBootstrapped ? 'text-velo-text' : 'text-velo-muted'}>
-            Spreadsheets created
+            PostgreSQL verified
           </span>
         </li>
       </ul>
@@ -781,7 +781,7 @@ function StepReady({
       <div className="rounded-xl border border-velo-line bg-velo-inset/60 p-4 space-y-2">
         <p className="text-sm font-medium text-velo-text">Load demo data (optional)</p>
         <p className="text-xs text-velo-muted">
-          Populate your spreadsheets with realistic Indian startup data — employees, invoices, compliance calendar — so you can explore Velo before adding real data.
+          Load realistic Indian startup demo rows into PostgreSQL — employees, invoices, compliance calendar — so you can explore Velo before adding real data.
         </p>
         {seedDone ? (
           <p className="text-xs font-medium text-emerald-600">✓ Demo data loaded</p>

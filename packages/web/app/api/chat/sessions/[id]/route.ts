@@ -11,7 +11,7 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = getChatSession(params.id);
+  const session = await getChatSession(params.id);
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
@@ -24,7 +24,7 @@ export async function PATCH(
 ) {
   try {
     const body = (await req.json()) as Record<string, unknown>;
-    const session = updateChatSessionMeta(params.id, {
+    const session = await updateChatSessionMeta(params.id, {
       title: typeof body.title === 'string' ? body.title : undefined,
       agentId: typeof body.agentId === 'string' ? body.agentId : undefined,
     });
@@ -44,7 +44,7 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const ok = deleteChatSession(params.id);
+  const ok = await deleteChatSession(params.id);
   if (!ok) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }

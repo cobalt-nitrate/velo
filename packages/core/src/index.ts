@@ -6,4 +6,5 @@ export * from './audit/index.js';
 export * from './workflow/index.js';
 export * from './integrations/connector-kit.js';
 export * from './module-entity.js';
+export * from './tool-id.js';
 export * from './memory/decision-memory.js';

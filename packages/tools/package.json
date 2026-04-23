@@ -2,7 +2,7 @@
   "name": "@velo/tools",
   "version": "0.1.0",
   "private": true,
-  "description": "Tool functions callable by agents: Sheets, email, OCR, Drive, notifications, bank",
+  "description": "Tool functions callable by agents: Postgres data access, email, OCR, Drive, notifications, bank",
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",

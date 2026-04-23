@@ -1,6 +1,6 @@
 import type { ConfidenceSignals } from '@velo/core/confidence';
 import { loadConfig } from '@velo/core/config';
-import { memoryBoostForTool } from '@velo/core';
+import { canonicalVeloDataToolId, memoryBoostForTool } from '@velo/core';
 
 /** Maps tool ids to fields used for extraction completeness scoring. */
 export function scoringSignalsForTool(
@@ -42,6 +42,7 @@ export function requiredFieldsForTool(toolId: string): string[] {
 }
 
 function requiredFieldsForToolCodeFallback(toolId: string): string[] {
+  const canon = canonicalVeloDataToolId(toolId);
   if (toolId === 'internal.sub_agent.invoke') {
     return ['sub_agent_id', 'input'];
   }
@@ -50,18 +51,18 @@ function requiredFieldsForToolCodeFallback(toolId: string): string[] {
   }
 
   const isRead =
-    /\.(get_|lookup|find_|list)/.test(toolId) ||
-    toolId.includes('.get_active') ||
-    toolId.includes('get_recent') ||
-    toolId.includes('get_pending') ||
-    toolId.includes('get_latest') ||
-    toolId.includes('get_by_date') ||
-    toolId.includes('get_ytd') ||
-    toolId.includes('get_blockers') ||
-    toolId.includes('get_committed') ||
-    toolId.includes('get_outstanding') ||
-    toolId.includes('get_overdue');
-  if (toolId.startsWith('sheets.') && isRead) {
+    /\.(get_|lookup|find_|list)/.test(canon) ||
+    canon.includes('.get_active') ||
+    canon.includes('get_recent') ||
+    canon.includes('get_pending') ||
+    canon.includes('get_latest') ||
+    canon.includes('get_by_date') ||
+    canon.includes('get_ytd') ||
+    canon.includes('get_blockers') ||
+    canon.includes('get_committed') ||
+    canon.includes('get_outstanding') ||
+    canon.includes('get_overdue');
+  if (canon.startsWith('sheets.') && isRead) {
     return [];
   }
 
@@ -74,25 +75,25 @@ function requiredFieldsForToolCodeFallback(toolId: string): string[] {
   }
 
   if (
-    toolId.startsWith('sheets.ap_invoices') &&
-    toolId.includes('.create')
+    canon.startsWith('sheets.ap_invoices') &&
+    canon.includes('.create')
   ) {
     return ['vendor_name', 'total_amount', 'invoice_date'];
   }
   if (
-    toolId.startsWith('sheets.ar_invoices') &&
-    toolId.includes('.create')
+    canon.startsWith('sheets.ar_invoices') &&
+    canon.includes('.create')
   ) {
     return ['client_name', 'total_amount', 'invoice_date'];
   }
-  if (toolId.startsWith('sheets.payroll_runs') && toolId.includes('create')) {
+  if (canon.startsWith('sheets.payroll_runs') && canon.includes('create')) {
     return ['month', 'year'];
   }
   if (toolId.startsWith('email.')) {
     return ['to'];
   }
 
-  if (toolId.startsWith('sheets.') && toolId.includes('.create')) {
+  if (canon.startsWith('sheets.') && canon.includes('.create')) {
     return ['company_id'];
   }
 

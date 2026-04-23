@@ -168,8 +168,8 @@ export default function OperationsPage() {
 
       {snapshot?.data_source === 'unavailable' && (
         <EmptyState
-          heading="Google Sheets not connected"
-          body="Operations data lives in your 5 Velo spreadsheets. Complete setup to see live data here."
+          heading="Database not reachable"
+          body="Operations data is read from PostgreSQL. Set DATABASE_URL, run migrations, and ensure the database is running — then refresh or complete onboarding."
           actions={[
             { label: 'Open setup wizard', href: '/onboarding', primary: true },
             { label: 'Go to Settings', href: '/settings' },

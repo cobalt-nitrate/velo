@@ -9,8 +9,9 @@ import {
   patchStoredConnectorEnv,
 } from '@/lib/connector-env-store';
 import {
-  testGoogleSheetsConnect,
+  testGoogleDriveConnect,
   testLlmConnect,
+  testPostgresConnect,
   testResendConnect,
   testSlackConnect,
 } from '@/lib/connector-tests';
@@ -18,15 +19,15 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-function googleSheetsReady(stored: Record<string, string>): boolean {
+/** Service account configured for Drive API (document uploads). */
+function googleDriveReady(stored: Record<string, string>): boolean {
   const g = keyStatus('GOOGLE_SERVICE_ACCOUNT_EMAIL', stored);
   const k = keyStatus('GOOGLE_PRIVATE_KEY', stored);
-  const tx = keyStatus('SHEETS_TRANSACTIONS_ID', stored);
-  return (
-    g.effectiveSet &&
-    k.effectiveSet &&
-    tx.effectiveSet
-  );
+  return g.effectiveSet && k.effectiveSet;
+}
+
+function postgresReady(stored: Record<string, string>): boolean {
+  return keyStatus('DATABASE_URL', stored).effectiveSet;
 }
 
 function buildIntegrationPayload() {
@@ -54,7 +55,8 @@ function buildIntegrationPayload() {
     });
 
     let ready = false;
-    if (def.id === 'google_workspace') ready = googleSheetsReady(stored);
+    if (def.id === 'postgresql') ready = postgresReady(stored);
+    else if (def.id === 'google_drive') ready = googleDriveReady(stored);
     else if (def.id === 'llm') {
       const key = keyStatus('LLM_API_KEY', stored);
       const alt = keyStatus('OPENAI_API_KEY', stored);
@@ -121,7 +123,7 @@ export async function PUT(req: Request) {
   }
 }
 
-/** POST { test: ConnectorId } — run a live probe (google_workspace | llm | slack | email). */
+/** POST { test: ConnectorId } — run a live probe (postgresql | google_drive | llm | slack | email). */
 export async function POST(req: Request) {
   try {
     applyStoredConnectorEnvAtStartup();
@@ -129,8 +131,11 @@ export async function POST(req: Request) {
     const id = String(body.test ?? '').trim();
     let result: { ok: boolean; message: string };
     switch (id) {
-      case 'google_workspace':
-        result = await testGoogleSheetsConnect();
+      case 'postgresql':
+        result = await testPostgresConnect();
+        break;
+      case 'google_drive':
+        result = await testGoogleDriveConnect();
         break;
       case 'llm':
         result = await testLlmConnect();

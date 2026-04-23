@@ -1,0 +1,746 @@
+{
+  "nodes": [
+    {
+      "id": "email_sendEmail",
+      "label": "sendEmail",
+      "file_type": "code",
+      "source_file": "packages/tools/src/email/index.ts",
+      "source_location": "19",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "email_buildEmailHtml",
+      "label": "buildEmailHtml",
+      "file_type": "code",
+      "source_file": "packages/tools/src/email/index.ts",
+      "source_location": "72",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "email_resend_client",
+      "label": "ResendClient (email transport)",
+      "file_type": "code",
+      "source_file": "packages/tools/src/email/index.ts",
+      "source_location": "6",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_module_entity",
+      "label": "module-entity (inferModuleFromAgentId / buildWorkflowEntityStub)",
+      "file_type": "code",
+      "source_file": "packages/core/src/module-entity.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_validate_configs_cli",
+      "label": "validate-configs-cli",
+      "file_type": "code",
+      "source_file": "packages/core/src/validate-configs-cli.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_index",
+      "label": "@velo/core barrel export",
+      "file_type": "code",
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_tool_id",
+      "label": "canonicalVeloDataToolId",
+      "file_type": "code",
+      "source_file": "packages/core/src/tool-id.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_types_agent",
+      "label": "agent types (PolicyResult, AgentConfig, WorkflowRunState, …)",
+      "file_type": "code",
+      "source_file": "packages/core/src/types/agent.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_types_index",
+      "label": "types barrel (re-exports agent.ts)",
+      "file_type": "code",
+      "source_file": "packages/core/src/types/index.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_policy_engine",
+      "label": "PolicyEngine",
+      "file_type": "code",
+      "source_file": "packages/core/src/policy-engine/index.ts",
+      "source_location": "52",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_policy_engine_test",
+      "label": "PolicyEngine tests",
+      "file_type": "code",
+      "source_file": "packages/core/src/policy-engine/index.test.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_confidence",
+      "label": "ConfidenceScorer (scoreConfidence / deriveScoringInputs)",
+      "file_type": "code",
+      "source_file": "packages/core/src/confidence/index.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_confidence_test",
+      "label": "ConfidenceScorer tests",
+      "file_type": "code",
+      "source_file": "packages/core/src/confidence/index.test.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_config_loader",
+      "label": "ConfigLoader (loadConfig / validateAllVeloConfigs)",
+      "file_type": "code",
+      "source_file": "packages/core/src/config/loader.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_connector_kit",
+      "label": "connector-kit interfaces (NotificationConnector / LedgerConnector / ModelConnector)",
+      "file_type": "code",
+      "source_file": "packages/core/src/integrations/connector-kit.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_audit",
+      "label": "AuditLogger (createAuditEvent / registerAuditSheetsFlush)",
+      "file_type": "code",
+      "source_file": "packages/core/src/audit/index.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_audit_test",
+      "label": "AuditLogger tests",
+      "file_type": "code",
+      "source_file": "packages/core/src/audit/index.test.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_workflow_index",
+      "label": "workflow runtime (startWorkflowRun / advanceWorkflowRun / …)",
+      "file_type": "code",
+      "source_file": "packages/core/src/workflow/index.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_workflow_persist",
+      "label": "workflow persist (hydrateWorkflowRuns / persistWorkflowRuns)",
+      "file_type": "code",
+      "source_file": "packages/core/src/workflow/persist.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "web_middleware",
+      "label": "Next.js auth middleware (withAuth)",
+      "file_type": "code",
+      "source_file": "packages/web/middleware.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "web_next_config",
+      "label": "next.config.js",
+      "file_type": "code",
+      "source_file": "packages/web/next.config.js",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "web_tailwind_config",
+      "label": "tailwind.config.ts (Velo design tokens)",
+      "file_type": "code",
+      "source_file": "packages/web/tailwind.config.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "core_decision_memory",
+      "label": "DecisionMemory (memoryBoostForTool / appendDecisionMemory)",
+      "file_type": "code",
+      "source_file": "packages/core/src/memory/decision-memory.ts",
+      "source_location": "1",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "config_autopilot_json",
+      "label": "configs/policies/autopilot.json",
+      "file_type": "document",
+      "source_file": "configs/policies/autopilot.json",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "config_confidence_weights_json",
+      "label": "configs/policies/confidence_weights.json",
+      "file_type": "document",
+      "source_file": "configs/policies/confidence_weights.json",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "config_confidence_signals_json",
+      "label": "configs/business/confidence_signals.json",
+      "file_type": "document",
+      "source_file": "configs/business/confidence_signals.json",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "velo_state_dir",
+      "label": ".velo/ state directory (workflow-runs.json / decision-memory.json)",
+      "file_type": "document",
+      "source_file": ".velo/",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "email_sendEmail",
+      "target": "email_buildEmailHtml",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/tools/src/email/index.ts",
+      "source_location": "24",
+      "weight": 1.0
+    },
+    {
+      "source": "email_sendEmail",
+      "target": "email_resend_client",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/tools/src/email/index.ts",
+      "source_location": "26",
+      "weight": 1.0
+    },
+    {
+      "source": "email_buildEmailHtml",
+      "target": "core_tool_id",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "packages/tools/src/email/index.ts",
+      "source_location": "73",
+      "weight": 0.8
+    },
+    {
+      "source": "core_policy_engine",
+      "target": "core_tool_id",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/policy-engine/index.ts",
+      "source_location": "6",
+      "weight": 1.0
+    },
+    {
+      "source": "core_policy_engine",
+      "target": "core_types_agent",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/policy-engine/index.ts",
+      "source_location": "5",
+      "weight": 1.0
+    },
+    {
+      "source": "core_policy_engine",
+      "target": "config_autopilot_json",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "packages/core/src/policy-engine/index.ts",
+      "source_location": "8",
+      "weight": 0.9
+    },
+    {
+      "source": "core_policy_engine_test",
+      "target": "core_policy_engine",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/policy-engine/index.test.ts",
+      "source_location": "2",
+      "weight": 1.0
+    },
+    {
+      "source": "core_confidence",
+      "target": "core_config_loader",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/confidence/index.ts",
+      "source_location": "6",
+      "weight": 1.0
+    },
+    {
+      "source": "core_confidence",
+      "target": "core_types_agent",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/confidence/index.ts",
+      "source_location": "5",
+      "weight": 1.0
+    },
+    {
+      "source": "core_confidence",
+      "target": "config_confidence_weights_json",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/confidence/index.ts",
+      "source_location": "30",
+      "weight": 1.0
+    },
+    {
+      "source": "core_confidence_test",
+      "target": "core_confidence",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/confidence/index.test.ts",
+      "source_location": "2",
+      "weight": 1.0
+    },
+    {
+      "source": "core_config_loader",
+      "target": "config_autopilot_json",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/config/loader.ts",
+      "source_location": "38",
+      "weight": 1.0
+    },
+    {
+      "source": "core_config_loader",
+      "target": "config_confidence_weights_json",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/config/loader.ts",
+      "source_location": "39",
+      "weight": 1.0
+    },
+    {
+      "source": "core_config_loader",
+      "target": "config_confidence_signals_json",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/config/loader.ts",
+      "source_location": "41",
+      "weight": 1.0
+    },
+    {
+      "source": "core_validate_configs_cli",
+      "target": "core_config_loader",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/validate-configs-cli.ts",
+      "source_location": "2",
+      "weight": 1.0
+    },
+    {
+      "source": "core_module_entity",
+      "target": "core_types_agent",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/module-entity.ts",
+      "source_location": "5",
+      "weight": 1.0
+    },
+    {
+      "source": "core_module_entity",
+      "target": "core_policy_engine",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "packages/core/src/module-entity.ts",
+      "source_location": "21",
+      "weight": 0.85
+    },
+    {
+      "source": "core_audit",
+      "target": "core_types_agent",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "packages/core/src/audit/index.ts",
+      "source_location": "6",
+      "weight": 0.8
+    },
+    {
+      "source": "core_audit",
+      "target": "core_workflow_index",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "packages/core/src/audit/index.ts",
+      "source_location": "38",
+      "weight": 0.75
+    },
+    {
+      "source": "core_audit_test",
+      "target": "core_audit",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/audit/index.test.ts",
+      "source_location": "2",
+      "weight": 1.0
+    },
+    {
+      "source": "core_workflow_index",
+      "target": "core_workflow_persist",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/workflow/index.ts",
+      "source_location": "6",
+      "weight": 1.0
+    },
+    {
+      "source": "core_workflow_index",
+      "target": "core_types_agent",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/workflow/index.ts",
+      "source_location": "1",
+      "weight": 1.0
+    },
+    {
+      "source": "core_workflow_persist",
+      "target": "core_config_loader",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/workflow/persist.ts",
+      "source_location": "3",
+      "weight": 1.0
+    },
+    {
+      "source": "core_workflow_persist",
+      "target": "velo_state_dir",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/workflow/persist.ts",
+      "source_location": "7",
+      "weight": 1.0
+    },
+    {
+      "source": "core_workflow_persist",
+      "target": "core_types_agent",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/workflow/persist.ts",
+      "source_location": "4",
+      "weight": 1.0
+    },
+    {
+      "source": "core_decision_memory",
+      "target": "core_config_loader",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/memory/decision-memory.ts",
+      "source_location": "5",
+      "weight": 1.0
+    },
+    {
+      "source": "core_decision_memory",
+      "target": "velo_state_dir",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/memory/decision-memory.ts",
+      "source_location": "33",
+      "weight": 1.0
+    },
+    {
+      "source": "core_decision_memory",
+      "target": "core_confidence",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "packages/core/src/memory/decision-memory.ts",
+      "source_location": "75",
+      "weight": 0.85
+    },
+    {
+      "source": "core_connector_kit",
+      "target": "core_types_agent",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/integrations/connector-kit.ts",
+      "source_location": "6",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_types_index",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "1",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_policy_engine",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "2",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_confidence",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "3",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_config_loader",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "4",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_audit",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "5",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_workflow_index",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "6",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_connector_kit",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "7",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_module_entity",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "8",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_tool_id",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "9",
+      "weight": 1.0
+    },
+    {
+      "source": "core_index",
+      "target": "core_decision_memory",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/index.ts",
+      "source_location": "10",
+      "weight": 1.0
+    },
+    {
+      "source": "web_middleware",
+      "target": "web_next_config",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "packages/web/middleware.ts",
+      "source_location": "1",
+      "weight": 0.7
+    },
+    {
+      "source": "web_next_config",
+      "target": "core_index",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/web/next.config.js",
+      "source_location": "5",
+      "weight": 1.0
+    },
+    {
+      "source": "core_tool_id",
+      "target": "core_policy_engine",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/policy-engine/index.ts",
+      "source_location": "6",
+      "weight": 1.0
+    },
+    {
+      "source": "core_workflow_index",
+      "target": "core_workflow_persist",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "packages/core/src/workflow/index.ts",
+      "source_location": "41",
+      "weight": 1.0
+    },
+    {
+      "source": "core_audit",
+      "target": "core_types_agent",
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "packages/core/src/audit/index.ts",
+      "source_location": "6",
+      "weight": 0.8
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 12800,
+  "output_tokens": 2100
+}

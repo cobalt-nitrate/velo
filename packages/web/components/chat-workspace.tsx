@@ -25,6 +25,10 @@ import {
 
 type ChatPayload = { text: string; agentId: string; uploadIds: string[] };
 
+function formatArtifactKind(kind: string | undefined) {
+  return String(kind ?? 'note').replace(/_/g, ' ');
+}
+
 const AGENTS = [
   { id: 'orchestrator', label: 'Orchestrator' },
   { id: 'helpdesk', label: 'Helpdesk' },
@@ -80,9 +84,9 @@ function ApprovalArtifactBlock({ a, approvalId }: { a: ChatArtifact; approvalId:
     <div className="mt-2 rounded-lg border border-velo-line bg-velo-inset px-3 py-2 text-xs">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded bg-velo-inset-deep px-1.5 py-0.5 font-mono uppercase text-[10px] text-velo-muted">
-          {a.kind.replace(/_/g, ' ')}
+          {formatArtifactKind(a.kind)}
         </span>
-        <span className="font-medium text-velo-text">{a.title}</span>
+        <span className="font-medium text-velo-text">{a.title ?? 'Approval'}</span>
       </div>
       {resolved && (
         <p className="mt-2 font-medium text-emerald-700">
@@ -123,9 +127,9 @@ function ArtifactBlock({ a }: { a: ChatArtifact }) {
     <div className="mt-2 rounded-lg border border-velo-line bg-velo-inset px-3 py-2 text-xs">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded bg-velo-inset-deep px-1.5 py-0.5 font-mono uppercase text-[10px] text-velo-muted">
-          {a.kind.replace(/_/g, ' ')}
+          {formatArtifactKind(a.kind)}
         </span>
-        <span className="font-medium text-velo-text">{a.title}</span>
+        <span className="font-medium text-velo-text">{a.title ?? 'Artifact'}</span>
       </div>
       {a.body && (
         <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-velo-muted">
@@ -173,8 +177,8 @@ function MessageBubble({ m }: { m: ChatMessage }) {
             ))}
           </ul>
         )}
-        {artifacts.map((a) => (
-          <ArtifactBlock key={a.id} a={a} />
+        {artifacts.map((a, i) => (
+          <ArtifactBlock key={a.id ?? `artifact-${i}`} a={a} />
         ))}
       </div>
     </div>
@@ -278,7 +282,7 @@ export function ChatWorkspace() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [session?.messages.length, liveEvents.length, missionPlan, missionLoading]);
+  }, [session?.messages?.length, liveEvents.length, missionPlan, missionLoading]);
 
   useEffect(() => {
     const sid = session?.id;
@@ -637,7 +641,7 @@ export function ChatWorkspace() {
                   </div>
                 ) : (
                   <>
-                    {session.messages.map((m) => (
+                    {(session.messages ?? []).map((m) => (
                       <MessageBubble key={m.id} m={m} />
                     ))}
                     <div ref={bottomRef} />

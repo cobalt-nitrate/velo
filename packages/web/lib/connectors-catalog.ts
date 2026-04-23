@@ -21,6 +21,7 @@ export type ConnectorDefinition = {
 
 export const CONNECTOR_SECRET_KEYS = new Set(
   [
+    'DATABASE_URL',
     'GOOGLE_PRIVATE_KEY',
     'LLM_API_KEY',
     'OPENAI_API_KEY',
@@ -39,30 +40,49 @@ export function isSecretEnvKey(key: string): boolean {
 
 export const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
   {
-    id: 'google_workspace',
-    title: 'Google Sheets & Drive',
+    id: 'postgresql',
+    title: 'PostgreSQL',
     summary:
-      'Service account access to your Velo spreadsheets and optional Drive uploads for generated documents.',
+      'Velo stores invoices, payroll, approvals, and other business data in PostgreSQL (via Prisma).',
+    steps: [
+      'Provision a Postgres instance (local Docker, RDS, Neon, etc.) and run migrations: `npx prisma migrate deploy` from packages/web.',
+      'Set DATABASE_URL to the connection string (often in `.env.local` or below). The app will not persist agent/tool writes without it.',
+    ],
+    fields: [
+      {
+        envKey: 'DATABASE_URL',
+        label: 'Connection string',
+        sensitive: true,
+        multiline: true,
+        placeholder: 'postgresql://user:pass@host:5432/dbname',
+      },
+    ],
+  },
+  {
+    id: 'google_drive',
+    title: 'Google Drive',
+    summary:
+      'Service account access for uploading generated PDFs and storing file links. Business data is never stored in Google Sheets.',
     docsUrl: 'https://cloud.google.com/iam/docs/service-accounts',
     steps: [
-      'In Google Cloud Console, create or pick a project, then APIs & Services → Enable Google Sheets API and Google Drive API.',
-      'IAM → Service Accounts → Create key (JSON). Copy the client_email and private_key into the fields below.',
-      'Share each target spreadsheet with the service account email as Editor (use the spreadsheet’s Share dialog).',
-      'Paste the spreadsheet IDs from the URL (the long id between /d/ and /edit) into the SHEETS_* fields.',
-      'For PDF/Drive uploads, create a Drive folder, share it with the service account, and set VELO_DRIVE_FOLDER_ID to the folder id from the URL.',
-      'Alternatively, copy variables into `.env.local` in the repo root — values here are merged from `.velo/connector-env.json` on server start (empty env slots only). Saving in this UI updates the file and applies to the running server immediately.',
+      'In Google Cloud Console, enable the Google Drive API for your project.',
+      'IAM → Service Accounts → Create a JSON key. Copy `client_email` and `private_key` into the fields below.',
+      'Create a Drive folder for Velo outputs, share it with the service account (Editor), and set VELO_DRIVE_FOLDER_ID to the folder id from the URL.',
+      'Values merge from `.velo/connector-env.json` on server start where host env is empty. Saving in this UI updates that file.',
     ],
     fields: [
       {
         envKey: 'GOOGLE_SERVICE_ACCOUNT_EMAIL',
         label: 'Service account email',
         placeholder: 'velo-sa@project.iam.gserviceaccount.com',
+        optional: true,
       },
       {
         envKey: 'GOOGLE_PRIVATE_KEY',
         label: 'Private key (PEM)',
         sensitive: true,
         multiline: true,
+        optional: true,
         placeholder: '-----BEGIN PRIVATE KEY----- … -----END PRIVATE KEY-----',
       },
       {
@@ -76,32 +96,6 @@ export const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
         label: 'Drive folder id (generated docs)',
         optional: true,
         placeholder: '1AbC… folder id from drive.google.com',
-      },
-      {
-        envKey: 'SHEETS_CONFIG_ID',
-        label: 'CONFIG spreadsheet id',
-        placeholder: 'company_settings, tax_rates, …',
-      },
-      {
-        envKey: 'SHEETS_MASTER_ID',
-        label: 'MASTER spreadsheet id',
-        placeholder: 'employees, vendors, clients, …',
-      },
-      {
-        envKey: 'SHEETS_TRANSACTIONS_ID',
-        label: 'TRANSACTIONS spreadsheet id',
-        placeholder: 'ap_invoices, ar_invoices, approvals, payroll, bank, …',
-      },
-      {
-        envKey: 'SHEETS_COMPLIANCE_ID',
-        label: 'COMPLIANCE spreadsheet id',
-        optional: true,
-      },
-      {
-        envKey: 'SHEETS_LOGS_ID',
-        label: 'LOGS spreadsheet id',
-        optional: true,
-        placeholder: 'audit_trail, file_links, …',
       },
     ],
   },

@@ -4,6 +4,7 @@
  */
 
 import { loadConfig } from '@velo/core/config';
+import { canonicalVeloDataToolId } from '@velo/core';
 
 function riskCaps(): { high: number; filing: number } {
   try {
@@ -30,10 +31,11 @@ export function adjustConfidenceForPolicyRisk(params: {
   let c = params.baseConfidence;
   const notes: string[] = [];
   const caps = riskCaps();
+  const canonId = canonicalVeloDataToolId(params.toolId);
   const isWrite =
-    params.toolId.startsWith('sheets.') &&
-    !/\.(get_|lookup|find_|list)/.test(params.toolId) &&
-    !params.toolId.includes('.get_');
+    canonId.startsWith('sheets.') &&
+    !/\.(get_|lookup|find_|list)/.test(canonId) &&
+    !canonId.includes('.get_');
 
   const highValue =
     typeof params.amountInr === 'number' &&

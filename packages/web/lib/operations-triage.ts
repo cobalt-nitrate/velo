@@ -135,38 +135,45 @@ export function buildIntegrationTriageRows(checks: HealthCheck[]): IntegrationTr
 
   const pick = (id: string): HealthCheck | undefined => map.get(id);
 
-  const workbooks = checks.filter((c) => c.id.startsWith('sheets_workbook_'));
-  const google = pick('google_service_account');
-  const sheetIds = pick('sheets_env_ids');
-  const sheetsStack: HealthCheck[] = [];
-  if (google) sheetsStack.push(google);
-  if (sheetIds) sheetsStack.push(sheetIds);
-  sheetsStack.push(...workbooks);
-  const sheetsStatus =
-    sheetsStack.length > 0 ? foldStatuses(sheetsStack.map((c) => c.status)) : ('warn' as const);
-  const sheetsMessage =
-    sheetsStack.length > 0
-      ? sheetsStack
+  const postgres = pick('postgres_data_plane');
+  const googleSa = pick('google_service_account');
+  const drive = pick('drive_documents_root');
+  const googleDriveStack = [googleSa, drive].filter(Boolean) as HealthCheck[];
+  const googleDriveStatus =
+    googleDriveStack.length > 0
+      ? foldStatuses(googleDriveStack.map((c) => c.status))
+      : ('skipped' as const);
+  const googleDriveMessage =
+    googleDriveStack.length > 0
+      ? googleDriveStack
           .filter((c) => c.status === 'fail' || c.status === 'warn')
           .map((c) => c.message)
-          .join(' · ') || 'Sheets data plane reachable'
-      : 'Sheets status unknown';
+          .join(' · ') || 'Google Drive integration OK'
+      : 'Google Drive not configured';
 
   const llm = pick('llm_config');
   const approvalsQ = pick('approvals_pending');
   const resend = pick('resend');
-  const drive = pick('drive_documents_root');
 
   const rows: IntegrationTriageRow[] = [
     {
-      id: 'google_sheets',
-      label: 'Google Sheets (Velo workbooks)',
-      status: sheetsStatus,
-      available: sheetsStatus !== 'fail',
-      message: sheetsMessage,
+      id: 'postgresql',
+      label: 'PostgreSQL (business data)',
+      status: postgres?.status ?? 'warn',
+      available: postgres?.status === 'ok',
+      message: postgres?.message ?? 'Database not probed',
+      detail: postgres?.detail,
+    },
+    {
+      id: 'google_drive',
+      label: 'Google Drive (document uploads)',
+      status: googleDriveStatus,
+      available: googleDriveStatus !== 'fail',
+      message: googleDriveMessage,
+      optional: true,
       detail:
-        workbooks.length > 0
-          ? `${workbooks.filter((w) => w.status === 'ok').length}/${workbooks.length} workbooks OK`
+        googleDriveStack.length > 0
+          ? `${googleDriveStack.filter((c) => c.status === 'ok').length}/${googleDriveStack.length} checks OK`
           : undefined,
     },
     {
@@ -179,7 +186,7 @@ export function buildIntegrationTriageRows(checks: HealthCheck[]): IntegrationTr
     },
     {
       id: 'approvals_queue',
-      label: 'Approvals queue (Sheets read)',
+      label: 'Approvals queue',
       status: approvalsQ?.status ?? 'warn',
       available: approvalsQ?.status !== 'fail',
       message: approvalsQ?.message ?? 'Approvals queue not probed',
@@ -196,15 +203,6 @@ export function buildIntegrationTriageRows(checks: HealthCheck[]): IntegrationTr
           ? 'Optional — not configured'
           : (resend?.message ?? 'Email not probed'),
       detail: resend?.detail,
-    },
-    {
-      id: 'drive',
-      label: 'Google Drive (document root)',
-      status: drive?.status ?? 'skipped',
-      available: drive?.status === 'ok' || drive?.status === 'skipped',
-      optional: true,
-      message: drive?.message ?? 'Drive not probed',
-      detail: drive?.detail,
     },
   ];
 
