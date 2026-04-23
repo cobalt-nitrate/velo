@@ -2,8 +2,8 @@
 // Used by GET /api/health and the internal.platform.healthcheck agent tool.
 
 import { google } from 'googleapis';
-import { prisma } from './sheets/prisma.js';
-import { executeSheetTool, listPendingApprovals } from './sheets/client.js';
+import { prisma } from './data/prisma.js';
+import { executeDataTool, listPendingApprovals } from './data/client.js';
 
 export type HealthStatus = 'ok' | 'warn' | 'fail' | 'skipped';
 
@@ -97,7 +97,7 @@ export interface BankTransactionSummary {
 }
 
 export interface OperationalSnapshot {
-  /** Business data is read via executeSheetTool backed by PostgreSQL when DATABASE_URL is set. */
+  /** Business data is read via executeDataTool backed by PostgreSQL when DATABASE_URL is set. */
   data_source: 'postgresql' | 'unavailable';
   /** Rows the user may need to approve / review */
   pending_approvals: PendingApprovalDetail[];
@@ -269,12 +269,12 @@ function mapBankTxnRow(r: Record<string, string>): BankTransactionSummary {
 /** Sheet reads for “business health” — empty company_id avoids over-filtering bank rows in demos. */
 const HEALTH_READ_COMPANY = '';
 
-async function safeSheetRead(
+async function safeDataRead(
   tool_id: string,
   extra: Record<string, unknown> = {}
 ): Promise<Record<string, unknown>> {
   try {
-    return await executeSheetTool({
+    return await executeDataTool({
       tool_id,
       company_id: HEALTH_READ_COMPANY,
       ...extra,
@@ -350,7 +350,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
   }
 
   let compliance_upcoming: ComplianceObligationSummary[] = [];
-  const comp = await safeSheetRead('sheets.compliance_calendar.get_upcoming_obligations', {
+  const comp = await safeDataRead('data.compliance_calendar.get_upcoming_obligations', {
     days_ahead: 60,
   });
   if (comp && comp.ok === false) {
@@ -368,7 +368,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
 
   let open_ap_payables = 0;
   let ap_payables_detail: ApPayableSummary[] = [];
-  const ap = await safeSheetRead('sheets.ap_invoices.get_pending_payables');
+  const ap = await safeDataRead('data.ap_invoices.get_pending_payables');
   if (ap && ap.ok === false) probe_errors.push(`ap_payables: ${String(ap.error ?? '')}`);
   else if (typeof ap?.count === 'number') {
     open_ap_payables = ap.count;
@@ -384,7 +384,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
 
   let open_ar_receivables = 0;
   let ar_receivables_detail: ArReceivableSummary[] = [];
-  const arP = await safeSheetRead('sheets.ar_invoices.get_pending_receivables');
+  const arP = await safeDataRead('data.ar_invoices.get_pending_receivables');
   if (arP && arP.ok === false) probe_errors.push(`ar_open: ${String(arP.error ?? '')}`);
   else if (typeof arP?.count === 'number') {
     open_ar_receivables = arP.count;
@@ -397,7 +397,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
 
   let ar_overdue = 0;
   let ar_overdue_detail: ArReceivableSummary[] = [];
-  const arO = await safeSheetRead('sheets.ar_invoices.get_overdue');
+  const arO = await safeDataRead('data.ar_invoices.get_overdue');
   if (arO && arO.ok === false) probe_errors.push(`ar_overdue: ${String(arO.error ?? '')}`);
   else if (typeof arO?.count === 'number') {
     ar_overdue = arO.count;
@@ -415,7 +415,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
   let bank_balance_inr: number | null = null;
   let bank_as_of_date: string | null = null;
   let bank_transactions_detail: BankTransactionSummary[] = [];
-  const bank = await safeSheetRead('sheets.bank_transactions.get_latest_balance');
+  const bank = await safeDataRead('data.bank_transactions.get_latest_balance');
   if (bank.ok === false) probe_errors.push(`bank: ${String(bank.error ?? '')}`);
   else {
     bank_txn_count = typeof bank.transaction_count === 'number' ? bank.transaction_count : 0;
@@ -426,7 +426,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
     }
   }
 
-  const bankRecent = await safeSheetRead('sheets.bank_transactions.get_recent', {
+  const bankRecent = await safeDataRead('data.bank_transactions.get_recent', {
     limit: MAX_DETAIL_ROWS,
   });
   if (bankRecent && bankRecent.ok === false) {
@@ -437,7 +437,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
 
   let active_employees: number | null = null;
   let employees_detail: ActiveEmployeeSummary[] = [];
-  const emp = await safeSheetRead('sheets.employees.get_active_headcount');
+  const emp = await safeDataRead('data.employees.get_active_headcount');
   if (emp && emp.ok === false) probe_errors.push(`employees: ${String(emp.error ?? '')}`);
   else if (typeof emp?.headcount === 'number') {
     active_employees = emp.headcount;
@@ -450,7 +450,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
 
   let hr_open_blockers = 0;
   let hr_blockers_detail: HrTaskSummary[] = [];
-  const hr = await safeSheetRead('sheets.hr_tasks.get_blockers');
+  const hr = await safeDataRead('data.hr_tasks.get_blockers');
   if (hr && hr.ok === false) probe_errors.push(`hr_tasks: ${String(hr.error ?? '')}`);
   else if (typeof hr?.count === 'number') {
     hr_open_blockers = hr.count;
@@ -466,7 +466,7 @@ export async function gatherOperationalSnapshot(): Promise<OperationalSnapshot> 
 
   let hr_pending_hires = 0;
   let hr_pending_hires_detail: HrTaskSummary[] = [];
-  const hrHires = await safeSheetRead('sheets.hr_tasks.get_pending_hires');
+  const hrHires = await safeDataRead('data.hr_tasks.get_pending_hires');
   if (hrHires && hrHires.ok === false) {
     probe_errors.push(`hr_pending_hires: ${String(hrHires.error ?? '')}`);
   } else if (typeof hrHires?.count === 'number') {

@@ -33,7 +33,7 @@ export function adjustConfidenceForPolicyRisk(params: {
   const caps = riskCaps();
   const canonId = canonicalVeloDataToolId(params.toolId);
   const isWrite =
-    canonId.startsWith('sheets.') &&
+    canonId.startsWith('data.') &&
     !/\.(get_|lookup|find_|list)/.test(canonId) &&
     !canonId.includes('.get_');
 

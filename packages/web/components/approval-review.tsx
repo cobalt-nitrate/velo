@@ -1,8 +1,36 @@
 'use client';
 
-import { isApprovalPendingStatus } from '@velo/tools/sheets/approval-status';
+import { isApprovalPendingStatus } from '@velo/tools/data/approval-status';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+
+type EvidenceResponse = {
+  ok: boolean;
+  error?: string;
+  approval_id: string;
+  agent_id: string;
+  action_type: string;
+  status: string;
+  confidence_score: string;
+  action_payload: Record<string, unknown>;
+  evidence_items: unknown[];
+  signal_scores: Array<{ signal: string; score: number; detail: string }>;
+};
+
+type HistoryResponse = {
+  ok: boolean;
+  error?: string;
+  approval_id: string;
+  events: Array<{
+    id: string;
+    type: string;
+    actor_id: string;
+    actor_role: string;
+    notes: string;
+    payload: unknown;
+    created_at: string;
+  }>;
+};
 
 export function ApprovalReview({ approvalId }: { approvalId: string }) {
   const router = useRouter();
@@ -12,6 +40,8 @@ export function ApprovalReview({ approvalId }: { approvalId: string }) {
   const [approval, setApproval] = useState<Record<string, string> | null>(
     null
   );
+  const [evidence, setEvidence] = useState<EvidenceResponse | null>(null);
+  const [history, setHistory] = useState<HistoryResponse | null>(null);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const autoResolved = useRef(false);
@@ -34,6 +64,29 @@ export function ApprovalReview({ approvalId }: { approvalId: string }) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [approvalId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [ev, hist] = await Promise.all([
+          fetch(`/api/approvals/${encodeURIComponent(approvalId)}/evidence`),
+          fetch(`/api/approvals/${encodeURIComponent(approvalId)}/history`),
+        ]);
+        const evData = (await ev.json()) as EvidenceResponse;
+        const histData = (await hist.json()) as HistoryResponse;
+        if (!cancelled) {
+          if (evData?.ok) setEvidence(evData);
+          if (histData?.ok) setHistory(histData);
+        }
+      } catch {
+        // Evidence/history are best-effort; core review still works.
       }
     })();
     return () => {
@@ -107,6 +160,56 @@ export function ApprovalReview({ approvalId }: { approvalId: string }) {
           </div>
         </dl>
       )}
+
+      {evidence?.ok && (
+        <section className="mt-6 rounded-xl border border-velo-line bg-velo-panel p-4">
+          <h2 className="text-sm font-semibold text-velo-text">Evidence</h2>
+          {evidence.signal_scores.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-velo-muted">Confidence breakdown</p>
+              <ul className="mt-2 space-y-1 text-xs text-velo-muted">
+                {evidence.signal_scores.map((s) => (
+                  <li key={s.signal} className="flex items-center justify-between gap-3">
+                    <span className="font-mono">{s.signal}</span>
+                    <span className="font-mono">{(s.score * 100).toFixed(0)}%</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="mt-3">
+            <p className="text-xs font-medium text-velo-muted">Items</p>
+            <pre className="mt-2 max-h-56 overflow-auto rounded-lg bg-velo-inset p-3 text-[11px] text-velo-muted">
+              {JSON.stringify(evidence.evidence_items ?? [], null, 2)}
+            </pre>
+          </div>
+        </section>
+      )}
+
+      {history?.ok && history.events.length > 0 && (
+        <section className="mt-6 rounded-xl border border-velo-line bg-velo-panel p-4">
+          <h2 className="text-sm font-semibold text-velo-text">History</h2>
+          <ol className="mt-3 space-y-2 text-xs text-velo-muted">
+            {history.events.map((e) => (
+              <li key={e.id} className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-velo-text">{e.type}</p>
+                  {(e.actor_id || e.notes) && (
+                    <p className="mt-0.5">
+                      {e.actor_id ? <span className="font-mono">{e.actor_id}</span> : null}
+                      {e.notes ? <span className="ml-2">{e.notes}</span> : null}
+                    </p>
+                  )}
+                </div>
+                <time className="shrink-0 font-mono text-[10px] text-velo-muted/80">
+                  {new Date(e.created_at).toLocaleString()}
+                </time>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       <label className="mt-4 block text-sm">
         Notes
         <textarea

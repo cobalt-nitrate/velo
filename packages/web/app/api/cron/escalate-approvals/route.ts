@@ -1,5 +1,5 @@
 import { verifyVeloCronRequest } from '@/lib/cron-auth';
-import { expireStalePendingApprovals } from '@velo/tools/sheets';
+import { expireStalePendingApprovals } from '@velo/tools/data';
 import { sendEmail } from '@velo/tools/email';
 import { sendNotification } from '@velo/tools/notifications';
 import { NextResponse } from 'next/server';

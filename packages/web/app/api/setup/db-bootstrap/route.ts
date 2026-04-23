@@ -1,9 +1,8 @@
 /**
- * POST /api/setup/sheets-bootstrap
+ * POST /api/setup/db-bootstrap
  *
- * Previously created Google Sheets workbooks. Business data is now stored in
- * PostgreSQL — this endpoint verifies DB connectivity and marks the bootstrap
- * step complete so the onboarding wizard can proceed to seed-data.
+ * Verifies PostgreSQL connectivity and marks the bootstrap step complete so the
+ * onboarding wizard can proceed to seed-data.
  *
  * Security: Founder session required.
  */
@@ -30,10 +29,7 @@ export async function POST(req: Request) {
     applyStoredConnectorEnvAtStartup();
     const state = await getOnboardingState();
     if (state.bootstrapInProgress) {
-      return NextResponse.json(
-        { ok: false, error: 'Bootstrap already in progress.' },
-        { status: 409 }
-      );
+      return NextResponse.json({ ok: false, error: 'Bootstrap already in progress.' }, { status: 409 });
     }
 
     // Parse optional force flag
@@ -41,7 +37,9 @@ export async function POST(req: Request) {
     try {
       const body = (await req.json()) as { force?: boolean };
       force = body.force === true;
-    } catch { /* body optional */ }
+    } catch {
+      /* body optional */
+    }
 
     if (state.sheetsBootstrapped && !force) {
       return NextResponse.json({ ok: true, message: 'Already bootstrapped.', skipped: true });
@@ -63,7 +61,7 @@ export async function POST(req: Request) {
     await patchOnboardingState({
       bootstrapInProgress: false,
       sheetsBootstrapped: true,
-      steps: { google: { done: true } } as import('@/lib/onboarding-store').OnboardingState['steps'],
+      steps: { google: { done: true } },
     });
 
     return NextResponse.json({
@@ -79,3 +77,4 @@ export async function POST(req: Request) {
     );
   }
 }
+

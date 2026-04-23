@@ -1,4 +1,4 @@
-import { executeSheetTool } from '@velo/tools/sheets';
+import { executeDataTool } from '@velo/tools/data';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const result = await executeSheetTool({
-      tool_id: 'sheets.hr_tasks.get_pending_hires',
+    const result = await executeDataTool({
+      tool_id: 'data.hr_tasks.get_pending_hires',
       company_id: '',
     });
     return NextResponse.json(result);

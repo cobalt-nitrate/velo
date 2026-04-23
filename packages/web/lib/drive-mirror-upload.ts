@@ -7,7 +7,7 @@ import {
   uploadBufferToDrive,
   type UploadedFileKind,
 } from '@velo/tools/documents/drive-folders';
-import { recordVeloFileLink } from '@velo/tools/sheets';
+import { recordVeloFileLink } from '@velo/tools/data';
 
 function mirrorEnabled(): boolean {
   const v = process.env.VELO_DRIVE_MIRROR_UPLOADS;

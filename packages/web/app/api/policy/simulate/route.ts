@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Record<string, unknown>;
-    const toolId = String(body.tool_id ?? 'sheets.ap_invoices.create');
+    const toolId = String(body.tool_id ?? 'data.ap_invoices.create');
     const confidence = typeof body.confidence === 'number' ? body.confidence : 0.82;
     const actorRole = String(body.actor_role ?? 'founder');
     const agentId = String(body.agent_id ?? 'ap-invoice');

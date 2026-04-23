@@ -17,7 +17,7 @@
 
 ## V1 Target Role Model (6 Roles, UI-Assigned)
 
-Replace env-var assignment with a `user_roles` tab in `SHEETS_MASTER`, managed via the team management UI.
+Replace env-var assignment with a `user_roles` table in PostgreSQL, managed via the team management UI.
 
 | Role | Description | Key Permissions |
 |------|-------------|-----------------|
@@ -29,8 +29,8 @@ Replace env-var assignment with a `user_roles` tab in `SHEETS_MASTER`, managed v
 | `employee` | Individual contributor | Own payslip, own leave, own documents, helpdesk queries |
 
 **Implementation path:**
-1. Add `user_roles` tab to `SHEETS_MASTER` (columns: email, role, invited_by, invited_at, last_login)
-2. Modify `packages/core/src/policy-engine/index.ts` to load roles from Sheets at session resolution (with 5-minute cache)
+1. Add `user_roles` table (columns: email, role, invited_by, invited_at, last_login)
+2. Modify `packages/core/src/policy-engine/index.ts` to load roles from PostgreSQL at session resolution (with 5-minute cache)
 3. Remove env-var role derivation from `packages/web/app/api/auth/[...nextauth]/route.ts`
 4. Build `/settings/team` page for invite and role management
 
@@ -180,7 +180,7 @@ The PolicyEngine checks delegation records before routing approval requests. All
 
 | Feature | V1 | V2 |
 |---------|----|----|
-| Role assignment | 6 roles via team UI + Sheets | Custom roles, department scope, cost center scope |
+| Role assignment | 6 roles via team UI + database | Custom roles, department scope, cost center scope |
 | Auth | Google OAuth (NextAuth) | SAML + OIDC + Google; JIT provisioning |
 | MFA | None | TOTP enforced for finance + founder roles |
 | Session timeout | NextAuth default | Configurable per role (15 min – 8h) |
@@ -188,7 +188,7 @@ The PolicyEngine checks delegation records before routing approval requests. All
 | Data access scope | Role at module level | Role + department + cost center |
 | API key management | None | Per-user keys with scope + expiry |
 | Approval delegation | None | OOO delegation with time-bounded scope |
-| Audit log | Sheets tab | Sheets + immutable external store + row hashing |
+| Audit log | Database table | Database + immutable external store + row hashing |
 | Failed auth logging | None | RBAC_DENIED events in audit trail |
 | Access review | None | Monthly report: who has what access, last login |
 | SOC 2 | Not applicable | Type I target in V2 Wave 3 |

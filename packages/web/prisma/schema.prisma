@@ -24,8 +24,28 @@ model User {
   lastSignIn     DateTime  @default(now()) @map("last_sign_in")
 
   sentInvites Invite[] @relation("InviteCreatedBy")
+  sessions    UserSession[]
 
   @@map("users")
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  sessionId String   @unique @map("session_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  lastSeen  DateTime @default(now()) @map("last_seen")
+  revokedAt DateTime? @map("revoked_at")
+  revokedBy String?   @map("revoked_by")
+
+  ip        String?  @map("ip")
+  userAgent String?  @map("user_agent") @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([lastSeen(sort: Desc)])
+  @@map("user_sessions")
 }
 
 model Invite {
@@ -506,8 +526,59 @@ model ApprovalRequest {
   resolutionNotes         String @default("") @map("resolution_notes")
   attachmentDriveUrlsJson String @default("") @map("attachment_drive_urls_json") @db.Text
 
+  events      ApprovalEvent[]
+  evidence    ApprovalEvidenceItem[]
+  signalScores ApprovalSignalScore[]
+
   @@index([status])
   @@map("approval_requests")
+}
+
+model ApprovalEvent {
+  id         String   @id @default(cuid())
+  approvalId String   @map("approval_id")
+  type       String
+  actorId    String   @default("") @map("actor_id")
+  actorRole  String   @default("") @map("actor_role")
+  notes      String   @default("") @db.Text
+  payload    Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  approval ApprovalRequest @relation(fields: [approvalId], references: [approvalId], onDelete: Cascade)
+
+  @@index([approvalId])
+  @@index([createdAt(sort: Desc)])
+  @@map("approval_events")
+}
+
+model ApprovalEvidenceItem {
+  id         String @id @default(cuid())
+  approvalId String @map("approval_id")
+  kind       String @default("")
+  label      String @default("")
+  value      String @default("") @db.Text
+  source     String @default("")
+  meta       Json   @default("{}")
+
+  approval ApprovalRequest @relation(fields: [approvalId], references: [approvalId], onDelete: Cascade)
+
+  @@index([approvalId])
+  @@index([kind])
+  @@map("approval_evidence_items")
+}
+
+model ApprovalSignalScore {
+  id         String @id @default(cuid())
+  approvalId String @map("approval_id")
+  signal     String @default("")
+  score      Float  @default(0)
+  detail     String @default("") @db.Text
+
+  approval ApprovalRequest @relation(fields: [approvalId], references: [approvalId], onDelete: Cascade)
+
+  @@index([approvalId])
+  @@index([signal])
+  @@map("approval_signal_scores")
 }
 
 model HrTask {

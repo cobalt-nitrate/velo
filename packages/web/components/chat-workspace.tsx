@@ -11,7 +11,7 @@ import { MarkdownBody } from '@/components/markdown-body';
 import { OperationsMissionBriefing } from '@/components/operations-mission-briefing';
 import { IconChevronRight, IconPaperclip } from '@/components/velo-icons';
 import type { AgentRunEvent } from '@velo/agents';
-import { isApprovalPendingStatus } from '@velo/tools/sheets/approval-status';
+import { isApprovalPendingStatus } from '@velo/tools/data/approval-status';
 import Link from 'next/link';
 import {
   ChangeEvent,

@@ -4,7 +4,7 @@
 
 Velo is built for **early and growing startups in India** (roughly 0–100 people) that are tired of losing money and time to scattered tools, missed deadlines, and “someone should have caught that.” It connects **money** (cash, vendors, customers), **people** (payroll, HR, helpdesk), and **obligations** (GST, TDS, PF, ESIC, and the rest) in one place — with **you** still in charge where it matters.
 
-Your operational truth lives in **Google Sheets** Velo already knows how to read and update; the **Command Center** is where you chat, approve, and see what needs attention. Under the hood, a **team of AI agents** works like specialist functions in a finance and people org — coordinated, audited, and bounded by **policy** so nothing critical ships without the right approval.
+Your operational truth lives in **PostgreSQL** (via Prisma); the **Command Center** is where you chat, approve, and see what needs attention. Under the hood, a **team of AI agents** works like specialist functions in a finance and people org — coordinated, audited, and bounded by **policy** so nothing critical ships without the right approval.
 
 ---
 
@@ -25,13 +25,13 @@ Velo **augments** your team; it does **not** replace legal sign-off, your CA, or
 
 ## What Velo Does (In Business Terms)
 
-- **Runway and cash** — Uses bank and transaction data you keep in Sheets to reason about balance, burn, and “what if we hire / defer a payment?” style questions (via the **runway** agent and related tools).
+- **Runway and cash** — Uses bank and transaction data in PostgreSQL to reason about balance, burn, and “what if we hire / defer a payment?” style questions (via the **runway** agent and related tools).
 - **Compliance awareness** — Tracks what’s on your **compliance calendar**, what’s due soon, and what’s still open — so “what’s filing this month?” has an answer tied to **your** data (via the **compliance** agent).
 - **Vendor money (AP)** — Ingests and processes **vendor invoices**, ties them to **vendor master**, expense categories, and ITC context; escalates payments and anomalies for **approval** (via **ap-invoice** and sub-agents like extraction and matching).
 - **Customer money (AR)** — Surfaces **receivables**, **overdue** items, and collections-oriented context (via **ar-collections**).
 - **Payroll and people** — Supports **payroll runs**, salary-related data, and **HR workflows** (via **payroll** and **hr**).
 - **Employee desk** — Day-to-day **employee questions** (payslips, leave, light guidance) through **helpdesk** — scoped by role and policy.
-- **Health of operations** — A **health check** is not only “is Google connected?” It also summarizes **live** queues: pending **approvals**, upcoming **obligations**, open **payables/receivables**, **bank** activity signals, **headcount**, and **HR blockers** — so “how are we doing?” is grounded in **your** sheets.
+- **Health of operations** — A **health check** is not only “is Google connected?” It also summarizes **live** queues: pending **approvals**, upcoming **obligations**, open **payables/receivables**, **bank** activity signals, **headcount**, and **HR blockers** — so “how are we doing?” is grounded in **your database**.
 
 ---
 
@@ -82,7 +82,7 @@ Not every suggestion becomes a bank transfer or a filed return. **Policy** encod
 
 ## For Builders: Technical Overview
 
-Velo is a **monorepo**: **`packages/web`** (Next.js Command Center + APIs), **`packages/agents`** (agent runtime, streaming events, **config-driven workflows** with **pause/resume after approval**), **`packages/tools`** (Sheets, Drive, healthcheck, documents, OCR, email via Resend, Slack notifications), **`packages/core`** (policy, confidence, audit, workflow persistence, **connector-kit** TypeScript seams for your own HTTP ledger/notification adapters). Behavior is **config-driven** under **`configs/`** (agents, prompts, policies, workflows). The LLM uses an **OpenAI-compatible API** (`LLM_BASE_URL`; e.g. NVIDIA NIM). The default **system of record** is **Google Sheets** (workbooks keyed by `SHEETS_*_ID` in `.env.local`; see `.env.local.example`).
+Velo is a **monorepo**: **`packages/web`** (Next.js Command Center + APIs), **`packages/agents`** (agent runtime, streaming events, **config-driven workflows** with **pause/resume after approval**), **`packages/tools`** (Postgres data plane tools, Drive, healthcheck, documents, OCR, email via Resend, Slack notifications), **`packages/core`** (policy, confidence, audit, workflow persistence). Behavior is **config-driven** under **`configs/`** (agents, prompts, policies, workflows). The LLM uses an **OpenAI-compatible API** (`LLM_BASE_URL`; e.g. NVIDIA NIM). The **system of record** is **PostgreSQL** (`DATABASE_URL`).
 
 ### Running Velo (development and Docker)
 
@@ -115,7 +115,7 @@ pnpm --filter @velo/web exec prisma generate
    cp .env.local.example packages/web/.env.local
    ```
 
-2. Edit **`packages/web/.env.local`**. At minimum set **`DATABASE_URL`**, **`NEXTAUTH_SECRET`**, **`NEXTAUTH_URL`**, and **LLM** settings (`LLM_API_KEY`, `LLM_BASE_URL`, model env vars). For Google Sheets, set **`GOOGLE_SERVICE_ACCOUNT_EMAIL`**, **`GOOGLE_PRIVATE_KEY`**, and **`SHEETS_*_ID`** (or use in-app onboarding to create/link workbooks). The full list and comments are in **`.env.local.example`**.
+2. Edit **`packages/web/.env.local`**. At minimum set **`DATABASE_URL`**, **`NEXTAUTH_SECRET`**, **`NEXTAUTH_URL`**, and **LLM** settings (`LLM_API_KEY`, `LLM_BASE_URL`, model env vars). For Google Drive uploads (optional), set **`GOOGLE_SERVICE_ACCOUNT_EMAIL`**, **`GOOGLE_PRIVATE_KEY`**, and **`VELO_DRIVE_FOLDER_ID`**. The full list and comments are in **`.env.local.example`**.
 
 3. **Docker Compose** reads **`.env.local` at the repo root** (`docker-compose.yml` `env_file`). Avoid drifting copies:
 
@@ -152,20 +152,11 @@ pnpm dev:web      # same app, filter only the web package
 - Scripts use **`node -r ./lib/register-env.cjs … next dev`** so **`.velo/connector-env.json`** can fill unset keys; prefer **`pnpm dev:web`** over raw `next dev`.
 - Broken build cache: **`pnpm dev:web:clean`** (deletes `packages/web/.next`).
 
-#### Optional: Sheets scripts and agent E2E
-
-After Google and sheet IDs are configured:
+#### Optional: E2E module paths
 
 | Command | Purpose |
 |---------|---------|
-| `pnpm setup-sheets` | Create Velo workbooks/tabs (`scripts/setup-sheets-run.js`; may need local edits) |
-| `pnpm ensure-bank-tab` | Ensure bank transactions tab |
-| `pnpm ensure-file-links` | Ensure file links tab |
-| `pnpm seed-mock-data` | Seed mock Velo data |
-| `pnpm seed-mock:generate` | Generate demo seed JSON |
-| `pnpm seed-compliance` | Seed compliance calendar |
-| `pnpm audit-sheet-locations` | Audit configured sheet IDs |
-| `pnpm e2e:modules` | Agents package: one tool + approval path per module |
+| `pnpm --filter @velo/agents e2e:modules` | Agents package: one tool + approval path per module |
 
 #### Docker Compose (Postgres + web)
 
@@ -219,7 +210,7 @@ pnpm verify:ci          # validate-configs + `tsc --noEmit` on all TS packages (
 | Method | Route | Purpose |
 |--------|--------|--------|
 | `POST` | `/api/workflows/run` | Start a linear workflow (`workflowKey` + optional `context` + actor fields). May return **`WAITING_FOR_APPROVAL`** and a **`run_id`**. |
-| `POST` | `/api/workflows/resume` | After an approval is **APPROVED** in Sheets/UI, continue the deferred tool and remaining steps (`run_id` + same actor context as run). |
+| `POST` | `/api/workflows/resume` | After an approval is **APPROVED** in the UI, continue the deferred tool and remaining steps (`run_id` + same actor context as run). |
 | `GET` | `/api/workflows/runs?status=WAITING_FOR_APPROVAL` | List persisted runs (backed by **`.velo/workflow-runs.json`** under the repo root unless `VELO_STATE_DIR` is set). |
 
 Agent runs surface **policy + confidence** (including deterministic risk caps for large amounts / filing-shaped tools), **audit events** (start, tool proposed, policy decision, approval requested, completion/failure), and **Slack + optional email** when a new approval row is created (`VELO_APPROVAL_EMAIL_TO`, Resend).

@@ -29,7 +29,6 @@ export const CONNECTOR_SECRET_KEYS = new Set(
     'SLACK_SIGNING_SECRET',
     'RESEND_API_KEY',
     'NEXTAUTH_SECRET',
-    'GOOGLE_CLIENT_SECRET',
     'VELO_CRON_SECRET',
   ].map((k) => k.toUpperCase())
 );
@@ -222,56 +221,12 @@ export const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
     ],
   },
   {
-    id: 'access_control',
-    title: 'Team Access & Roles',
-    summary: 'Which Google accounts can sign in, and who gets founder / finance / HR roles.',
-    steps: [
-      'Set VELO_ALLOWED_DOMAIN to restrict sign-in to one domain (e.g. acme.com). Leave blank to allow any Google account.',
-      'List founder emails in VELO_FOUNDER_EMAILS (comma-separated). These users can approve actions and configure Velo.',
-      'List finance team emails in VELO_FINANCE_EMAILS and HR team emails in VELO_HR_EMAILS.',
-      'All other authenticated users default to the employee role.',
-    ],
-    fields: [
-      {
-        envKey: 'VELO_ALLOWED_DOMAIN',
-        label: 'Allowed sign-in domain',
-        optional: true,
-        placeholder: 'acme.com — leave blank for any Google account',
-      },
-      {
-        envKey: 'VELO_FOUNDER_EMAILS',
-        label: 'Founder emails (comma-separated)',
-        placeholder: 'alice@acme.com, bob@acme.com',
-      },
-      {
-        envKey: 'VELO_FINANCE_EMAILS',
-        label: 'Finance lead emails (comma-separated)',
-        optional: true,
-        placeholder: 'cfo@acme.com',
-      },
-      {
-        envKey: 'VELO_HR_EMAILS',
-        label: 'HR lead emails (comma-separated)',
-        optional: true,
-        placeholder: 'hr@acme.com',
-      },
-      {
-        envKey: 'VELO_MANAGER_EMAILS',
-        label: 'Manager emails (comma-separated)',
-        optional: true,
-        placeholder: 'mgr@acme.com',
-      },
-    ],
-  },
-  {
     id: 'auth',
-    title: 'Sign-in (NextAuth + Google)',
-    summary: 'Optional: Google OAuth for the Command Center login page.',
-    docsUrl: 'https://console.cloud.google.com/apis/credentials',
+    title: 'Sign-in (NextAuth)',
+    summary: 'Credentials-based login for the Command Center.',
     steps: [
-      'In Google Cloud Console → Credentials → OAuth 2.0 Client ID (Web).',
-      'Authorized redirect URI: https://your-host/api/auth/callback/google (and http://localhost:3000/api/auth/callback/google for dev).',
-      'Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXTAUTH_SECRET, and NEXTAUTH_URL in env or below.',
+      'Set NEXTAUTH_URL for the public app URL (e.g. http://localhost:3000).',
+      'Set NEXTAUTH_SECRET to a long random string.',
     ],
     fields: [
       {
@@ -282,15 +237,6 @@ export const CONNECTOR_DEFINITIONS: ConnectorDefinition[] = [
       {
         envKey: 'NEXTAUTH_SECRET',
         label: 'NextAuth secret',
-        sensitive: true,
-      },
-      {
-        envKey: 'GOOGLE_CLIENT_ID',
-        label: 'Google OAuth client id',
-      },
-      {
-        envKey: 'GOOGLE_CLIENT_SECRET',
-        label: 'Google OAuth client secret',
         sensitive: true,
       },
     ],

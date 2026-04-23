@@ -3,7 +3,7 @@
 /**
  * OnboardingWizard — 5-step first-run flow:
  *   0  LLM connector
- *   1  Google Sheets + one-click bootstrap
+ *   1  Data connectors + Postgres verification
  *   2  Slack (optional)
  *   3  Team roles (founder / finance / HR emails)
  *   4  Platform ready + seed data
@@ -163,7 +163,7 @@ function StepButton({
 
 // ─── Step progress indicator ──────────────────────────────────────────────────
 
-const STEP_LABELS = ['LLM', 'Google Sheets', 'Slack', 'Team Roles', 'Platform Ready'];
+const STEP_LABELS = ['LLM', 'Database', 'Slack', 'Team Roles', 'Platform Ready'];
 
 function StepIndicator({ current }: { current: number }) {
   return (
@@ -310,7 +310,7 @@ function StepLlm({ onNext }: { onNext: () => void }) {
   );
 }
 
-// ─── Step 1: Google Sheets ────────────────────────────────────────────────────
+// ─── Step 1: Database ─────────────────────────────────────────────────────────
 
 function StepGoogle({
   onNext,
@@ -363,13 +363,13 @@ function StepGoogle({
     }
   }
 
-  async function bootstrap() {
+  async function verifyDatabase() {
     await saveCreds();
     setBootstrapping(true);
     setBootstrapError('');
     setBootstrapResult(null);
     try {
-      const res = await fetch('/api/setup/sheets-bootstrap', {
+      const res = await fetch('/api/setup/db-bootstrap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -450,7 +450,7 @@ function StepGoogle({
         <StepButton label="Test Drive API" onClick={testGoogle} loading={testing} variant="ghost" />
         <StepButton
           label="Verify database"
-          onClick={bootstrap}
+          onClick={verifyDatabase}
           loading={bootstrapping}
           variant="ghost"
         />
@@ -567,47 +567,11 @@ function StepRoles({
   currentUserEmail: string;
   onNext: () => void;
 }) {
-  const [founders, setFounders] = useState(currentUserEmail);
-  const [finance, setFinance] = useState('');
-  const [hr, setHr] = useState('');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  function validate(): boolean {
-    const allEmails = [
-      ...parseEmailList(founders),
-      ...parseEmailList(finance),
-      ...parseEmailList(hr),
-    ];
-    const invalid = allEmails.filter((e) => !isValidEmail(e));
-    if (invalid.length > 0) {
-      setError(`Invalid email${invalid.length > 1 ? 's' : ''}: ${invalid.join(', ')}`);
-      return false;
-    }
-    if (parseEmailList(founders).length === 0) {
-      setError('At least one founder email is required.');
-      return false;
-    }
-    setError('');
-    return true;
-  }
 
   async function handleNext() {
-    if (!validate()) return;
     setSaving(true);
     try {
-      const patch: Record<string, string> = {
-        VELO_FOUNDER_EMAILS: parseEmailList(founders).join(','),
-      };
-      if (finance.trim()) patch.VELO_FINANCE_EMAILS = parseEmailList(finance).join(',');
-      if (hr.trim()) patch.VELO_HR_EMAILS = parseEmailList(hr).join(',');
-
-      await fetch('/api/config/integrations', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-
       await patchState({ steps: { roles: { done: true } } as never });
       onNext();
     } finally {
@@ -620,46 +584,21 @@ function StepRoles({
       <div>
         <h2 className="text-base font-semibold text-velo-text">Set team roles</h2>
         <p className="mt-0.5 text-xs text-velo-muted">
-          Roles control who can approve financial actions and access sensitive modules. Enter email addresses — separate multiple with commas.
+          Roles are managed in the Team page and stored in PostgreSQL. Invite your teammates and assign roles there.
         </p>
       </div>
 
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <Label htmlFor="founder-emails">Founder emails</Label>
-          <TextInput
-            id="founder-emails"
-            value={founders}
-            onChange={setFounders}
-            placeholder="founder@acme.com, ceo@acme.com"
-          />
-          <p className="text-[11px] text-velo-muted">
-            Founders approve all agent actions and can configure Velo.
-          </p>
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="finance-emails">Finance lead emails (optional)</Label>
-          <TextInput
-            id="finance-emails"
-            value={finance}
-            onChange={setFinance}
-            placeholder="cfo@acme.com"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="hr-emails">HR lead emails (optional)</Label>
-          <TextInput
-            id="hr-emails"
-            value={hr}
-            onChange={setHr}
-            placeholder="hr@acme.com"
-          />
-        </div>
+      <div className="rounded-xl border border-velo-line bg-velo-inset/60 p-4 text-xs text-velo-muted space-y-2">
+        <p className="font-medium text-velo-text">Next steps</p>
+        <ol className="list-decimal pl-5 space-y-1">
+          <li>Go to <span className="font-mono">/team</span> after setup.</li>
+          <li>Create invite links for finance / HR / managers.</li>
+          <li>Assign roles from the Team members table.</li>
+        </ol>
+        <p className="text-[11px] text-velo-muted/80">
+          Current founder: <span className="font-mono">{currentUserEmail}</span>
+        </p>
       </div>
-
-      {error && <p className="text-xs font-medium text-red-500">{error}</p>}
 
       <div className="rounded-xl border border-amber-300/40 bg-amber-50/10 p-3 text-[11px] text-velo-muted">
         Role changes take effect on the next sign-in. If you&apos;re adding yourself to a new role, sign out and back in after this step.
@@ -801,7 +740,7 @@ function StepReady({
 
       {!allCriticalReady && (
         <div className="rounded-xl border border-amber-300/40 bg-amber-50/10 p-3 text-[11px] text-amber-700">
-          LLM and Google Sheets are required to run agents. Go back and complete those steps, or finish setup now and configure them in Settings.
+          LLM and PostgreSQL are required to run agents. Go back and complete those steps, or finish setup now and configure them in Settings.
         </div>
       )}
 

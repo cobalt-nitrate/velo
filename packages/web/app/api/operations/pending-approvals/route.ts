@@ -1,4 +1,4 @@
-import { listPendingApprovals } from '@velo/tools/sheets';
+import { listPendingApprovals } from '@velo/tools/data';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';

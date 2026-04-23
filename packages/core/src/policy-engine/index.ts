@@ -25,7 +25,7 @@ interface AutopilotPolicy {
 /** Matches Velo Postgres-backed data tools that only read (aligned with tool-confidence read heuristic). */
 function isReadOnlyVeloDataTool(toolId: string): boolean {
   const id = canonicalVeloDataToolId(toolId);
-  if (!id.startsWith('sheets.')) return false;
+  if (!id.startsWith('data.')) return false;
   if (
     id.includes('.create') ||
     id.includes('.update') ||
@@ -152,7 +152,7 @@ export class PolicyEngine {
   private resolveActionType(tool_id: string, _agent_id: string): string {
     const id = canonicalVeloDataToolId(tool_id);
     const parts = id.split('.');
-    if (parts[0] === 'sheets' && parts.length >= 2) {
+    if (parts[0] === 'data' && parts.length >= 2) {
       return parts.slice(1).join('.');
     }
     if (parts.length >= 2) {

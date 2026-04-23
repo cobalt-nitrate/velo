@@ -30,7 +30,7 @@ describe('AuditLogger', () => {
     });
 
     it('preserves all input fields on the returned event', () => {
-      const payload = { session_id: 'sess-abc', tool_id: 'sheets.ap_invoices.create' };
+      const payload = { session_id: 'sess-abc', tool_id: 'data.ap_invoices.create' };
       const event = createAuditEvent({
         company_id: 'co-audit-1',
         actor_id: 'alice',
@@ -117,7 +117,7 @@ describe('AuditLogger', () => {
       const e2 = createAuditEvent({
         ...BASE,
         event_type: 'TOOL_PROPOSED',
-        payload: { session_id: sessionId, tool_id: 'sheets.ap_invoices.create' },
+        payload: { session_id: sessionId, tool_id: 'data.ap_invoices.create' },
       });
       // Event for different session
       createAuditEvent({

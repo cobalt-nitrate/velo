@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { executeSheetTool, listPendingApprovals } from '@velo/tools/sheets';
+import { executeDataTool, listPendingApprovals } from '@velo/tools/data';
 import { ApprovalCard } from '../components/approval-card';
 import { AuditTimeline } from '../components/audit-timeline';
 import { EvidenceDrawer } from '../components/evidence-drawer';
@@ -17,8 +17,8 @@ export default async function CommandCenterPage() {
   let burn = 1250000;
   let cashConf = 0.75;
   try {
-    const bal = await executeSheetTool({
-      tool_id: 'sheets.bank_transactions.get_latest_balance',
+    const bal = await executeDataTool({
+      tool_id: 'data.bank_transactions.get_latest_balance',
       company_id: 'demo-company',
     });
     const b = bal as { balance_inr?: number; transaction_count?: number };
@@ -129,7 +129,7 @@ export default async function CommandCenterPage() {
                   { label: 'Policy reason', value: 'High-impact actions require explicit review.' },
                   {
                     label: 'Data source',
-                    value: 'approval_requests sheet or in-memory store.',
+                    value: 'PostgreSQL (approval_requests) or in-memory dev fallback.',
                   },
                 ]
           }
@@ -147,7 +147,7 @@ export default async function CommandCenterPage() {
         <WeeklyCloseNarrative
           highlights={[
             'Runway tile uses imported bank_transactions when available.',
-            'GST filing checklist follows compliance_calendar in Sheets.',
+            'GST filing checklist follows compliance_calendar in PostgreSQL.',
             'Use Chat with the orchestrator agent for cross-domain routing.',
           ]}
         />

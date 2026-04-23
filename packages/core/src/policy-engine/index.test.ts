@@ -38,7 +38,7 @@ describe('PolicyEngine', () => {
   describe('RBAC', () => {
     it('grants founder access to any action', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.ap_invoices.create', parameters: {} },
+        action: { tool_id: 'data.ap_invoices.create', parameters: {} },
         confidence: 0.9,
         actor_role: 'founder',
         agent_id: 'ap-invoice',
@@ -48,7 +48,7 @@ describe('PolicyEngine', () => {
 
     it('grants finance_lead access to ap_invoice actions', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.ap_invoices.create', parameters: {} },
+        action: { tool_id: 'data.ap_invoices.create', parameters: {} },
         confidence: 0.9,
         actor_role: 'finance_lead',
         agent_id: 'ap-invoice',
@@ -58,7 +58,7 @@ describe('PolicyEngine', () => {
 
     it('refuses employee attempting to create an AP invoice', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.ap_invoices.create', parameters: {} },
+        action: { tool_id: 'data.ap_invoices.create', parameters: {} },
         confidence: 0.95,
         actor_role: 'employee',
         agent_id: 'ap-invoice',
@@ -68,7 +68,7 @@ describe('PolicyEngine', () => {
 
     it('allows employee to use helpdesk tools', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.helpdesk.query', parameters: {} },
+        action: { tool_id: 'data.helpdesk.query', parameters: {} },
         confidence: 0.9,
         actor_role: 'employee',
         agent_id: 'helpdesk',
@@ -79,7 +79,7 @@ describe('PolicyEngine', () => {
     it('refuses hr_lead from running payroll action (only founder)', () => {
       // hr_lead can only view payroll, not run it
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.payroll.run', parameters: {} },
+        action: { tool_id: 'data.payroll.run', parameters: {} },
         confidence: 0.95,
         actor_role: 'hr_lead',
         agent_id: 'payroll',
@@ -89,7 +89,7 @@ describe('PolicyEngine', () => {
 
     it('allows hr_lead to access employee actions', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.employee.create', parameters: {} },
+        action: { tool_id: 'data.employee.create', parameters: {} },
         confidence: 0.9,
         actor_role: 'hr_lead',
         agent_id: 'hr',
@@ -101,7 +101,7 @@ describe('PolicyEngine', () => {
   // ── Confidence thresholds ──────────────────────────────────────────────────
 
   describe('confidence routing', () => {
-    const baseAction = { tool_id: 'sheets.expense_entries.create', parameters: {} };
+    const baseAction = { tool_id: 'data.expense_entries.create', parameters: {} };
     const actor = { actor_role: 'founder', agent_id: 'ap-invoice' };
 
     it('auto-executes at or above auto_execute_min (0.85)', () => {
@@ -136,7 +136,7 @@ describe('PolicyEngine', () => {
 
     it('NEVER_AUTO_EXECUTE returns REQUEST_APPROVAL even at max confidence', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.terminate_employee.execute', parameters: {} },
+        action: { tool_id: 'data.terminate_employee.execute', parameters: {} },
         confidence: 1.0,
         ...actor,
       });
@@ -145,13 +145,13 @@ describe('PolicyEngine', () => {
 
     it('REQUEST_APPROVAL override always returns REQUEST_APPROVAL regardless of confidence', () => {
       expect(engine.evaluate({
-        action: { tool_id: 'sheets.file_gst_return.submit', parameters: {} },
+        action: { tool_id: 'data.file_gst_return.submit', parameters: {} },
         confidence: 1.0,
         ...actor,
       })).toBe('REQUEST_APPROVAL');
 
       expect(engine.evaluate({
-        action: { tool_id: 'sheets.run_payroll.execute', parameters: {} },
+        action: { tool_id: 'data.run_payroll.execute', parameters: {} },
         confidence: 1.0,
         ...actor,
       })).toBe('REQUEST_APPROVAL');
@@ -163,7 +163,7 @@ describe('PolicyEngine', () => {
   describe('payment threshold', () => {
     it('auto-executes payment below ₹25,000 at high confidence', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.ap_invoices.create', parameters: {} },
+        action: { tool_id: 'data.ap_invoices.create', parameters: {} },
         confidence: 0.9,
         actor_role: 'founder',
         agent_id: 'ap-invoice',
@@ -174,7 +174,7 @@ describe('PolicyEngine', () => {
 
     it('requests approval for payment above ₹25,000', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.ap_invoices.create', parameters: {} },
+        action: { tool_id: 'data.ap_invoices.create', parameters: {} },
         confidence: 0.95,
         actor_role: 'founder',
         agent_id: 'ap-invoice',
@@ -185,7 +185,7 @@ describe('PolicyEngine', () => {
 
     it('requests approval for payment exactly at ₹25,001', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.ap_invoices.create', parameters: {} },
+        action: { tool_id: 'data.ap_invoices.create', parameters: {} },
         confidence: 1.0,
         actor_role: 'founder',
         agent_id: 'ap-invoice',
@@ -215,7 +215,7 @@ describe('PolicyEngine', () => {
   describe('high-impact action defaults', () => {
     it('requests approval for payroll actions at high confidence (no override needed)', () => {
       const result = engine.evaluate({
-        action: { tool_id: 'sheets.payroll_runs.create', parameters: {} },
+        action: { tool_id: 'data.payroll_runs.create', parameters: {} },
         confidence: 0.95,
         actor_role: 'founder',
         agent_id: 'payroll',

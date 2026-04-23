@@ -8,7 +8,7 @@ Given the extracted invoice fields, query the AP invoice ledger and determine wh
 
 ## Available Tools
 
-- `sheets.ap_invoices.find_by_vendor_amount_date` — search existing AP invoices
+- `data.ap_invoices.find_by_vendor_amount_date` — search existing AP invoices
 
 ## Duplicate Detection Logic
 

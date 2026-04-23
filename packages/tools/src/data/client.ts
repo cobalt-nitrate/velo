@@ -1,7 +1,7 @@
 // Velo data client — all business data is stored in PostgreSQL.
 // In-memory fallback exists only for local dev when DATABASE_URL is unset (disabled in production).
 
-import { canonicalVeloDataToolId } from '@velo/core';
+import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
 import { isApprovalPendingStatus } from './approval-status.js';
 import {
@@ -15,10 +15,7 @@ export {
   parseAttachmentDriveUrlsJson,
   type DriveAttachmentRef,
 } from './approval-attachments.js';
-export {
-  isApprovalApprovedStatus,
-  isApprovalPendingStatus,
-} from './approval-status.js';
+export { isApprovalApprovedStatus, isApprovalPendingStatus } from './approval-status.js';
 
 // ─── Table → Prisma model name ────────────────────────────────────────────────
 
@@ -161,7 +158,11 @@ function allowInMemoryDataFallback(): boolean {
 
 function memCreate(table: string, row: Record<string, unknown>): Record<string, unknown> {
   const rows = memStore.get(table) ?? [];
-  const newRow = { ...row, _id: `${table}_${Date.now()}_${rows.length}`, created_at: new Date().toISOString() };
+  const newRow = {
+    ...row,
+    _id: `${table}_${Date.now()}_${rows.length}`,
+    created_at: new Date().toISOString(),
+  };
   rows.push(newRow);
   memStore.set(table, rows);
   return newRow;
@@ -188,10 +189,7 @@ function parseIsoDate(s: string): number {
   return isNaN(t) ? 0 : t;
 }
 
-function filterRows(
-  rows: Record<string, string>[],
-  payload: Record<string, unknown>
-): Record<string, string>[] {
+function filterRows(rows: Record<string, string>[], payload: Record<string, unknown>): Record<string, string>[] {
   return rows.filter((row) =>
     Object.entries(payload).every(([k, v]) => {
       if (v === null || v === undefined || k === 'tool_id') return true;
@@ -208,7 +206,10 @@ function filterRows(
 function normalizeVendorName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/(private limited|pvt\.?\s*ltd\.?|llp|& co\.?|inc\.?|corp\.?|technologies|technology|tech|services|svcs|solutions|infra|infrastructure)/gi, '')
+    .replace(
+      /(private limited|pvt\.?\s*ltd\.?|llp|& co\.?|inc\.?|corp\.?|technologies|technology|tech|services|svcs|solutions|infra|infrastructure)/gi,
+      ''
+    )
     .replace(/[^a-z0-9 ]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -231,7 +232,9 @@ function fuzzyNameMatch(rows: Record<string, string>[], nameQuery: string): Reco
   return rows
     .filter((row) => {
       const name = normalizeVendorName(row.vendor_name ?? row.name ?? '');
-      return name.includes(normalized) || normalized.includes(name) || charSimilarity(name, normalized) >= 0.7;
+      return (
+        name.includes(normalized) || normalized.includes(name) || charSimilarity(name, normalized) >= 0.7
+      );
     })
     .slice(0, 5);
 }
@@ -266,7 +269,10 @@ function runSpecialRead(
       const to = String(payload.to_date ?? '');
       const fromT = from ? parseIsoDate(from) : 0;
       const toT = to ? parseIsoDate(to) + 86400000 : Number.MAX_SAFE_INTEGER;
-      txRows = txRows.filter((r) => { const d = parseIsoDate(String(r.date ?? '')); return d >= fromT && d < toT; });
+      txRows = txRows.filter((r) => {
+        const d = parseIsoDate(String(r.date ?? ''));
+        return d >= fromT && d < toT;
+      });
       txRows.sort((a, b) => parseIsoDate(String(b.date)) - parseIsoDate(String(a.date)));
       return { ok: true, table, operation, count: txRows.length, rows: txRows };
     }
@@ -274,27 +280,50 @@ function runSpecialRead(
       txRows.sort((a, b) => parseIsoDate(String(b.date)) - parseIsoDate(String(a.date)));
       const latest = txRows[0];
       const balance = latest ? parseFloat(String(latest.balance ?? '0')) || 0 : 0;
-      return { ok: true, table, operation, balance_inr: balance, as_of_date: latest?.date ?? null, last_txn: latest ?? null, transaction_count: txRows.length };
+      return {
+        ok: true,
+        table,
+        operation,
+        balance_inr: balance,
+        as_of_date: latest?.date ?? null,
+        last_txn: latest ?? null,
+        transaction_count: txRows.length,
+      };
     }
     if (operation === 'get_recent') {
       const limit = Number(payload.limit ?? 50);
       txRows.sort((a, b) => parseIsoDate(String(b.date)) - parseIsoDate(String(a.date)));
-      return { ok: true, table, operation, count: Math.min(txRows.length, limit), rows: txRows.slice(0, Math.max(1, limit)) };
+      return {
+        ok: true,
+        table,
+        operation,
+        count: Math.min(txRows.length, limit),
+        rows: txRows.slice(0, Math.max(1, limit)),
+      };
     }
   }
 
   if (table === 'payroll_runs' && operation === 'get_committed_salaries') {
-    const committed = rows.filter((r) => { const s = (r.status ?? '').toLowerCase(); return s === 'approved' || s === 'committed' || s === 'paid' || s === 'complete'; });
+    const committed = rows.filter((r) => {
+      const s = (r.status ?? '').toLowerCase();
+      return s === 'approved' || s === 'committed' || s === 'paid' || s === 'complete';
+    });
     return { ok: true, table, operation, count: committed.length, rows: committed };
   }
 
   if (table === 'ap_invoices' && operation === 'get_pending_payables') {
-    const pending = rows.filter((r) => { const ps = (r.payment_status ?? r.status ?? '').toLowerCase(); return ps !== 'paid' && ps !== 'cleared' && ps !== 'cancelled'; });
+    const pending = rows.filter((r) => {
+      const ps = (r.payment_status ?? r.status ?? '').toLowerCase();
+      return ps !== 'paid' && ps !== 'cleared' && ps !== 'cancelled';
+    });
     return { ok: true, table, operation, count: pending.length, rows: pending };
   }
 
   if (table === 'ar_invoices' && operation === 'get_pending_receivables') {
-    const pend = rows.filter((r) => { const s = (r.status ?? '').toLowerCase(); return s !== 'paid' && s !== 'cancelled'; });
+    const pend = rows.filter((r) => {
+      const s = (r.status ?? '').toLowerCase();
+      return s !== 'paid' && s !== 'cancelled';
+    });
     return { ok: true, table, operation, count: pend.length, rows: pend };
   }
 
@@ -329,13 +358,21 @@ function runSpecialRead(
     const tasks = rows.filter((r) => {
       const tt = String(r.task_type ?? '').toLowerCase();
       const st = String(r.status ?? '').toLowerCase();
-      return (tt.includes('onboard') || tt.includes('hire') || tt.includes('join')) && st !== 'completed' && st !== 'done' && st !== 'cancelled';
+      return (
+        (tt.includes('onboard') || tt.includes('hire') || tt.includes('join')) &&
+        st !== 'completed' &&
+        st !== 'done' &&
+        st !== 'cancelled'
+      );
     });
     return { ok: true, table, operation, count: tasks.length, rows: tasks };
   }
 
   if (table === 'hr_tasks' && operation === 'get_blockers') {
-    const blockers = rows.filter((r) => { const st = String(r.status ?? '').toLowerCase(); return st === 'blocked' || st === 'pending' || st === 'open'; });
+    const blockers = rows.filter((r) => {
+      const st = String(r.status ?? '').toLowerCase();
+      return st === 'blocked' || st === 'pending' || st === 'open';
+    });
     return { ok: true, table, operation, count: blockers.length, rows: blockers };
   }
 
@@ -345,7 +382,17 @@ function runSpecialRead(
     const ytd = rows.filter((r) => r.employee_id === eid && String(r.year ?? '') === year);
     const grossYtd = ytd.reduce((s, r) => s + (parseFloat(r.gross_salary ?? '0') || 0), 0);
     const netYtd = ytd.reduce((s, r) => s + (parseFloat(r.net_salary ?? '0') || 0), 0);
-    return { ok: true, table, operation, employee_id: eid, year, slip_count: ytd.length, gross_ytd_inr: Math.round(grossYtd * 100) / 100, net_ytd_inr: Math.round(netYtd * 100) / 100, rows: ytd };
+    return {
+      ok: true,
+      table,
+      operation,
+      employee_id: eid,
+      year,
+      slip_count: ytd.length,
+      gross_ytd_inr: Math.round(grossYtd * 100) / 100,
+      net_ytd_inr: Math.round(netYtd * 100) / 100,
+      rows: ytd,
+    };
   }
 
   if (table === 'tds_records' && operation === 'get_by_employee_year') {
@@ -376,7 +423,11 @@ async function getOwnSalaryStructureDb(payload: Record<string, unknown>): Promis
     if (!emp) return { ok: false, error: `Employee not found: ${employeeId}` };
     const sid = emp.salaryStructureId;
     const st = sid ? await prisma.salaryStructure.findUnique({ where: { structureId: sid } }) : null;
-    return { ok: true, employee: rowToRecord(emp as unknown as Record<string, unknown>), salary_structure: st ? rowToRecord(st as unknown as Record<string, unknown>) : null };
+    return {
+      ok: true,
+      employee: rowToRecord(emp as unknown as Record<string, unknown>),
+      salary_structure: st ? rowToRecord(st as unknown as Record<string, unknown>) : null,
+    };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
@@ -396,6 +447,32 @@ function getModel(modelName: string): PrismaDelegate {
   return (prisma as unknown as Record<string, PrismaDelegate>)[modelName];
 }
 
+async function appendApprovalEvent(params: {
+  approvalId: string;
+  type: string;
+  actorId?: string;
+  actorRole?: string;
+  notes?: string;
+  payload?: Record<string, unknown>;
+}): Promise<void> {
+  const approvalId = String(params.approvalId ?? '').trim();
+  if (!approvalId) return;
+  try {
+    await prisma.approvalEvent.create({
+      data: {
+        approvalId,
+        type: params.type,
+        actorId: params.actorId ?? '',
+        actorRole: params.actorRole ?? '',
+        notes: params.notes ?? '',
+        payload: (params.payload ?? {}) as Prisma.InputJsonValue,
+      },
+    });
+  } catch {
+    // best-effort; history should not block core flows
+  }
+}
+
 async function executeDbCreate(
   model: PrismaDelegate,
   table: string,
@@ -411,6 +488,22 @@ async function executeDbCreate(
       created_at: row.created_at ?? new Date().toISOString(),
     });
     await model.create({ data });
+
+    if (table === 'approval_requests') {
+      const approvalId = String((data as { approvalId?: unknown }).approvalId ?? '').trim();
+      await appendApprovalEvent({
+        approvalId,
+        type: 'CREATED',
+        actorId: String((row as Record<string, unknown>).created_by ?? ''),
+        actorRole: String((row as Record<string, unknown>).created_by_role ?? ''),
+        payload: {
+          agent_id: String((row as Record<string, unknown>).agent_id ?? ''),
+          action_type: String((row as Record<string, unknown>).action_type ?? ''),
+          confidence_score: String((row as Record<string, unknown>).confidence_score ?? ''),
+          expires_at: String((row as Record<string, unknown>).expires_at ?? ''),
+        },
+      });
+    }
   }
   return { ok: true, table, operation: 'create', count: rowsInput.length };
 }
@@ -448,10 +541,7 @@ async function executeDbRead(
 ): Promise<Record<string, unknown>> {
   const companyIdFilter = String(payload.company_id ?? '').trim();
   /** Only bank_transactions currently stores company_id in Postgres (multi-tenant column). */
-  const findManyArg =
-    table === 'bank_transactions' && companyIdFilter
-      ? { where: { companyId: companyIdFilter } }
-      : {};
+  const findManyArg = table === 'bank_transactions' && companyIdFilter ? { where: { companyId: companyIdFilter } } : {};
 
   const allRows = await model.findMany(findManyArg);
   const strRows = allRows.map((r: Record<string, unknown>) => rowToRecord(r));
@@ -466,7 +556,10 @@ async function executeDbRead(
   } else if (operation === 'get_active') {
     filtered = strRows.filter((r) => r.status?.toLowerCase() === 'active');
   } else if (operation === 'get_outstanding') {
-    filtered = strRows.filter((r) => { const s = r.status?.toLowerCase() ?? ''; return s !== 'paid' && s !== 'cancelled'; });
+    filtered = strRows.filter((r) => {
+      const s = r.status?.toLowerCase() ?? '';
+      return s !== 'paid' && s !== 'cancelled';
+    });
   } else if (operation === 'get_upcoming') {
     const daysAhead = Number(payload.days_ahead ?? 30);
     const now = Date.now();
@@ -487,7 +580,7 @@ async function executeDbRead(
   return { ok: true, table, operation, count: filtered.length, rows: filtered };
 }
 
-async function executeSheetToolDb(
+async function executeDataToolDb(
   table: string,
   operation: string,
   payload: Record<string, unknown>
@@ -512,7 +605,7 @@ async function executeSheetToolDb(
 
 // ─── In-memory fallback ───────────────────────────────────────────────────────
 
-function executeSheetToolInMemory(
+function executeDataToolInMemory(
   table: string,
   operation: string,
   payload: Record<string, unknown>
@@ -560,12 +653,13 @@ function executeSheetToolInMemory(
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 
-export async function executeSheetTool(
-  params: Record<string, unknown>
-): Promise<Record<string, unknown>> {
-  const rawToolId = String(params.tool_id ?? 'sheets.unknown.create');
-  const toolId = canonicalVeloDataToolId(rawToolId);
-  const parts = toolId.split('.');
+export async function executeDataTool(params: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const rawToolId = String(params.tool_id ?? 'data.unknown.create');
+  const parts = rawToolId.split('.');
+  const prefix = parts[0] ?? 'data';
+  if (prefix !== 'data') {
+    return { ok: false, error: `Unsupported tool namespace: ${prefix} (expected data.*)`, tool_id: rawToolId };
+  }
   const table = parts[1] ?? 'default';
   const operation = parts[2] ?? 'create';
   const payload = (params.payload ?? params) as Record<string, unknown>;
@@ -582,13 +676,13 @@ export async function executeSheetTool(
     if (!allowInMemoryDataFallback()) {
       return { ok: false, error: 'DATABASE_URL is not configured.', table, operation };
     }
-    return executeSheetToolInMemory(table, operation, payload);
+    return executeDataToolInMemory(table, operation, payload);
   }
 
   try {
-    return await executeSheetToolDb(table, operation, payload);
+    return await executeDataToolDb(table, operation, payload);
   } catch (err) {
-    console.error(`[db] executeSheetTool failed for ${toolId}:`, err);
+    console.error(`[db] executeDataTool failed for ${rawToolId}:`, err);
     if (!allowInMemoryDataFallback()) {
       return {
         ok: false,
@@ -597,15 +691,25 @@ export async function executeSheetTool(
         operation,
       };
     }
-    return executeSheetToolInMemory(table, operation, payload);
+    return executeDataToolInMemory(table, operation, payload);
   }
 }
 
 // ─── file_links helpers ───────────────────────────────────────────────────────
 
 export const FILE_LINKS_COLUMN_ORDER = [
-  'link_id', 'scope_table', 'scope_record_id', 'role', 'drive_file_id',
-  'drive_web_view_url', 'mime', 'filename', 'local_upload_id', 'source', 'meta_json', 'created_at',
+  'link_id',
+  'scope_table',
+  'scope_record_id',
+  'role',
+  'drive_file_id',
+  'drive_web_view_url',
+  'mime',
+  'filename',
+  'local_upload_id',
+  'source',
+  'meta_json',
+  'created_at',
 ] as const;
 
 export type VeloFileLinkInput = {
@@ -656,8 +760,16 @@ export async function fetchFileLinksForScope(
 ): Promise<Record<string, string>[]> {
   if (!useDatabase()) {
     return (memStore.get('file_links') ?? [])
-      .filter((r) => String(r.scope_table ?? '') === scope_table && String(r.scope_record_id ?? '') === scope_record_id)
-      .map((r) => { const o: Record<string, string> = {}; for (const [k, v] of Object.entries(r)) o[k] = String(v ?? ''); return o; });
+      .filter(
+        (r) =>
+          String(r.scope_table ?? '') === scope_table &&
+          String(r.scope_record_id ?? '') === scope_record_id
+      )
+      .map((r) => {
+        const o: Record<string, string> = {};
+        for (const [k, v] of Object.entries(r)) o[k] = String(v ?? '');
+        return o;
+      });
   }
   try {
     const rows = await prisma.fileLink.findMany({
@@ -665,7 +777,9 @@ export async function fetchFileLinksForScope(
     });
     type Row = (typeof rows)[number];
     return rows.map((r: Row) => rowToRecord(r as unknown as Record<string, unknown>));
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 export async function mergeApprovalAttachmentsFromFileLinks(
@@ -717,14 +831,21 @@ export async function findApprovalById(
     const rows = memStore.get('approval_requests') ?? [];
     const idx = rows.findIndex((r) => String(r.approval_id ?? r.id).trim() === normalizedId);
     if (idx < 0) return null;
-    return { row: rows[idx] as Record<string, string>, rowIndex: idx, headers: Object.keys(rows[idx]), spreadsheetId: 'mem' };
+    return {
+      row: rows[idx] as Record<string, string>,
+      rowIndex: idx,
+      headers: Object.keys(rows[idx]),
+      spreadsheetId: 'mem',
+    };
   }
 
   try {
     const rec = await prisma.approvalRequest.findUnique({ where: { approvalId: normalizedId } });
     if (!rec) return null;
     return { row: rowToRecord(rec as unknown as Record<string, unknown>), rowIndex: 0, headers: [], spreadsheetId: 'pg' };
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export async function updateApprovalRow(
@@ -745,9 +866,39 @@ export async function updateApprovalRow(
 
   if (!approvalId) return;
   try {
+    const before = await prisma.approvalRequest.findUnique({
+      where: { approvalId },
+      select: { status: true, resolvedBy: true, resolvedAt: true, resolutionNotes: true },
+    });
     const data = payloadToPrismaData(updates);
     delete data.approvalId; // don't overwrite the unique key
     await prisma.approvalRequest.update({ where: { approvalId }, data });
+
+    const nextStatus = String(updates.status ?? '').trim().toUpperCase();
+    const prevStatus = String(before?.status ?? '').trim().toUpperCase();
+    if (nextStatus && nextStatus !== prevStatus) {
+      const actorId = String(updates.resolved_by ?? updates.resolvedBy ?? before?.resolvedBy ?? '');
+      const notes = String(updates.resolution_notes ?? updates.resolutionNotes ?? before?.resolutionNotes ?? '');
+      const eventType =
+        nextStatus === 'APPROVED'
+          ? 'APPROVED'
+          : nextStatus === 'REJECTED'
+            ? 'REJECTED'
+            : nextStatus === 'EXPIRED'
+              ? 'EXPIRED'
+              : `STATUS_${nextStatus}`;
+      await appendApprovalEvent({
+        approvalId,
+        type: eventType,
+        actorId,
+        notes,
+        payload: {
+          previous_status: before?.status ?? '',
+          status: String(updates.status ?? ''),
+          resolved_at: String(updates.resolved_at ?? updates.resolvedAt ?? ''),
+        },
+      });
+    }
   } catch (err) {
     console.error('[db] updateApprovalRow failed:', err);
   }
@@ -762,7 +913,11 @@ export async function listPendingApprovals(limit = 10): Promise<Record<string, s
       .filter((r) => isApprovalPendingStatus(r.status))
       .slice(-cap)
       .reverse()
-      .map((r) => { const o: Record<string, string> = {}; for (const [k, v] of Object.entries(r)) o[k] = String(v ?? ''); return o; });
+      .map((r) => {
+        const o: Record<string, string> = {};
+        for (const [k, v] of Object.entries(r)) o[k] = String(v ?? '');
+        return o;
+      });
   }
 
   try {
@@ -773,7 +928,9 @@ export async function listPendingApprovals(limit = 10): Promise<Record<string, s
     });
     type Row = (typeof rows)[number];
     return rows.map((r: Row) => rowToRecord(r as unknown as Record<string, unknown>));
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 export async function expireStalePendingApprovals(): Promise<{ count: number; approval_ids: string[] }> {
@@ -787,7 +944,13 @@ export async function expireStalePendingApprovals(): Promise<{ count: number; ap
       if (!isApprovalPendingStatus(r.status)) continue;
       const exp = Date.parse(String(r.expires_at ?? ''));
       if (!Number.isNaN(exp) && exp < Date.now()) {
-        rows[i] = { ...r, status: 'EXPIRED', resolved_at: now, resolution_notes: 'auto_expired_velo_cron', resolved_by: 'system' };
+        rows[i] = {
+          ...r,
+          status: 'EXPIRED',
+          resolved_at: now,
+          resolution_notes: 'auto_expired_velo_cron',
+          resolved_by: 'system',
+        };
         approval_ids.push(String(r.approval_id ?? ''));
       }
     }
@@ -809,15 +972,30 @@ export async function expireStalePendingApprovals(): Promise<{ count: number; ap
     for (const r of toExpire) {
       await prisma.approvalRequest.update({
         where: { approvalId: r.approvalId },
-        data: { status: 'EXPIRED', resolvedAt: now, resolutionNotes: 'auto_expired_velo_cron', resolvedBy: 'system' },
+        data: {
+          status: 'EXPIRED',
+          resolvedAt: now,
+          resolutionNotes: 'auto_expired_velo_cron',
+          resolvedBy: 'system',
+        },
+      });
+      await appendApprovalEvent({
+        approvalId: r.approvalId,
+        type: 'EXPIRED',
+        actorId: 'system',
+        notes: 'auto_expired_velo_cron',
+        payload: { resolved_at: now },
       });
       approval_ids.push(r.approvalId);
     }
     return { count: approval_ids.length, approval_ids };
-  } catch { return { count: 0, approval_ids: [] }; }
+  } catch {
+    return { count: 0, approval_ids: [] };
+  }
 }
 
 // Legacy in-memory list (kept for any internal callers)
-export function listSheetTable(table: string): Array<Record<string, unknown>> {
+export function listDataTable(table: string): Array<Record<string, unknown>> {
   return memStore.get(table) ?? [];
 }
+

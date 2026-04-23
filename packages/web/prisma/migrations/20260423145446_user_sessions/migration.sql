@@ -1,0 +1,26 @@
+-- CreateTable
+CREATE TABLE "user_sessions" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "session_id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "last_seen" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "revoked_at" TIMESTAMP(3),
+    "revoked_by" TEXT,
+    "ip" TEXT,
+    "user_agent" TEXT,
+
+    CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_sessions_session_id_key" ON "user_sessions"("session_id");
+
+-- CreateIndex
+CREATE INDEX "user_sessions_user_id_idx" ON "user_sessions"("user_id");
+
+-- CreateIndex
+CREATE INDEX "user_sessions_last_seen_idx" ON "user_sessions"("last_seen" DESC);
+
+-- AddForeignKey
+ALTER TABLE "user_sessions" ADD CONSTRAINT "user_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

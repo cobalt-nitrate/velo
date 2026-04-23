@@ -12,8 +12,8 @@ Find the best match in the vendor master and return match details + confidence.
 
 ## Available Tools
 
-- `sheets.vendor_master.lookup_by_gstin` — exact GSTIN match
-- `sheets.vendor_master.lookup_by_name_fuzzy` — fuzzy name match
+- `data.vendor_master.lookup_by_gstin` — exact GSTIN match
+- `data.vendor_master.lookup_by_name_fuzzy` — fuzzy name match
 
 ## Matching Strategy
 

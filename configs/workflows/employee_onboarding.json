@@ -9,7 +9,7 @@
       "step": 1,
       "id": "create_employee_draft",
       "action": "tool_call",
-      "tool": "sheets.employees.create",
+      "tool": "data.employees.create",
       "input_from": "trigger.params",
       "initial_status": "ONBOARDING",
       "output_to": "employee_id"
@@ -18,7 +18,7 @@
       "step": 2,
       "id": "generate_onboarding_checklist",
       "action": "tool_call",
-      "tool": "sheets.hr_tasks.create_batch",
+      "tool": "data.hr_tasks.create_batch",
       "config_dependency": "configs/business/onboarding_templates.json",
       "input_from": "employee_id"
     },
@@ -48,7 +48,7 @@
       "id": "monitor_doc_completion",
       "action": "scheduled_check",
       "schedule": "daily_until_doj",
-      "check": "sheets.hr_tasks.get_blockers",
+      "check": "data.hr_tasks.get_blockers",
       "alert_at_hours_before_doj": 48,
       "alert_message": "Missing docs for {full_name} joining {doj}: {missing_items}. Send reminder?",
       "alert_actions": ["send_reminder", "mark_deferred"]
@@ -58,7 +58,7 @@
       "id": "activate_employee",
       "condition": "all required hr_tasks complete",
       "action": "tool_call",
-      "tool": "sheets.employees.update",
+      "tool": "data.employees.update",
       "update": { "status": "Active" }
     }
   ]

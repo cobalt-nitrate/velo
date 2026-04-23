@@ -6,11 +6,11 @@
   "system_prompt_file": "configs/prompts/helpdesk.md",
   "sub_agents": ["tax-planning"],
   "tools": [
-    "sheets.salary_slips.get_by_employee_month",
-    "sheets.leave_balances.get_by_employee",
-    "sheets.leave_records.get_by_employee",
-    "sheets.policy_documents.get_by_type",
-    "sheets.employees.get_own_record",
+    "data.salary_slips.get_by_employee_month",
+    "data.leave_balances.get_by_employee",
+    "data.leave_records.get_by_employee",
+    "data.policy_documents.get_by_type",
+    "data.employees.get_own_record",
     "documents.drive.generate_secure_link",
     "notifications.send_secure_link"
   ],

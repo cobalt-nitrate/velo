@@ -1,4 +1,4 @@
-// Shared Prisma singleton for @velo/tools.
+// Shared Prisma singleton for @velo/tools data plane.
 // Uses the same DATABASE_URL as packages/web. In the Next.js server process,
 // both clients share the underlying Postgres connection pool.
 
@@ -15,3 +15,4 @@ export const prisma: PrismaClient =
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma._veloToolsPrisma = prisma;
 }
+

@@ -30,6 +30,7 @@ export const authOptions: NextAuthOptions = {
             passwordHash: true,
             revokedAt: true,
             sessionVersion: true,
+            role: true,
           },
         });
 
@@ -39,11 +40,10 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) return null;
 
-        // Update role + lastSignIn on each successful sign-in
+        // Update lastSignIn on each successful sign-in
         await prisma.user.update({
           where: { email },
           data: {
-            role: resolveRole(email),
             lastSignIn: new Date(),
           },
         });
@@ -54,6 +54,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           image: user.image,
           sessionVersion: user.sessionVersion,
+          role: user.role,
         };
       },
     }),
@@ -64,17 +65,17 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         // Initial sign-in: embed identity into the JWT
         token.id = user.id;
-        token.actor_role = resolveRole(user.email ?? '');
+        token.actor_role = (user as { role?: string }).role ?? 'employee';
         token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 1;
         return token;
       }
 
-      // Subsequent requests: re-validate against DB for revocation + role changes
+      // Subsequent requests: re-validate against DB for revocation + role/version changes
       if (!token.id) return token;
 
       const dbUser = await prisma.user.findUnique({
         where: { id: token.id as string },
-        select: { revokedAt: true, sessionVersion: true, email: true },
+        select: { revokedAt: true, sessionVersion: true, role: true },
       });
 
       if (!dbUser || dbUser.revokedAt || dbUser.sessionVersion !== token.sessionVersion) {
@@ -82,8 +83,8 @@ export const authOptions: NextAuthOptions = {
         return { revoked: true };
       }
 
-      // Re-resolve role from env vars so VELO_*_EMAILS changes propagate immediately
-      token.actor_role = resolveRole(dbUser.email);
+      // Canonical role comes from DB
+      token.actor_role = dbUser.role ?? 'employee';
       return token;
     },
 
@@ -105,19 +106,10 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-// ─── Role resolution ─────────────────────────────────────────────────────────
-
-export function resolveRole(email: string): string {
-  const e = email.toLowerCase().trim();
-  if (splitEmails(process.env.VELO_FOUNDER_EMAILS ?? '').has(e)) return 'founder';
-  if (splitEmails(process.env.VELO_FINANCE_EMAILS ?? '').has(e)) return 'finance_lead';
-  if (splitEmails(process.env.VELO_HR_EMAILS ?? '').has(e)) return 'hr_lead';
-  if (splitEmails(process.env.VELO_MANAGER_EMAILS ?? '').has(e)) return 'manager';
-  return 'employee';
-}
-
-export function splitEmails(raw: string): Set<string> {
-  return new Set(
-    raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
-  );
-}
+export const ROLE_LABELS: Record<string, string> = {
+  founder: 'Founder',
+  finance_lead: 'Finance Lead',
+  hr_lead: 'HR Lead',
+  manager: 'Manager',
+  employee: 'Employee',
+};

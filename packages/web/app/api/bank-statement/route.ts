@@ -1,5 +1,5 @@
 import { parseBankStatement } from '@velo/tools/bank';
-import { executeSheetTool, recordVeloFileLink } from '@velo/tools/sheets';
+import { executeDataTool, recordVeloFileLink } from '@velo/tools/data';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -39,8 +39,8 @@ export async function POST(req: Request) {
         source: 'statement_upload',
         created_at: new Date().toISOString(),
       }));
-      persistResult = await executeSheetTool({
-        tool_id: 'sheets.bank_transactions.create_batch',
+      persistResult = await executeDataTool({
+        tool_id: 'data.bank_transactions.create_batch',
         company_id: companyId,
         rows,
       });

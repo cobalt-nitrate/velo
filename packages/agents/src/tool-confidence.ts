@@ -62,7 +62,7 @@ function requiredFieldsForToolCodeFallback(toolId: string): string[] {
     canon.includes('get_committed') ||
     canon.includes('get_outstanding') ||
     canon.includes('get_overdue');
-  if (canon.startsWith('sheets.') && isRead) {
+  if (canon.startsWith('data.') && isRead) {
     return [];
   }
 
@@ -75,25 +75,25 @@ function requiredFieldsForToolCodeFallback(toolId: string): string[] {
   }
 
   if (
-    canon.startsWith('sheets.ap_invoices') &&
+    canon.startsWith('data.ap_invoices') &&
     canon.includes('.create')
   ) {
     return ['vendor_name', 'total_amount', 'invoice_date'];
   }
   if (
-    canon.startsWith('sheets.ar_invoices') &&
+    canon.startsWith('data.ar_invoices') &&
     canon.includes('.create')
   ) {
     return ['client_name', 'total_amount', 'invoice_date'];
   }
-  if (canon.startsWith('sheets.payroll_runs') && canon.includes('create')) {
+  if (canon.startsWith('data.payroll_runs') && canon.includes('create')) {
     return ['month', 'year'];
   }
   if (toolId.startsWith('email.')) {
     return ['to'];
   }
 
-  if (canon.startsWith('sheets.') && canon.includes('.create')) {
+  if (canon.startsWith('data.') && canon.includes('.create')) {
     return ['company_id'];
   }
 

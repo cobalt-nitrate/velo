@@ -6,9 +6,9 @@
   "system_prompt_file": "configs/prompts/tax-planning.md",
   "sub_agents": [],
   "tools": [
-    "sheets.salary_slips.get_ytd_by_employee",
-    "sheets.employees.get_own_salary_structure",
-    "sheets.tds_records.get_by_employee_year"
+    "data.salary_slips.get_ytd_by_employee",
+    "data.employees.get_own_salary_structure",
+    "data.tds_records.get_by_employee_year"
   ],
   "confidence_thresholds": {
     "auto_execute": 0.85,

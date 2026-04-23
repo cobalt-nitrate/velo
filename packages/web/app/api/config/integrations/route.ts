@@ -71,9 +71,7 @@ function buildIntegrationPayload() {
       ready = keyStatus('VELO_CRON_SECRET', stored).effectiveSet;
     else if (def.id === 'auth') {
       ready =
-        keyStatus('NEXTAUTH_SECRET', stored).effectiveSet &&
-        keyStatus('GOOGLE_CLIENT_ID', stored).effectiveSet &&
-        keyStatus('GOOGLE_CLIENT_SECRET', stored).effectiveSet;
+        keyStatus('NEXTAUTH_SECRET', stored).effectiveSet;
     }
 
     return {

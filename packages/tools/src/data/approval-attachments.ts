@@ -68,14 +68,13 @@ export function stringifyAttachmentRefs(refs: DriveAttachmentRef[]): string {
   return JSON.stringify(refs);
 }
 
-/** Produce updated JSON string for the sheet cell. */
+/** Produce updated JSON string for the data cell. */
 export function mergeFileLinkRowsIntoApprovalAttachmentsJson(
   existingCell: string,
   fileLinkRows: Record<string, string>[]
 ): string {
   const cell = parseAttachmentDriveUrlsJson(existingCell);
-  const fromLinks = fileLinkRows
-    .map(fileLinkRowToRef)
-    .filter((x): x is DriveAttachmentRef => x != null);
+  const fromLinks = fileLinkRows.map(fileLinkRowToRef).filter((x): x is DriveAttachmentRef => x != null);
   return stringifyAttachmentRefs(mergeAttachmentRefs(cell, fromLinks));
 }
+

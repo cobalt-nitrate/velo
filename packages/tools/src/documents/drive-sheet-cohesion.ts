@@ -1,7 +1,7 @@
-// Bridge Drive uploads to Google Sheets: file_links index + primary URL fields on business tabs.
+// Bridge Drive uploads to Velo data plane: file_links index + primary URL fields on business tables.
 
-import { APPROVAL_FILE_LINK_SCOPE } from '../sheets/approval-attachments.js';
-import { executeSheetTool, recordVeloFileLink } from '../sheets/client.js';
+import { APPROVAL_FILE_LINK_SCOPE } from '../data/approval-attachments.js';
+import { executeDataTool, recordVeloFileLink } from '../data/client.js';
 
 export type DocumentFileLinkScope = {
   scope_table: string;
@@ -78,8 +78,8 @@ async function syncPrimaryEntityUrls(
   const p = params;
   try {
     if (toolId.includes('pdf_generator') && toolId.includes('invoice') && p.invoice_id) {
-      await executeSheetTool({
-        tool_id: 'sheets.ar_invoices.update',
+      await executeDataTool({
+        tool_id: 'data.ar_invoices.update',
         invoice_id: String(p.invoice_id),
         invoice_pdf_url: url,
       });
@@ -88,8 +88,8 @@ async function syncPrimaryEntityUrls(
     if (toolId.includes('upload_invoice')) {
       const inv = p.invoice_id ?? p.ap_invoice_id;
       if (inv) {
-        await executeSheetTool({
-          tool_id: 'sheets.ap_invoices.update',
+        await executeDataTool({
+          tool_id: 'data.ap_invoices.update',
           invoice_id: String(inv),
           source_file_url: url,
         });
@@ -97,8 +97,8 @@ async function syncPrimaryEntityUrls(
       return;
     }
     if (toolId.includes('generate_salary_slip') && p.slip_id) {
-      await executeSheetTool({
-        tool_id: 'sheets.salary_slips.update',
+      await executeDataTool({
+        tool_id: 'data.salary_slips.update',
         slip_id: String(p.slip_id),
         drive_url: url,
       });
@@ -113,19 +113,19 @@ async function syncPrimaryEntityUrls(
         toolId.includes('experience_certificate') ||
         toolId.includes('relieving_letter'))
     ) {
-      await executeSheetTool({
-        tool_id: 'sheets.hr_tasks.update',
+      await executeDataTool({
+        tool_id: 'data.hr_tasks.update',
         task_id: String(taskId),
         primary_drive_url: url,
         primary_drive_file_id: fileId,
       });
     }
   } catch (err) {
-    console.warn('[documents] Optional sheet URL sync failed:', err);
+    console.warn('[documents] Optional data URL sync failed:', err);
   }
 }
 
-export async function recordDocumentOnDriveAndSheets(params: {
+export async function recordDocumentOnDriveAndData(params: {
   toolId: string;
   params: Record<string, unknown>;
   documentId: string;

@@ -6,8 +6,8 @@
   "system_prompt_file": "configs/prompts/vendor-matcher.md",
   "sub_agents": [],
   "tools": [
-    "sheets.vendor_master.lookup_by_gstin",
-    "sheets.vendor_master.lookup_by_name_fuzzy"
+    "data.vendor_master.lookup_by_gstin",
+    "data.vendor_master.lookup_by_name_fuzzy"
   ],
   "match_strategy": [
     { "step": 1, "method": "exact_gstin_match", "confidence_if_matched": 0.97 },

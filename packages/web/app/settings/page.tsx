@@ -40,7 +40,7 @@ type IntegrationsResponse = {
 
 export default function SettingsPage() {
   const [ui, setUi] = useState<Ui | null>(null);
-  const [sheets, setSheets] = useState<Array<Record<string, string>> | null>(null);
+  const [companySettings, setCompanySettings] = useState<Array<Record<string, string>> | null>(null);
   const [integrations, setIntegrations] = useState<IntegrationsResponse | null>(null);
   const [connectorForm, setConnectorForm] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -74,15 +74,15 @@ export default function SettingsPage() {
   useEffect(() => {
     (async () => {
       const [cfgRes, intRes] = await Promise.all([
-        fetch('/api/config?sheets=1'),
+        fetch('/api/config?company_settings=1'),
         fetch('/api/config/integrations'),
       ]);
       const data = (await cfgRes.json()) as {
         ui?: Ui;
-        sheetsRows?: Array<Record<string, string>> | null;
+        companySettingsRows?: Array<Record<string, string>> | null;
       };
       setUi(data.ui ?? null);
-      setSheets(data.sheetsRows ?? null);
+      setCompanySettings(data.companySettingsRows ?? null);
       const intData = (await intRes.json()) as IntegrationsResponse;
       if (intData.ok && intData.connectors) {
         setIntegrations(intData);
@@ -244,18 +244,18 @@ export default function SettingsPage() {
       </form>
 
       <section className="mt-10">
-        <h2 className="text-lg font-medium">Google Sheets · company_settings</h2>
+        <h2 className="text-lg font-medium">Database · company_settings</h2>
         <p className="mt-1 text-sm text-velo-muted">
           Read-only snapshot of company_settings rows from PostgreSQL (via the data API).
         </p>
-        {!sheets || sheets.length === 0 ? (
-          <p className="mt-2 text-sm text-velo-muted">No rows returned or Sheets not connected.</p>
+        {!companySettings || companySettings.length === 0 ? (
+          <p className="mt-2 text-sm text-velo-muted">No rows returned.</p>
         ) : (
           <div className="mt-3 overflow-x-auto rounded-lg border border-velo-line">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-velo-line bg-velo-panel-muted">
-                  {Object.keys(sheets[0]).map((k) => (
+                  {Object.keys(companySettings[0]).map((k) => (
                     <th key={k} className="px-2 py-2 font-medium">
                       {k}
                     </th>
@@ -263,9 +263,9 @@ export default function SettingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sheets.map((row, i) => (
+                {companySettings.map((row, i) => (
                   <tr key={i} className="border-b border-velo-line/80">
-                    {Object.keys(sheets[0]).map((k) => (
+                    {Object.keys(companySettings[0]).map((k) => (
                       <td key={k} className="px-2 py-1.5 text-velo-muted">
                         {row[k]}
                       </td>

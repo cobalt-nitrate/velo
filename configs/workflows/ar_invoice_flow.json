@@ -9,7 +9,7 @@
       "step": 1,
       "id": "match_client",
       "action": "tool_call",
-      "tool": "sheets.client_master.lookup",
+      "tool": "data.client_master.lookup",
       "input_from": "trigger.params.client_name",
       "on_no_match": {
         "action": "prompt_client_details",
@@ -43,8 +43,8 @@
       "step": 5,
       "id": "create_ar_entry",
       "action": "tool_call",
-      "tool": "sheets.ar_invoices.create",
-      "also": "sheets.gst_output_ledger.create",
+      "tool": "data.ar_invoices.create",
+      "also": "data.gst_output_ledger.create",
       "status": "RAISED"
     },
     {

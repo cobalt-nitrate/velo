@@ -1653,7 +1653,7 @@ async function main() {
         agentId: 'finance_agent',
         eventType: 'TOOL_RUN',
         sessionId: sessionRev.id,
-        payload: { tool: 'sheets.read_range', confidence: 0.88 },
+        payload: { tool: 'data.read_range', confidence: 0.88 },
       },
     ],
   });
@@ -1714,7 +1714,7 @@ async function main() {
         userMessage: 'Flag AWS MoM spikes',
         aiResponse: 'RDS Multi-AZ +18% MoM…',
         agentRoutedTo: 'finance_agent',
-        actionTaken: 'tools.sheets_scan',
+        actionTaken: 'tools.data_scan',
         actionStatus: 'ok',
       },
     ],

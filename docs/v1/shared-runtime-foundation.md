@@ -18,6 +18,6 @@
 ## Next Engineering Steps
 
 - Add full workflow DSL executor over `configs/workflows/*.json`.
-- Replace in-memory stores with persistent backends (Sheets/DB).
-- Introduce audit event sink adapters (`sheets.audit_trail`, data warehouse export).
+- Replace in-memory stores with persistent backends (Postgres).
+- Introduce audit event sink adapters (`data.audit_trail`, data warehouse export).
 - Add route handlers in web package for chat, approvals, and webhook event ingestion.

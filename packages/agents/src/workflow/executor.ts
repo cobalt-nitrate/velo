@@ -349,9 +349,7 @@ export async function resumeWorkflowAfterApproval(
   }
 
   if (!options?.skipApprovalCheck) {
-    const { findApprovalById, isApprovalApprovedStatus } = await import(
-      '@velo/tools/sheets'
-    );
+    const { findApprovalById, isApprovalApprovedStatus } = await import('@velo/tools/data');
     const found = await findApprovalById(run.pending_approval_id);
     if (!found?.row) {
       return { run_id: runId, status: 'FAILED', detail: 'Approval row not found' };

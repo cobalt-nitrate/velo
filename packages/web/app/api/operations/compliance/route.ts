@@ -1,4 +1,4 @@
-import { executeSheetTool } from '@velo/tools/sheets';
+import { executeDataTool } from '@velo/tools/data';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic';
 /** Compliance obligations due in the next 60 days (not done), same filter as healthcheck. */
 export async function GET() {
   try {
-    const result = await executeSheetTool({
-      tool_id: 'sheets.compliance_calendar.get_upcoming_obligations',
+    const result = await executeDataTool({
+      tool_id: 'data.compliance_calendar.get_upcoming_obligations',
       company_id: '',
       days_ahead: 60,
     });

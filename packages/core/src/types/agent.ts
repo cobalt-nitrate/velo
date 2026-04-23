@@ -100,7 +100,7 @@ export interface ConfirmationRequest {
 export interface ApprovalRequest {
   approval_id: string;
   agent_id: string;
-  /** Full Velo tool id (e.g. sheets.ap_invoices.create) — used to resume workflows after approval. */
+  /** Full Velo tool id (e.g. data.ap_invoices.create) — used to resume workflows after approval. */
   tool_id?: string;
   action_type: string;
   action_payload: Record<string, unknown>;
@@ -114,7 +114,7 @@ export interface ApprovalRequest {
 }
 
 export interface EvidenceItem {
-  type: 'invoice_image' | 'past_payments' | 'policy_rule' | 'bank_transaction' | 'sheet_data';
+  type: 'invoice_image' | 'past_payments' | 'policy_rule' | 'bank_transaction' | 'data_snapshot';
   ref?: string;
   summary?: string;
   text?: string;

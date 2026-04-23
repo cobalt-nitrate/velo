@@ -204,21 +204,21 @@ Every JTBD is phrased as an **outcome + decision confidence**:
 |---|---|---|---|---|
 | `orchestrator` | Routes user intent to specialist agent | — | all agents | Yes |
 | `runway` | Cash/burn/runway analysis + hiring simulation | orchestrator | `bank.*`, `payroll.*`, `hr.*` | Yes |
-| `compliance` | Compliance calendar, filing status, alerts | orchestrator | `compliance.*`, `sheets.*` | Yes |
-| `payroll` | Monthly payroll computation + execution | orchestrator | `payroll.*`, `sheets.*`, `notifications.*` | Yes |
-| `ap-invoice` | End-to-end vendor invoice processing | orchestrator | `sheets.ap_*`, `bank.*` | Yes |
+| `compliance` | Compliance calendar, filing status, alerts | orchestrator | `compliance.*`, `data.*` | Yes |
+| `payroll` | Monthly payroll computation + execution | orchestrator | `payroll.*`, `data.*`, `notifications.*` | Yes |
+| `ap-invoice` | End-to-end vendor invoice processing | orchestrator | `data.ap_*`, `bank.*` | Yes |
 | `invoice-extractor` | Extract structured fields from raw invoice | ap-invoice | `ocr.*`, `documents.*` | Yes |
 | `expense-classifier` | Classify expense category + ITC eligibility | ap-invoice | `config.expense_categories` | Yes |
-| `vendor-matcher` | Match/identify vendor in vendor master | ap-invoice | `sheets.vendor_master` | Yes |
-| `duplicate-detector` | Detect possible duplicate invoices | ap-invoice | `sheets.ap_invoices` | Yes |
-| `ar-collections` | Raise client invoices + write follow-ups | orchestrator | `sheets.ar_*`, `email.*` | Yes |
-| `hr` | Onboarding, leave, policy management | orchestrator | `sheets.hr_*`, `notifications.*` | Yes |
+| `vendor-matcher` | Match/identify vendor in vendor master | ap-invoice | `data.vendor_master` | Yes |
+| `duplicate-detector` | Detect possible duplicate invoices | ap-invoice | `data.ap_invoices` | Yes |
+| `ar-collections` | Raise client invoices + write follow-ups | orchestrator | `data.ar_*`, `email.*` | Yes |
+| `hr` | Onboarding, leave, policy management | orchestrator | `data.hr_*`, `notifications.*` | Yes |
 | `document-generator` | Generate offer letters, policy docs, payslips | hr / payroll | `documents.*`, `config.policy_templates` | Yes |
-| `helpdesk` | Employee self-serve — payslips, HR queries | orchestrator | `sheets.*`, `notifications.*` | Yes |
-| `tax-planning` | Employee tax optimization advice | helpdesk | `config.tax_config`, `sheets.salary_*` | Yes |
+| `helpdesk` | Employee self-serve — payslips, HR queries | orchestrator | `data.*`, `notifications.*` | Yes |
+| `tax-planning` | Employee tax optimization advice | helpdesk | `config.tax_config`, `data.salary_*` | Yes |
 | `policy-engine` | Evaluate action against autopilot policies | ALL | `config.policies.*` | **No** |
 | `confidence-scorer` | Score confidence of any LLM decision | ALL | — | **No** |
-| `audit-logger` | Write immutable audit entries | ALL | `sheets.audit_trail` | **No** |
+| `audit-logger` | Write immutable audit entries | ALL | `data.audit_trail` | **No** |
 
 ### Agent Definition Schema (`configs/agents/*.json`)
 
@@ -233,14 +233,14 @@ Every agent is defined by a config file. The code never hardcodes agent behaviou
   "system_prompt_file": "configs/prompts/ap-invoice.md",
   "sub_agents": ["invoice-extractor", "expense-classifier", "vendor-matcher", "duplicate-detector"],
   "tools": [
-    "sheets.ap_invoices.create",
-    "sheets.ap_invoices.update",
-    "sheets.vendor_master.lookup",
-    "sheets.vendor_master.create",
-    "sheets.gst_input_ledger.create",
-    "sheets.expense_entries.create",
-    "sheets.approval_requests.create",
-    "sheets.bank_payees.lookup",
+    "data.ap_invoices.create",
+    "data.ap_invoices.update",
+    "data.vendor_master.lookup",
+    "data.vendor_master.create",
+    "data.gst_input_ledger.create",
+    "data.expense_entries.create",
+    "data.approval_requests.create",
+    "data.bank_payees.lookup",
     "notifications.send_approval_request"
   ],
   "confidence_thresholds": {
@@ -890,7 +890,7 @@ VELO_LOGS (immutable)
 
 ### Handling Unstructured Data
 
-Unstructured inputs (invoice PDFs, images, pasted text) are never stored raw in sheets.
+Unstructured inputs (invoice PDFs, images, pasted text) are never stored raw in the database.
 
 ```
 Raw input received
@@ -1024,20 +1024,20 @@ Defines the sequence of agent calls for a complex task. Changing the flow = edit
     {
       "step": 5,
       "action": "create_ap_invoice_entry",
-      "tool": "sheets.ap_invoices.create",
+      "tool": "data.ap_invoices.create",
       "input_from": ["extracted_fields", "vendor_match", "classifications"],
       "requires_policy_check": true
     },
     {
       "step": 6,
       "action": "update_gst_input_ledger",
-      "tool": "sheets.gst_input_ledger.create",
+      "tool": "data.gst_input_ledger.create",
       "condition": "classifications.any.itc_claimable == true"
     },
     {
       "step": 7,
       "action": "initiate_payment_workflow",
-      "tool": "sheets.approval_requests.create",
+      "tool": "data.approval_requests.create",
       "requires_policy_check": true,
       "on_auto_execute": "schedule_payment",
       "on_request_approval": "surface_approval_card"
@@ -1226,8 +1226,7 @@ velo/
 │   └── workflows/
 │
 ├── scripts/
-│   ├── setup-sheets.ts                 ← Create all sheet tabs + headers
-│   └── seed-config-sheets.ts           ← Populate config Sheets from JSON files
+│   ├── seed-postgres-demo.ts           ← Seed PostgreSQL demo data
 │
 ├── turbo.json                           ← Turborepo pipeline config
 ├── pnpm-workspace.yaml                  ← Workspace package declarations
@@ -1259,7 +1258,7 @@ core → (no internal deps)
 - [ ] `pnpm-workspace.yaml` + `turbo.json` setup
 - [ ] `core` package: types, policy engine, confidence scorer, audit logger, config loader
 - [ ] `tools/sheets` package: authenticated Sheets client + all CRUD operations
-- [ ] Sheets setup script (`scripts/setup-sheets.ts`)
+- [ ] Seed script (`scripts/seed-postgres-demo.ts`)
 - [ ] Google Sheets — all tabs created with correct headers
 
 ### Phase 1 — Core Agents (Prototype)

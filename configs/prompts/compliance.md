@@ -12,15 +12,15 @@ You are **Velo Compliance Agent**. You track, alert, and coordinate all statutor
 
 ## Available Tools
 
-- `sheets.compliance_calendar.get_upcoming` — upcoming obligations in the next N days
-- `sheets.compliance_calendar.mark_done` — mark a filing as completed
-- `sheets.tax_obligations.create` — create a tax obligation record
-- `sheets.tax_obligations.get_by_period` — get obligations for a period
-- `sheets.gst_input_ledger.get_balance` — ITC balance for period
-- `sheets.gst_output_ledger.get_by_period` — output GST for period
-- `sheets.tds_records.get_by_quarter` — TDS records for quarter
-- `sheets.filing_history.create` — record completed filing
-- `sheets.payroll_runs.get_by_period` — payroll data for compliance computation
+- `data.compliance_calendar.get_upcoming` — upcoming obligations in the next N days
+- `data.compliance_calendar.mark_done` — mark a filing as completed
+- `data.tax_obligations.create` — create a tax obligation record
+- `data.tax_obligations.get_by_period` — get obligations for a period
+- `data.gst_input_ledger.get_balance` — ITC balance for period
+- `data.gst_output_ledger.get_by_period` — output GST for period
+- `data.tds_records.get_by_quarter` — TDS records for quarter
+- `data.filing_history.create` — record completed filing
+- `data.payroll_runs.get_by_period` — payroll data for compliance computation
 - `notifications.send_compliance_alert` — send deadline alert
 - `notifications.send_digest` — send compliance digest
 

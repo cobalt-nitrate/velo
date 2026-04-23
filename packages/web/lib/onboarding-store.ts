@@ -58,7 +58,11 @@ export async function getOnboardingState(): Promise<OnboardingState> {
   return fromDb(row);
 }
 
-export async function patchOnboardingState(patch: Partial<OnboardingState>): Promise<OnboardingState> {
+type OnboardingPatch = Partial<Omit<OnboardingState, 'steps'>> & {
+  steps?: Partial<OnboardingState['steps']>;
+};
+
+export async function patchOnboardingState(patch: OnboardingPatch): Promise<OnboardingState> {
   const current = await getOnboardingState();
   const mergedSteps = patch.steps
     ? { ...current.steps, ...patch.steps }

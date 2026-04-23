@@ -1,32 +1,29 @@
-import { executeSheetTool } from '@velo/tools/sheets';
+import { executeDataTool } from '@velo/tools/data';
 import { getUiSettings, setUiSettings, type UiSettings } from '@/lib/local-settings';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-/** UI + workspace settings. Optional ?company_settings=1 or ?sheets=1 pulls company_settings rows from DB. */
+/** UI + workspace settings. Optional ?company_settings=1 pulls company_settings rows from DB. */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const ui = await getUiSettings();
-  let sheetsRows: Array<Record<string, string>> | null = null;
+  let companySettingsRows: Array<Record<string, string>> | null = null;
 
-  if (
-    searchParams.get('company_settings') === '1' ||
-    searchParams.get('sheets') === '1'
-  ) {
+  if (searchParams.get('company_settings') === '1') {
     try {
-      const res = await executeSheetTool({
-        tool_id: 'sheets.company_settings.lookup',
+      const res = await executeDataTool({
+        tool_id: 'data.company_settings.lookup',
         company_id: 'demo-company',
       });
       const rows = (res as { rows?: Array<Record<string, string>> }).rows;
-      sheetsRows = rows ?? [];
+      companySettingsRows = rows ?? [];
     } catch {
-      sheetsRows = [];
+      companySettingsRows = [];
     }
   }
 
-  return NextResponse.json({ ok: true, ui, sheetsRows });
+  return NextResponse.json({ ok: true, ui, companySettingsRows });
 }
 
 export async function PUT(req: Request) {

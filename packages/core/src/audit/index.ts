@@ -1,7 +1,6 @@
 // AuditLogger — append-only event trail.
 // Events are stored in-memory for fast access within a session.
-// Flush to VELO_LOGS.audit_trail via @velo/tools `appendAuditRow`: serialized queue +
-// exponential backoff on Google quota errors (still fire-and-forget from this module).
+// Flush to Postgres via @velo/tools `appendAuditRow` (fire-and-forget from this module).
 
 export interface AuditEvent {
   id: string;
@@ -35,12 +34,12 @@ function evictOldestAuditEvents(): void {
   }
 }
 
-/** Row writer from `@velo/tools/sheets` `appendAuditRow` — register via `registerAuditSheetsFlush` from agents (or any host that has tools). */
+/** Row writer from `@velo/tools/data` `appendAuditRow` — register via `registerAuditSheetsFlush` from agents (or any host that has tools). */
 let sheetsFlushFn: ((row: Record<string, unknown>) => Promise<void>) | null = null;
 
 /**
- * Wire Sheets audit persistence. Call once from `@velo/agents` (or another package that depends on `@velo/tools`).
- * `@velo/core` stays free of a tools dependency so Next/Webpack can bundle it without resolving `@velo/tools/sheets`.
+ * Wire data-plane audit persistence. Call once from `@velo/agents` (or another package that depends on `@velo/tools`).
+ * `@velo/core` stays free of a tools dependency so Next/Webpack can bundle it without resolving tool modules.
  */
 export function registerAuditSheetsFlush(
   fn: ((row: Record<string, unknown>) => Promise<void>) | null

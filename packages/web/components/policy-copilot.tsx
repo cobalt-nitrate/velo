@@ -4,7 +4,7 @@ import { FormEvent, useState } from 'react';
 
 export function PolicyCopilot() {
   const [threshold, setThreshold] = useState(25000);
-  const [toolId, setToolId] = useState('sheets.ap_invoices.create');
+  const [toolId, setToolId] = useState('data.ap_invoices.create');
   const [confidence, setConfidence] = useState(0.82);
   const [amount, setAmount] = useState(40000);
   const [loading, setLoading] = useState(false);

@@ -9,7 +9,7 @@
       "step": 1,
       "id": "create_obligation",
       "action": "tool_call",
-      "tool": "sheets.tax_obligations.create",
+      "tool": "data.tax_obligations.create",
       "input_from": "trigger.payload",
       "output_to": "obligation"
     }

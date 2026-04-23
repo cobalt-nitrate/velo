@@ -9,7 +9,7 @@
       "step": 1,
       "id": "insert_doc",
       "action": "tool_call",
-      "tool": "sheets.policy_documents.create",
+      "tool": "data.policy_documents.create",
       "input_from": "trigger.payload",
       "output_to": "policy_doc"
     }

@@ -1,6 +1,4 @@
-/** Normalize Postgres-era `data.*` tool ids to the legacy `sheets.*` dispatch namespace. */
-
+/** Canonicalize tool ids (trim + normalize as-is). */
 export function canonicalVeloDataToolId(toolId: string): string {
-  if (toolId.startsWith('data.')) return `sheets.${toolId.slice(5)}`;
-  return toolId;
+  return String(toolId ?? '').trim();
 }

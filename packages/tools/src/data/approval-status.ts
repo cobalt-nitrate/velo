@@ -1,4 +1,4 @@
-/** Sheet / UI may use blanks, different casing, or trailing spaces — treat as pending when not resolved. */
+/** Data store / UI may use blanks, different casing, or trailing spaces — treat as pending when not resolved. */
 export function isApprovalPendingStatus(status: unknown): boolean {
   const s = String(status ?? '').trim().toUpperCase();
   return s === '' || s === 'PENDING';
@@ -9,3 +9,4 @@ export function isApprovalApprovedStatus(status: unknown): boolean {
   const s = String(status ?? '').trim().toUpperCase();
   return s === 'APPROVED';
 }
+

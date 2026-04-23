@@ -6,8 +6,8 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./sheets": "./src/sheets/client.ts",
-    "./sheets/approval-status": "./src/sheets/approval-status.ts",
+    "./data": "./src/data/client.ts",
+    "./data/approval-status": "./src/data/approval-status.ts",
     "./email": "./src/email/index.ts",
     "./notifications": "./src/notifications/index.ts",
     "./ocr": "./src/ocr/invoice-parser.ts",

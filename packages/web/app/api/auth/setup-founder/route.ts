@@ -3,12 +3,10 @@
  *
  * One-time endpoint to create the founder account.
  * Security gates:
- * - Email must be in VELO_FOUNDER_EMAILS
- * - No user with that email may already exist (single-use)
+ * - Only allowed when there are no existing users (single-use bootstrap)
  * - Password must be at least 10 characters
  */
 
-import { splitEmails } from '@/lib/auth';
 import { createUser } from '@/lib/users-registry';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
@@ -27,11 +25,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Invalid email address.' }, { status: 400 });
     }
 
-    const founderEmails = splitEmails(process.env.VELO_FOUNDER_EMAILS ?? '');
-    if (!founderEmails.has(email)) {
+    // One-time bootstrap: only create a founder if this is the first user in the system.
+    const existingAnyUser = await prisma.user.findFirst({ select: { id: true } });
+    if (existingAnyUser) {
       return NextResponse.json(
-        { ok: false, error: 'This email is not authorized as a founder account.' },
-        { status: 403 }
+        { ok: false, error: 'Founder already set up. Sign in or ask a founder to invite you.' },
+        { status: 409 }
       );
     }
 
@@ -39,15 +38,6 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { ok: false, error: 'Password must be at least 10 characters.' },
         { status: 400 }
-      );
-    }
-
-    // Single-use: fail if account already exists
-    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-    if (existing) {
-      return NextResponse.json(
-        { ok: false, error: 'A founder account with this email already exists. Sign in instead.' },
-        { status: 409 }
       );
     }
 

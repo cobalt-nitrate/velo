@@ -1,9 +1,9 @@
-import { authOptions, resolveRole } from '@/lib/auth';
-import { patchStoredConnectorEnv } from '@/lib/connector-env-store';
+import { authOptions } from '@/lib/auth';
 import { ASSIGNABLE_ROLES, getAllUsers, revokeUser, unrevokeUser } from '@/lib/users-registry';
 import type { Session } from 'next-auth';
 import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
@@ -28,8 +28,7 @@ export async function GET() {
       email: u.email,
       name: u.name,
       image: u.image,
-      // Re-resolve from env so the list reflects current email-list state
-      role: resolveRole(u.email),
+      role: u.role,
       firstSignIn: u.firstSignIn,
       lastSignIn: u.lastSignIn,
       revokedAt: u.revokedAt,
@@ -67,7 +66,6 @@ export async function PATCH(req: Request) {
     }
 
     // Only non-founder roles can be assigned here.
-    // Founder role is managed exclusively via VELO_FOUNDER_EMAILS in the connector settings.
     if (!(ASSIGNABLE_ROLES as string[]).includes(newRole)) {
       return NextResponse.json(
         { ok: false, error: `Invalid role '${newRole}'. Valid: ${ASSIGNABLE_ROLES.join(', ')}` },
@@ -80,28 +78,17 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ ok: false, error: 'Cannot change your own role' }, { status: 400 });
     }
 
-    const roleToEnvKey: Record<string, string> = {
-      finance_lead: 'VELO_FINANCE_EMAILS',
-      hr_lead: 'VELO_HR_EMAILS',
-      manager: 'VELO_MANAGER_EMAILS',
-      employee: '', // no explicit list — default
-    };
+    // DB-backed role assignment: update users.role and invalidate existing JWTs
+    const updated = await prisma.user.update({
+      where: { email },
+      data: {
+        role: newRole,
+        sessionVersion: { increment: 1 },
+      },
+      select: { email: true, role: true },
+    });
 
-    // Build updated env values: remove email from all lists, add to new list
-    const listKeys = ['VELO_FINANCE_EMAILS', 'VELO_HR_EMAILS', 'VELO_MANAGER_EMAILS'];
-    const patch: Record<string, string> = {};
-
-    for (const key of listKeys) {
-      const current = (process.env[key] ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
-      const updated = current.filter((e) => e !== email);
-      const targetKey = roleToEnvKey[newRole];
-      if (targetKey === key) updated.push(email);
-      patch[key] = updated.join(', ');
-    }
-
-    patchStoredConnectorEnv(patch);
-
-    return NextResponse.json({ ok: true, email, role: newRole });
+    return NextResponse.json({ ok: true, email: updated.email, role: updated.role });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

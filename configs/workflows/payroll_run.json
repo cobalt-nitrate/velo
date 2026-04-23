@@ -9,14 +9,14 @@
       "step": 1,
       "id": "fetch_employees",
       "action": "tool_call",
-      "tool": "sheets.employees.get_active",
+      "tool": "data.employees.get_active",
       "output_to": "active_employees"
     },
     {
       "step": 2,
       "id": "fetch_salary_structures",
       "action": "tool_call",
-      "tool": "sheets.salary_structures.get_by_ids",
+      "tool": "data.salary_structures.get_by_ids",
       "input_from": "active_employees.salary_structure_ids",
       "output_to": "salary_structures"
     },
@@ -24,10 +24,10 @@
       "step": 3,
       "id": "fetch_attendance_leave",
       "action": "tool_call",
-      "tool": "sheets.attendance.get_by_month",
+      "tool": "data.attendance.get_by_month",
       "input_from": ["month", "year"],
       "output_to": "attendance_data",
-      "also": "sheets.leave_records.get_by_month"
+      "also": "data.leave_records.get_by_month"
     },
     {
       "step": 4,
@@ -54,7 +54,7 @@
       "step": 6,
       "id": "create_payroll_run_record",
       "action": "tool_call",
-      "tool": "sheets.payroll_runs.create",
+      "tool": "data.payroll_runs.create",
       "input_from": "payroll_computation"
     },
     {
@@ -64,13 +64,13 @@
       "action": "generate_salary_slips",
       "input_from": "payroll_computation",
       "output_to": "salary_slip_records",
-      "also": "sheets.salary_slips.create_batch"
+      "also": "data.salary_slips.create_batch"
     },
     {
       "step": 8,
       "id": "create_tax_obligations",
       "action": "tool_call",
-      "tool": "sheets.tax_obligations.create_batch",
+      "tool": "data.tax_obligations.create_batch",
       "input_from": "payroll_computation.tax_summary",
       "entries": [
         { "type": "pf_challan", "due_rule": "compliance_calendar_rules.pf_challan" },

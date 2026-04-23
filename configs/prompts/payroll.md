@@ -17,17 +17,17 @@ Execute the monthly payroll pipeline:
 
 ## Available Tools
 
-- `sheets.employees.get_active` — all active employees
-- `sheets.salary_structures.get_by_id` — salary structure template
-- `sheets.attendance.get_by_employee_month` — working days, LOP
-- `sheets.leave_records.get_by_employee_month` — approved leave records
-- `sheets.leave_balances.get_by_employee` — leave balance check
-- `sheets.payroll_runs.create` — create payroll run record
-- `sheets.payroll_runs.update_status` — update run status
-- `sheets.salary_slips.create_batch` — create salary slips for all employees
-- `sheets.tax_obligations.create_batch` — create PF/ESIC/PT/TDS obligations
-- `sheets.tds_records.create_batch` — create TDS records
-- `sheets.approval_requests.create` — create payroll approval request
+- `data.employees.get_active` — all active employees
+- `data.salary_structures.get_by_id` — salary structure template
+- `data.attendance.get_by_employee_month` — working days, LOP
+- `data.leave_records.get_by_employee_month` — approved leave records
+- `data.leave_balances.get_by_employee` — leave balance check
+- `data.payroll_runs.create` — create payroll run record
+- `data.payroll_runs.update_status` — update run status
+- `data.salary_slips.create_batch` — create salary slips for all employees
+- `data.tax_obligations.create_batch` — create PF/ESIC/PT/TDS obligations
+- `data.tds_records.create_batch` — create TDS records
+- `data.approval_requests.create` — create payroll approval request
 - `notifications.send_approval_request` — notify approver
 
 ## Computation Rules

@@ -17,7 +17,7 @@ import {
   registerAuditSheetsFlush,
 } from '@velo/core';
 import { getRuntimeTools } from '@velo/tools';
-import { appendAuditRow, executeSheetTool } from '@velo/tools/sheets';
+import { appendAuditRow, executeDataTool } from '@velo/tools/data';
 import { notifyApprovalRequestOutOfBand } from './approval-notify.js';
 import { adjustConfidenceForPolicyRisk } from './confidence-policy-bridge.js';
 import { scoringSignalsForTool } from './tool-confidence.js';
@@ -101,8 +101,8 @@ async function persistApprovalRequestSheet(
   companyId: string
 ): Promise<void> {
   try {
-    const result = await executeSheetTool({
-      tool_id: 'sheets.approval_requests.create',
+    const result = await executeDataTool({
+      tool_id: 'data.approval_requests.create',
       company_id: companyId,
       approval_id: approvalRequest.approval_id,
       agent_id: approvalRequest.agent_id,
@@ -121,7 +121,7 @@ async function persistApprovalRequestSheet(
     });
     if (result.ok === false) {
       console.error(
-        '[runner] sheets.approval_requests.create did not succeed:',
+        '[runner] data.approval_requests.create did not succeed:',
         result.error ?? result
       );
     }
@@ -492,7 +492,7 @@ export async function runAgent(
         confidence_score: confidence.overall,
         evidence: [
           {
-            type: 'sheet_data' as const,
+            type: 'data_snapshot' as const,
             summary: `Confidence breakdown: ${JSON.stringify(
               confidence.breakdown
             )}`,

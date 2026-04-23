@@ -3,7 +3,7 @@
  *
  *   pnpm --filter @velo/agents e2e:modules
  *
- * Loads repo-root `.env.local` when present. Without Google credentials, sheet tools use in-memory stores.
+ * Loads repo-root `.env.local` when present. Without DATABASE_URL, data tools use in-memory stores.
  */
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
@@ -14,7 +14,7 @@ import {
   isApprovalPendingStatus,
   mergeApprovalAttachmentsFromFileLinks,
   updateApprovalRow,
-} from '@velo/tools/sheets';
+} from '@velo/tools/data';
 
 function loadEnvLocal(): void {
   const p = resolve(getRepoRoot(), '.env.local');
@@ -80,7 +80,7 @@ async function moduleRunway(): Promise<void> {
   const txnId = `e2e-txn-runway-${t}`;
   const p = {
     ...baseToolPayload(),
-    tool_id: 'sheets.bank_transactions.create',
+    tool_id: 'data.bank_transactions.create',
     txn_id: txnId,
     date: '2026-04-05',
     narration: 'E2E runway liquidity check',
@@ -92,10 +92,10 @@ async function moduleRunway(): Promise<void> {
     source: 'e2e_module_paths',
     created_at: nowIso(),
   };
-  assertToolOk(await invokeRegisteredTool('sheets.bank_transactions.create', p), 'bank_transactions.create');
-  const bal = await invokeRegisteredTool('sheets.bank_transactions.get_latest_balance', {
+  assertToolOk(await invokeRegisteredTool('data.bank_transactions.create', p), 'bank_transactions.create');
+  const bal = await invokeRegisteredTool('data.bank_transactions.get_latest_balance', {
     ...baseToolPayload(),
-    tool_id: 'sheets.bank_transactions.get_latest_balance',
+    tool_id: 'data.bank_transactions.get_latest_balance',
   });
   assertToolOk(bal, 'get_latest_balance');
   if (typeof bal.balance_inr !== 'number') throw new Error('get_latest_balance: missing balance_inr');
@@ -105,9 +105,9 @@ async function moduleCompliance(): Promise<void> {
   const t = Date.now();
   const obligationId = `e2e-tax-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.tax_obligations.create', {
+    await invokeRegisteredTool('data.tax_obligations.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.tax_obligations.create',
+      tool_id: 'data.tax_obligations.create',
       obligation_id: obligationId,
       type: 'gst',
       period_month: '4',
@@ -125,9 +125,9 @@ async function moduleCompliance(): Promise<void> {
 
   const apprId = `e2e-appr-co-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.approval_requests.create', {
+    await invokeRegisteredTool('data.approval_requests.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.approval_requests.create',
+      tool_id: 'data.approval_requests.create',
       approval_id: apprId,
       agent_id: 'compliance',
       action_type: 'REMIT_CHALLAN',
@@ -150,9 +150,9 @@ async function moduleCompliance(): Promise<void> {
   await resolveApproval(apprId);
 
   assertToolOk(
-    await invokeRegisteredTool('sheets.tax_obligations.update', {
+    await invokeRegisteredTool('data.tax_obligations.update', {
       ...baseToolPayload(),
-      tool_id: 'sheets.tax_obligations.update',
+      tool_id: 'data.tax_obligations.update',
       obligation_id: obligationId,
       status: 'paid',
       paid_date: '2026-04-05',
@@ -167,9 +167,9 @@ async function modulePayroll(): Promise<void> {
   const t = Date.now();
   const runId = `e2e-run-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.payroll_runs.create', {
+    await invokeRegisteredTool('data.payroll_runs.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.payroll_runs.create',
+      tool_id: 'data.payroll_runs.create',
       run_id: runId,
       month: '5',
       year: '2026',
@@ -189,9 +189,9 @@ async function modulePayroll(): Promise<void> {
 
   const apprId = `e2e-appr-pay-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.approval_requests.create', {
+    await invokeRegisteredTool('data.approval_requests.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.approval_requests.create',
+      tool_id: 'data.approval_requests.create',
       approval_id: apprId,
       agent_id: 'payroll',
       action_type: 'PAYOUT_BATCH',
@@ -214,9 +214,9 @@ async function modulePayroll(): Promise<void> {
   await resolveApproval(apprId);
 
   assertToolOk(
-    await invokeRegisteredTool('sheets.payroll_runs.update_status', {
+    await invokeRegisteredTool('data.payroll_runs.update_status', {
       ...baseToolPayload(),
-      tool_id: 'sheets.payroll_runs.update_status',
+      tool_id: 'data.payroll_runs.update_status',
       run_id: runId,
       status: 'paid',
       approved_by: 'e2e@velo.local',
@@ -231,9 +231,9 @@ async function moduleAp(): Promise<void> {
   const invoiceId = `e2e-ap-inv-${t}`;
   const apprId = `e2e-appr-ap-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.ap_invoices.create', {
+    await invokeRegisteredTool('data.ap_invoices.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.ap_invoices.create',
+      tool_id: 'data.ap_invoices.create',
       invoice_id: invoiceId,
       vendor_id: 'demo-vnd-001',
       vendor_name: 'E2E Vendor AP',
@@ -263,9 +263,9 @@ async function moduleAp(): Promise<void> {
   );
 
   assertToolOk(
-    await invokeRegisteredTool('sheets.approval_requests.create', {
+    await invokeRegisteredTool('data.approval_requests.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.approval_requests.create',
+      tool_id: 'data.approval_requests.create',
       approval_id: apprId,
       agent_id: 'ap-invoice',
       action_type: 'VENDOR_PAYMENT',
@@ -292,9 +292,9 @@ async function moduleAr(): Promise<void> {
   const t = Date.now();
   const invoiceId = `e2e-ar-inv-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.ar_invoices.create', {
+    await invokeRegisteredTool('data.ar_invoices.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.ar_invoices.create',
+      tool_id: 'data.ar_invoices.create',
       invoice_id: invoiceId,
       client_id: 'demo-cli-001',
       client_name: 'Horizon Retail India Pvt Ltd',
@@ -319,9 +319,9 @@ async function moduleAr(): Promise<void> {
   );
 
   assertToolOk(
-    await invokeRegisteredTool('sheets.gst_output_ledger.create', {
+    await invokeRegisteredTool('data.gst_output_ledger.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.gst_output_ledger.create',
+      tool_id: 'data.gst_output_ledger.create',
       ledger_id: `e2e-gstout-${t}`,
       ar_invoice_id: invoiceId,
       client_name: 'Horizon Retail India Pvt Ltd',
@@ -340,9 +340,9 @@ async function moduleAr(): Promise<void> {
 
   const apprId = `e2e-appr-ar-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.approval_requests.create', {
+    await invokeRegisteredTool('data.approval_requests.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.approval_requests.create',
+      tool_id: 'data.approval_requests.create',
       approval_id: apprId,
       agent_id: 'ar-collections',
       action_type: 'ESCALATE_FOLLOWUP',
@@ -369,9 +369,9 @@ async function moduleHr(): Promise<void> {
   const t = Date.now();
   const taskId = `e2e-hr-task-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.hr_tasks.create', {
+    await invokeRegisteredTool('data.hr_tasks.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.hr_tasks.create',
+      tool_id: 'data.hr_tasks.create',
       task_id: taskId,
       employee_id: 'demo-emp-001',
       task_type: 'onboarding_docs',
@@ -388,9 +388,9 @@ async function moduleHr(): Promise<void> {
 
   const apprId = `e2e-appr-hr-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.approval_requests.create', {
+    await invokeRegisteredTool('data.approval_requests.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.approval_requests.create',
+      tool_id: 'data.approval_requests.create',
       approval_id: apprId,
       agent_id: 'hr',
       action_type: 'HR_TASK_ESCALATION',
@@ -413,9 +413,9 @@ async function moduleHr(): Promise<void> {
   await resolveApproval(apprId);
 
   assertToolOk(
-    await invokeRegisteredTool('sheets.hr_tasks.update_status', {
+    await invokeRegisteredTool('data.hr_tasks.update_status', {
       ...baseToolPayload(),
-      tool_id: 'sheets.hr_tasks.update_status',
+      tool_id: 'data.hr_tasks.update_status',
       task_id: taskId,
       status: 'completed',
       completed_at: nowIso(),
@@ -428,9 +428,9 @@ async function moduleHelpdesk(): Promise<void> {
   const t = Date.now();
   const docId = `e2e-policy-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.policy_documents.create', {
+    await invokeRegisteredTool('data.policy_documents.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.policy_documents.create',
+      tool_id: 'data.policy_documents.create',
       doc_id: docId,
       doc_type: 'e2e_helpdesk_article',
       version: '1.0',
@@ -444,9 +444,9 @@ async function moduleHelpdesk(): Promise<void> {
 
   const apprId = `e2e-appr-hd-${t}`;
   assertToolOk(
-    await invokeRegisteredTool('sheets.approval_requests.create', {
+    await invokeRegisteredTool('data.approval_requests.create', {
       ...baseToolPayload(),
-      tool_id: 'sheets.approval_requests.create',
+      tool_id: 'data.approval_requests.create',
       approval_id: apprId,
       agent_id: 'helpdesk',
       action_type: 'PUBLISH_ARTICLE',

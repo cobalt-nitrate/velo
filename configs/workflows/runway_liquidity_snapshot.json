@@ -9,7 +9,7 @@
       "step": 1,
       "id": "read_balance",
       "action": "tool_call",
-      "tool": "sheets.bank_transactions.get_latest_balance",
+      "tool": "data.bank_transactions.get_latest_balance",
       "input_from": "trigger.payload",
       "output_to": "liquidity"
     }

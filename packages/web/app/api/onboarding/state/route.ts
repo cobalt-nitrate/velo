@@ -30,7 +30,7 @@ export async function GET() {
     const deny = founderOnly(session);
     if (deny) return deny;
 
-    return NextResponse.json({ ok: true, state: getOnboardingState() });
+    return NextResponse.json({ ok: true, state: await getOnboardingState() });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
@@ -77,7 +77,7 @@ export async function PATCH(req: Request) {
       if (Object.keys(stepPatch).length) patch.steps = stepPatch as OnboardingState['steps'];
     }
 
-    const next = patchOnboardingState(patch);
+    const next = await patchOnboardingState(patch);
     return NextResponse.json({ ok: true, state: next });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });

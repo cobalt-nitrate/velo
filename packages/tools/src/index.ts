@@ -1,5 +1,5 @@
 import type { ToolSchema } from '@velo/core/types';
-import { executeSheetTool } from './sheets/client.js';
+import { executeDataTool } from './data/client.js';
 import { sendEmail } from './email/index.js';
 import { sendNotification } from './notifications/index.js';
 import {
@@ -501,40 +501,30 @@ const NOTIFY_DIGEST_SCHEMA: ToolSchema['input_schema'] = {
 
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 
-function withDataPlaneAliases(defs: ToolDefinition[]): ToolDefinition[] {
-  const extra: ToolDefinition[] = [];
-  for (const d of defs) {
-    if (d.id.startsWith('sheets.')) {
-      extra.push({ ...d, id: `data.${d.id.slice(7)}` });
-    }
-  }
-  return [...defs, ...extra];
-}
-
 const baseToolDefinitions: ToolDefinition[] = [
   // ── CONFIG (company_settings in Postgres) ───────────────────────────────────
   {
-    id: 'sheets.company_settings.lookup',
+    id: 'data.company_settings.lookup',
     description: 'Read company_settings key/value rows from the database',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── AP Invoice tools ────────────────────────────────────────────────────────
   {
-    id: 'sheets.ap_invoices.create',
+    id: 'data.ap_invoices.create',
     description: 'Create AP invoice row',
     schema: AP_INVOICE_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.ap_invoices.update',
+    id: 'data.ap_invoices.update',
     description: 'Update AP invoice row',
     schema: AP_INVOICE_UPDATE_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.ap_invoices.find_by_vendor_amount_date',
+    id: 'data.ap_invoices.find_by_vendor_amount_date',
     description: 'Find AP invoice matches by vendor, amount, date (duplicate detection)',
     schema: {
       type: 'object',
@@ -547,12 +537,12 @@ const baseToolDefinitions: ToolDefinition[] = [
         invoice_number: { type: 'string' },
       },
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Vendor master tools ──────────────────────────────────────────────────────
   {
-    id: 'sheets.vendor_master.lookup_by_gstin',
+    id: 'data.vendor_master.lookup_by_gstin',
     description: 'Lookup vendor using GSTIN (exact match)',
     schema: {
       type: 'object',
@@ -562,10 +552,10 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['gstin'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.vendor_master.lookup_by_name_fuzzy',
+    id: 'data.vendor_master.lookup_by_name_fuzzy',
     description: 'Lookup vendor using fuzzy name matching',
     schema: {
       type: 'object',
@@ -575,64 +565,64 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['vendor_name'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.vendor_master.create',
+    id: 'data.vendor_master.create',
     description: 'Create vendor in vendor master',
     schema: VENDOR_CREATE_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── GST and expense tools ────────────────────────────────────────────────────
   {
-    id: 'sheets.gst_input_ledger.create',
+    id: 'data.gst_input_ledger.create',
     description: 'Create GST input ledger row (record ITC-claimable GST)',
     schema: GST_LEDGER_WRITE_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.gst_input_ledger.get_balance',
+    id: 'data.gst_input_ledger.get_balance',
     description: 'Get ITC balance for a given period (month + year)',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.gst_output_ledger.create',
+    id: 'data.gst_output_ledger.create',
     description: 'Create GST output ledger row for AR invoice',
     schema: GST_LEDGER_WRITE_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.gst_output_ledger.get_by_period',
+    id: 'data.gst_output_ledger.get_by_period',
     description: 'Get output GST for a period',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.expense_entries.create',
+    id: 'data.expense_entries.create',
     description: 'Create classified expense ledger row',
     schema: EXPENSE_ENTRY_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.expense_entries.get_by_period',
+    id: 'data.expense_entries.get_by_period',
     description: 'Get expense entries for a period',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Approval tools ────────────────────────────────────────────────────────────
   {
-    id: 'sheets.approval_requests.create',
+    id: 'data.approval_requests.create',
     description: 'Create approval request record',
     schema: APPROVAL_REQUEST_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Bank payee ────────────────────────────────────────────────────────────────
   {
-    id: 'sheets.bank_payees.lookup',
+    id: 'data.bank_payees.lookup',
     description: 'Lookup bank payee details by vendor_id',
     schema: {
       type: 'object',
@@ -642,18 +632,18 @@ const baseToolDefinitions: ToolDefinition[] = [
         vendor_name: { type: 'string' },
       },
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── AR Invoice tools ──────────────────────────────────────────────────────────
   {
-    id: 'sheets.ar_invoices.create',
+    id: 'data.ar_invoices.create',
     description: 'Create AR invoice record',
     schema: AR_INVOICE_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.ar_invoices.update',
+    id: 'data.ar_invoices.update',
     description: 'Update AR invoice status / payment received',
     schema: {
       type: 'object',
@@ -662,10 +652,10 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['invoice_id'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.ar_invoices.update_status',
+    id: 'data.ar_invoices.update_status',
     description: 'Update AR invoice status (alias)',
     schema: {
       type: 'object',
@@ -677,56 +667,56 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['invoice_id', 'status'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.ar_invoices.get_by_period',
+    id: 'data.ar_invoices.get_by_period',
     description: 'Get AR invoices for a period',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.ar_invoices.get_outstanding',
+    id: 'data.ar_invoices.get_outstanding',
     description: 'Get all outstanding (unpaid) AR invoices',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.ar_invoices.get_overdue',
+    id: 'data.ar_invoices.get_overdue',
     description: 'Get AR invoices past due date and unpaid',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.ap_invoices.get_pending_payables',
+    id: 'data.ap_invoices.get_pending_payables',
     description: 'AP invoices not yet paid',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.ar_invoices.get_pending_receivables',
+    id: 'data.ar_invoices.get_pending_receivables',
     description: 'AR invoices with balance due',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Client master ────────────────────────────────────────────────────────────
   {
-    id: 'sheets.client_master.lookup',
+    id: 'data.client_master.lookup',
     description: 'Lookup client details by client_id or name',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Employee tools ────────────────────────────────────────────────────────────
   {
-    id: 'sheets.employees.get_active',
+    id: 'data.employees.get_active',
     description: 'Get all active employees',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.employees.get_by_id',
+    id: 'data.employees.get_by_id',
     description: 'Get employee by employee_id',
     schema: {
       type: 'object',
@@ -736,16 +726,16 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['employee_id'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.employees.get_active_headcount',
+    id: 'data.employees.get_active_headcount',
     description: 'Count active employees',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.employees.get_own_salary_structure',
+    id: 'data.employees.get_own_salary_structure',
     description: 'Employee row joined with salary structure definition',
     schema: {
       type: 'object',
@@ -755,10 +745,10 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['employee_id'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.employees.get_own_record',
+    id: 'data.employees.get_own_record',
     description: 'Get the requesting employee\'s own profile',
     schema: {
       type: 'object',
@@ -768,24 +758,24 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['employee_id'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.employees.create',
+    id: 'data.employees.create',
     description: 'Create new employee record',
     schema: EMPLOYEE_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.employees.update',
+    id: 'data.employees.update',
     description: 'Update employee record',
     schema: EMPLOYEE_UPDATE_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Salary structures ─────────────────────────────────────────────────────────
   {
-    id: 'sheets.salary_structures.get_by_id',
+    id: 'data.salary_structures.get_by_id',
     description: 'Get salary structure by structure_id',
     schema: {
       type: 'object',
@@ -795,142 +785,142 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['structure_id'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Attendance & leave ────────────────────────────────────────────────────────
   {
-    id: 'sheets.attendance.get_by_employee_month',
+    id: 'data.attendance.get_by_employee_month',
     description: 'Get attendance record for employee by month/year',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.leave_records.get_by_employee',
+    id: 'data.leave_records.get_by_employee',
     description: 'Get all leave history for an employee',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.leave_records.get_by_employee_month',
+    id: 'data.leave_records.get_by_employee_month',
     description: 'Get leave records for employee in a specific month',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.leave_records.create',
+    id: 'data.leave_records.create',
     description: 'Create a new leave record',
     schema: LEAVE_RECORD_WRITE_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.leave_records.update_status',
+    id: 'data.leave_records.update_status',
     description: 'Approve or reject a leave record',
     schema: LEAVE_RECORD_STATUS_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.leave_balances.get_by_employee',
+    id: 'data.leave_balances.get_by_employee',
     description: 'Get leave balance by type for an employee',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.leave_balances.create_batch',
+    id: 'data.leave_balances.create_batch',
     description: 'Initialize leave balances for a new employee',
     schema: LEAVE_BALANCE_BATCH_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.leave_balances.update',
+    id: 'data.leave_balances.update',
     description: 'Update leave balance after approval/rejection',
     schema: LEAVE_BALANCE_UPDATE_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Payroll tools ─────────────────────────────────────────────────────────────
   {
-    id: 'sheets.payroll_runs.create',
+    id: 'data.payroll_runs.create',
     description: 'Create payroll run record',
     schema: PAYROLL_RUN_CREATE_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.payroll_runs.update_status',
+    id: 'data.payroll_runs.update_status',
     description: 'Update payroll run status (e.g., PENDING_APPROVAL → APPROVED)',
     schema: PAYROLL_RUN_STATUS_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.payroll_runs.get_by_period',
+    id: 'data.payroll_runs.get_by_period',
     description: 'Get payroll run records for a period',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.payroll_runs.get_committed_salaries',
+    id: 'data.payroll_runs.get_committed_salaries',
     description: 'Payroll runs in approved/committed/paid state',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.salary_slips.create_batch',
+    id: 'data.salary_slips.create_batch',
     description: 'Create salary slips for all employees in a payroll run',
     schema: SALARY_SLIP_BATCH_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.salary_slips.get_by_employee_month',
+    id: 'data.salary_slips.get_by_employee_month',
     description: 'Get salary slip for an employee for a specific month/year',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.salary_slips.get_ytd_by_employee',
+    id: 'data.salary_slips.get_ytd_by_employee',
     description: 'Year-to-date salary slips per employee',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Compliance tools ──────────────────────────────────────────────────────────
   {
-    id: 'sheets.compliance_calendar.get_upcoming',
+    id: 'data.compliance_calendar.get_upcoming',
     description: 'Get upcoming compliance obligations (next N days)',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.compliance_calendar.get_upcoming_obligations',
+    id: 'data.compliance_calendar.get_upcoming_obligations',
     description: 'Alias for upcoming compliance obligations',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.compliance_calendar.mark_done',
+    id: 'data.compliance_calendar.mark_done',
     description: 'Mark a compliance obligation as completed',
     schema: COMPLIANCE_MARK_DONE_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.tax_obligations.create',
+    id: 'data.tax_obligations.create',
     description: 'Create a tax obligation record',
     schema: TAX_OBLIGATION_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.tax_obligations.create_batch',
+    id: 'data.tax_obligations.create_batch',
     description: 'Create multiple tax obligation records (PF, ESIC, TDS, PT)',
     schema: TAX_OBLIGATION_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.tax_obligations.get_by_period',
+    id: 'data.tax_obligations.get_by_period',
     description: 'Get tax obligations for a period',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.tax_obligations.update',
+    id: 'data.tax_obligations.update',
     description: 'Update tax obligation status, paid_date, or payment_reference',
     schema: {
       type: 'object',
@@ -939,10 +929,10 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['obligation_id'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.tds_records.create_batch',
+    id: 'data.tds_records.create_batch',
     description: 'Create TDS records for all employees',
     schema: {
       type: 'object',
@@ -955,54 +945,54 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['company_id'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.tds_records.get_by_quarter',
+    id: 'data.tds_records.get_by_quarter',
     description: 'Get TDS records for a quarter',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.tds_records.get_by_employee_year',
+    id: 'data.tds_records.get_by_employee_year',
     description: 'TDS ledger rows for one employee and financial year period',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.filing_history.create',
+    id: 'data.filing_history.create',
     description: 'Record a completed statutory filing',
     schema: FILING_HISTORY_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── HR tools ──────────────────────────────────────────────────────────────────
   {
-    id: 'sheets.hr_tasks.create',
+    id: 'data.hr_tasks.create',
     description: 'Create an HR onboarding/offboarding task',
     schema: HR_TASK_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.hr_tasks.create_batch',
+    id: 'data.hr_tasks.create_batch',
     description: 'Create multiple HR tasks',
     schema: HR_TASK_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.hr_tasks.get_blockers',
+    id: 'data.hr_tasks.get_blockers',
     description: 'Tasks blocking onboarding or HR workflows',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.hr_tasks.get_pending_hires',
+    id: 'data.hr_tasks.get_pending_hires',
     description: 'Onboarding/hire tasks not completed',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.hr_tasks.update_status',
+    id: 'data.hr_tasks.update_status',
     description: 'Mark an HR task as completed',
     schema: {
       type: 'object',
@@ -1015,10 +1005,10 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['task_id', 'status'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.hr_tasks.update',
+    id: 'data.hr_tasks.update',
     description: 'Update HR task fields (e.g. primary Drive URL after document generation)',
     schema: {
       type: 'object',
@@ -1027,10 +1017,10 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['task_id'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.salary_slips.update',
+    id: 'data.salary_slips.update',
     description: 'Update a salary slip row (e.g. drive_url after generating payslip HTML)',
     schema: {
       type: 'object',
@@ -1043,16 +1033,16 @@ const baseToolDefinitions: ToolDefinition[] = [
       },
       required: ['slip_id'],
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.file_links.create',
+    id: 'data.file_links.create',
     description: 'Record a Drive file in Velo file_links index (scope_table + scope_record_id + role)',
     schema: FILE_LINK_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.file_links.get_by_scope',
+    id: 'data.file_links.get_by_scope',
     description: 'List file_links for a scope_table / scope_record_id (optional role)',
     schema: {
       type: 'object',
@@ -1063,19 +1053,19 @@ const baseToolDefinitions: ToolDefinition[] = [
         role: { type: 'string' },
       },
     },
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.policy_documents.create',
+    id: 'data.policy_documents.create',
     description: 'Create a policy document record',
     schema: POLICY_DOC_ROW_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.policy_documents.get_by_type',
+    id: 'data.policy_documents.get_by_type',
     description: 'Get policy document by type (e.g., "wfh", "leave", "posh")',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   // ── Notification tools ────────────────────────────────────────────────────────
@@ -1327,34 +1317,34 @@ const baseToolDefinitions: ToolDefinition[] = [
 
   // ── Bank transactions (read-only for runway) ──────────────────────────────────
   {
-    id: 'sheets.bank_transactions.get_recent',
+    id: 'data.bank_transactions.get_recent',
     description: 'Get recent bank transactions for cash position',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.bank_transactions.get_latest_balance',
+    id: 'data.bank_transactions.get_latest_balance',
     description: 'Latest running balance from imported bank transactions',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.bank_transactions.get_by_date_range',
+    id: 'data.bank_transactions.get_by_date_range',
     description: 'Bank transactions between from_date and to_date (ISO)',
     schema: LOOKUP_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.bank_transactions.create',
+    id: 'data.bank_transactions.create',
     description: 'Append one parsed bank transaction row',
     schema: BANK_TX_ROW_ITEM_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
   {
-    id: 'sheets.bank_transactions.create_batch',
+    id: 'data.bank_transactions.create_batch',
     description: 'Append many bank transaction rows (e.g. after statement parse)',
     schema: BANK_TX_CREATE_BATCH_SCHEMA,
-    handler: executeSheetTool,
+    handler: executeDataTool,
   },
 
   {
@@ -1388,7 +1378,7 @@ const baseToolDefinitions: ToolDefinition[] = [
   },
 ];
 
-const toolDefinitions = withDataPlaneAliases(baseToolDefinitions);
+const toolDefinitions = baseToolDefinitions;
 
 export function getRuntimeTools(): ToolDefinition[] {
   return toolDefinitions;

@@ -72,7 +72,7 @@ export default function FounderSetupPage() {
           </div>
           <h1 className="text-lg font-semibold text-velo-text">Create your founder account</h1>
           <p className="mt-1 text-xs text-velo-muted">
-            One-time setup. Your email must be in <code className="text-velo-text">VELO_FOUNDER_EMAILS</code>.
+            One-time setup. This page only works before any users exist.
           </p>
         </div>
 

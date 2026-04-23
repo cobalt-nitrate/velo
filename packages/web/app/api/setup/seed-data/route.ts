@@ -129,6 +129,9 @@ export async function POST(req: Request) {
     // 4. Insert each table into Postgres
     const results: { sheet: string; rows: number; skipped?: string }[] = [];
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = prisma as unknown as Record<string, any>;
+
     for (const t of tables) {
       const { sheet, rows } = t;
       if (!sheet || !Array.isArray(rows) || rows.length === 0) continue;
@@ -139,8 +142,7 @@ export async function POST(req: Request) {
         continue;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const model = (prisma as unknown as Record<string, any>)[modelName];
+      const model = db[modelName];
       if (!model?.createMany) {
         results.push({ sheet, rows: 0, skipped: 'model not found in Prisma client' });
         continue;

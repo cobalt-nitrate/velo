@@ -9,7 +9,7 @@ import {
   mergeApprovalAttachmentsFromFileLinks,
   parseAttachmentDriveUrlsJson,
   updateApprovalRow,
-} from '@velo/tools/sheets';
+} from '@velo/tools/data';
 import { appendDecisionMemory } from '@velo/core';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../../lib/auth';

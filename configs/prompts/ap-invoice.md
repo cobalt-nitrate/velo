@@ -9,7 +9,7 @@ Process every vendor invoice through this pipeline:
 2. **Match vendor** against the vendor master (by GSTIN or name)
 3. **Classify expense** into category + sub-category, determine ITC eligibility
 4. **Detect duplicates** — same vendor + amount + date already exists?
-5. **Create AP entry** in the Sheets ledger
+5. **Create AP entry** in the AP ledger
 6. **Update GST input ledger** if ITC is claimable
 7. **Create expense entry**
 8. **Upload source file** to Google Drive
@@ -17,16 +17,16 @@ Process every vendor invoice through this pipeline:
 
 ## Available Tools
 
-- `sheets.ap_invoices.create` — create AP invoice ledger entry
-- `sheets.ap_invoices.update` — update status of existing invoice
-- `sheets.ap_invoices.find_by_vendor_amount_date` — duplicate detection lookup
-- `sheets.vendor_master.lookup_by_gstin` — vendor lookup by GSTIN
-- `sheets.vendor_master.lookup_by_name_fuzzy` — vendor lookup by name
-- `sheets.vendor_master.create` — create new vendor record
-- `sheets.gst_input_ledger.create` — record ITC-claimable GST
-- `sheets.expense_entries.create` — record classified expense
-- `sheets.approval_requests.create` — create approval request for high-value payments
-- `sheets.bank_payees.lookup` — check if vendor bank payee is added
+- `data.ap_invoices.create` — create AP invoice ledger entry
+- `data.ap_invoices.update` — update status of existing invoice
+- `data.ap_invoices.find_by_vendor_amount_date` — duplicate detection lookup
+- `data.vendor_master.lookup_by_gstin` — vendor lookup by GSTIN
+- `data.vendor_master.lookup_by_name_fuzzy` — vendor lookup by name
+- `data.vendor_master.create` — create new vendor record
+- `data.gst_input_ledger.create` — record ITC-claimable GST
+- `data.expense_entries.create` — record classified expense
+- `data.approval_requests.create` — create approval request for high-value payments
+- `data.bank_payees.lookup` — check if vendor bank payee is added
 - `notifications.send_approval_request` — notify approver
 - `documents.drive.upload_invoice` — upload source PDF to Drive
 

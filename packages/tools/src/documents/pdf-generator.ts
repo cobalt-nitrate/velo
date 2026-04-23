@@ -10,7 +10,7 @@ import {
   ensureVeloDrivePath,
   segmentsForDocumentTool,
 } from './drive-folders.js';
-import { recordDocumentOnDriveAndSheets } from './drive-sheet-cohesion.js';
+import { recordDocumentOnDriveAndData } from './drive-sheet-cohesion.js';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -457,7 +457,7 @@ export async function generatePdfDocument(
         segmentsForDocumentTool(toolId, params)
       );
       const result = await uploadToDrive(filename, html, leafId);
-      await recordDocumentOnDriveAndSheets({
+      await recordDocumentOnDriveAndData({
         toolId,
         params,
         documentId,

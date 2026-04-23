@@ -1,5 +1,4 @@
-import { authOptions, resolveRole } from '@/lib/auth';
-import { patchStoredConnectorEnv } from '@/lib/connector-env-store';
+import { authOptions } from '@/lib/auth';
 import { consumeInvite, deleteInvite, getInvite } from '@/lib/invites-store';
 import { prisma } from '@/lib/prisma';
 import { createUser } from '@/lib/users-registry';
@@ -128,26 +127,12 @@ export async function POST(req: Request, { params }: Ctx) {
     }
 
     // Create the account
-    const role = resolveRole(email) !== 'employee' ? resolveRole(email) : invite.role;
-    await createUser({ email, name: name ?? email.split('@')[0], password, role });
-
-    // Add email to the appropriate env-var list so resolveRole picks it up
-    const roleToKey: Record<string, string> = {
-      finance_lead: 'VELO_FINANCE_EMAILS',
-      hr_lead: 'VELO_HR_EMAILS',
-      manager: 'VELO_MANAGER_EMAILS',
-    };
-    const envKey = roleToKey[invite.role];
-    if (envKey) {
-      const current = (process.env[envKey] ?? '')
-        .split(',')
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
-      if (!current.includes(email)) {
-        current.push(email);
-        patchStoredConnectorEnv({ [envKey]: current.join(', ') });
-      }
-    }
+    await createUser({
+      email,
+      name: name ?? email.split('@')[0],
+      password,
+      role: invite.role,
+    });
 
     return NextResponse.json({ ok: true, role: invite.role });
   } catch (e) {
