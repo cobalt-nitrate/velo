@@ -1,7 +1,7 @@
 // Velo data client — all business data is stored in PostgreSQL.
 // In-memory fallback exists only for local dev when DATABASE_URL is unset (disabled in production).
 
-import type { Prisma } from '@prisma/client';
+import type { InputJsonValue } from '@prisma/client/runtime/library';
 import { prisma } from './prisma.js';
 import { isApprovalPendingStatus } from './approval-status.js';
 import {
@@ -465,7 +465,7 @@ async function appendApprovalEvent(params: {
         actorId: params.actorId ?? '',
         actorRole: params.actorRole ?? '',
         notes: params.notes ?? '',
-        payload: (params.payload ?? {}) as Prisma.InputJsonValue,
+        payload: (params.payload ?? {}) as InputJsonValue,
       },
     });
   } catch {

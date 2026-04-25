@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../data/prisma.js';
 import { sha256Hex } from './renderer.js';
 
@@ -167,7 +168,7 @@ export async function recordDocumentAndVersion(input: {
   const sha256 = sha256Hex(bytes);
   const sizeBytes = bytes.byteLength;
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.document.upsert({
       where: { documentId },
       create: {
