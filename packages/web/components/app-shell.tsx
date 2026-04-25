@@ -234,7 +234,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const visibleNav = NAV.filter((item) => !item.roles || item.roles.includes(role));
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <aside
         className={`relative z-30 flex shrink-0 flex-col border-r border-velo-line bg-velo-panel shadow-shell transition-[width] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] ${
           collapsed ? 'w-[4.25rem]' : 'w-56'
@@ -328,9 +328,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
       </aside>
-      <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col md:min-h-screen">
+      <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col">
         <SetupBanner />
-        {children}
+        <main className="flex min-h-0 flex-1 overflow-hidden">{children}</main>
       </div>
     </div>
   );

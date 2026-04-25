@@ -520,6 +520,25 @@ export function ChatWorkspace() {
       if (!active) return;
     }
 
+    // Optimistic render: show the user's message immediately in the main pane,
+    // instead of waiting for the server to return the updated session.
+    const optimisticUserMsg: ChatMessage = {
+      id: `local-user-${Date.now()}`,
+      role: 'user',
+      content: t,
+      timestamp: new Date().toISOString(),
+    };
+    setSession((prev) => {
+      if (!prev || prev.id !== active!.id) return prev ?? active!;
+      return {
+        ...prev,
+        messages: [...(prev.messages ?? []), optimisticUserMsg],
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    setText('');
+    setPendingUploads([]);
+
     const payload: ChatPayload = {
       text: t,
       agentId,
@@ -637,18 +656,11 @@ export function ChatWorkspace() {
                 />
                 {!session ? (
                   <div className="flex min-h-[200px] flex-col items-center justify-center rounded-xl border border-dashed border-velo-line/80 py-10 text-center">
-                    <p className="text-velo-muted">
+                    <p className="max-w-lg text-sm text-velo-muted">
                       {missionPlan || missionLoading || missionError
-                        ? 'Review the mission above, then approve to start — or open a session from the sidebar.'
-                        : 'Start a new conversation or pick one from the left.'}
+                        ? 'Review the mission briefing above, then approve to start the run.'
+                        : 'Type a message below to start — a session will be created automatically.'}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => void createSession()}
-                      className="mt-4 rounded-lg bg-velo-accent px-4 py-2 text-sm font-medium text-white shadow-soft hover:bg-velo-accent-hover"
-                    >
-                      New chat
-                    </button>
                   </div>
                 ) : (
                   <>
