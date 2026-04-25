@@ -2,6 +2,7 @@ import { buildAttachmentContext } from '@/lib/attachment-context';
 import { appendChatExchange, getChatSession } from '@/lib/chat-store';
 import type { ChatArtifact, ChatMessage } from '@/lib/chat-types';
 import { getUpload } from '@/lib/upload-store';
+import { isTrivialUserMessage, trivialAssistantReply } from '@/lib/trivial-chat';
 import { runAgent, type AgentRunEvent } from '@velo/agents';
 import type { AgentContext, AgentResult } from '@velo/core/types';
 
@@ -47,7 +48,8 @@ export async function POST(
   }
 
   const agentId = String(body.agentId ?? session.agentId);
-  const { block, previews } = await buildAttachmentContext(uploadIds);
+  const isTrivial = isTrivialUserMessage(text, { uploadCount: uploadIds.length });
+  const { block, previews } = isTrivial ? { block: '', previews: [] } : await buildAttachmentContext(uploadIds);
   const fullInput = (text || '(see attachments)') + block;
 
   const attachmentMeta = (
@@ -103,6 +105,35 @@ export async function POST(
       };
 
       try {
+        if (isTrivial) {
+          const now = new Date().toISOString();
+          const userMsg: ChatMessage = {
+            id: nid('usr'),
+            role: 'user',
+            content: text,
+            timestamp: now,
+          };
+          const assistantMsg: ChatMessage = {
+            id: nid('asst'),
+            role: 'assistant',
+            content: trivialAssistantReply(text),
+            timestamp: new Date().toISOString(),
+          };
+          await appendChatExchange({
+            sessionId: session.id,
+            userMessage: userMsg,
+            assistantMessage: assistantMsg,
+          });
+          const updated = await getChatSession(session.id);
+          send({
+            channel: 'done',
+            ok: true,
+            result: { status: 'OK', output: assistantMsg.content },
+            session: updated,
+          });
+          return;
+        }
+
         const result: AgentResult = await runAgent(agentId, fullInput, context, {
           onEvent: (event: AgentRunEvent) => {
             send({ channel: 'event', event });

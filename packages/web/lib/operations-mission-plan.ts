@@ -94,6 +94,131 @@ export type ResolvedAgentForMission = {
   tools: string[];
 };
 
+function toolSet(tools: string[]): Set<string> {
+  return new Set(tools.filter(Boolean));
+}
+
+function pickTool(tools: Set<string>, id: string): string | null {
+  return tools.has(id) ? id : null;
+}
+
+function pickFirstByPrefix(tools: Set<string>, prefixes: string[]): string | null {
+  for (const id of tools) {
+    for (const p of prefixes) {
+      if (id.startsWith(p)) return id;
+    }
+  }
+  return null;
+}
+
+function inferApprovalKind(row: Record<string, unknown>): 'payment' | 'generic' {
+  const actionType = String(row.action_type ?? '').toLowerCase();
+  const proposal = String(row.proposed_action_text ?? '').toLowerCase();
+  const blob = `${actionType} ${proposal}`;
+  if (/(issue[_ -]?payment|payment|neft|imps|rtgs|payout|transfer)/i.test(blob)) return 'payment';
+  return 'generic';
+}
+
+function buildOrchestrationNote(domain: OpsTriageDomain, row: Record<string, unknown>): string {
+  if (domain === 'approvals') {
+    const kind = inferApprovalKind(row);
+    if (kind === 'payment') {
+      return [
+        'Verify the approval details (amount, beneficiary, timing) and whether anything is missing in evidence.',
+        'Check current cash position / recent bank activity to ensure the payout is feasible and not duplicated.',
+        'If anything is unclear, ask for one clarification before doing anything irreversible; then approve or reject with a short audit note.',
+      ].join(' ');
+    }
+    return [
+      'Verify what change is being requested and what evidence supports it.',
+      'Confirm it matches policy and won’t create duplicates or inconsistencies.',
+      'If needed, ask for one clarification; then approve or reject with an audit note.',
+    ].join(' ');
+  }
+  return [
+    'Start by confirming the row’s facts from the system of record and checking integration health.',
+    'Then choose the smallest set of reads that reduce uncertainty for this exact row (amounts, dates, counterparties, status).',
+    'Only after that, propose or execute writes/notifications that are clearly justified and policy-safe.',
+  ].join(' ');
+}
+
+function buildSelectedPlan(
+  domain: OpsTriageDomain,
+  row: Record<string, unknown>,
+  agentId: string,
+  tools: string[],
+  toolDesc: Map<string, string>
+): {
+  analyze: string[];
+  transform: string[];
+  deliver_to: string[];
+  tool_chain: MissionToolStep[];
+} {
+  const set = toolSet(tools);
+
+  const chain: MissionToolStep[] = [];
+  const analyze: string[] = [];
+  const transform: string[] = [];
+
+  const health = pickTool(set, 'internal.platform.healthcheck');
+  if (health) {
+    chain.push({ tool_id: health, purpose: 'Confirm integrations and current operational snapshot.' });
+    analyze.push('Confirm integrations and current system status (database, approvals queue, optional Drive/LLM).');
+  }
+
+  // Domain-specific, minimal reads (avoid "list everything")
+  if (domain === 'approvals') {
+    const kind = inferApprovalKind(row);
+    if (kind === 'payment') {
+      const bal = pickFirstByPrefix(set, ['data.bank_transactions.get_latest_balance']);
+      const recent = pickFirstByPrefix(set, ['data.bank_transactions.get_recent']);
+      const payee = pickFirstByPrefix(set, ['data.bank_payees.lookup']);
+      if (bal) chain.push({ tool_id: bal, purpose: 'Sanity-check available cash before scheduling payout.' });
+      if (recent) chain.push({ tool_id: recent, purpose: 'Look for duplicates / recent related debits.' });
+      if (payee) chain.push({ tool_id: payee, purpose: 'Verify beneficiary details (avoid wrong-account payouts).' });
+      if (bal || recent) analyze.push('Check cash position and recent bank activity for duplicates or insufficient balance.');
+      if (payee) analyze.push('Verify beneficiary / payee details match the approval request.');
+    } else {
+      analyze.push('Validate the request against policy and confirm evidence is sufficient for the decision.');
+    }
+
+    // Deliverables for approvals are not "update sheets"
+    return {
+      analyze,
+      transform: transform.length ? transform : ['Approve or reject with a clear audit note if/when you decide.'],
+      deliver_to: [
+        'Decision recorded on the approval (status + resolver + timestamp + notes).',
+        'Clear operator-facing summary in chat: what was verified, what was decided, and why.',
+      ],
+      tool_chain: chain,
+    };
+  }
+
+  // Default: keep generic but bounded
+  const genericRead = [...set].filter(isReadishToolId).slice(0, 4);
+  for (const tool_id of genericRead) {
+    chain.push({ tool_id, purpose: 'Read the minimum facts needed for this row.' });
+    analyze.push(toolDesc.get(tool_id) ?? 'Read operational data relevant to the row.');
+  }
+  const genericWrite = [...set].filter(isWriteishToolId).slice(0, 2);
+  for (const tool_id of genericWrite) {
+    chain.push({ tool_id, purpose: 'Apply a targeted update or notification if justified.' });
+    transform.push(toolDesc.get(tool_id) ?? 'Apply a targeted update or send a notification.');
+  }
+
+  return {
+    analyze: analyze.length ? analyze : ['Identify the smallest set of checks needed to act on this row safely.'],
+    transform: transform.length
+      ? transform
+      : ['Propose a concrete next action; only execute writes after policy and approval gates.'],
+    deliver_to: [
+      'Accurate updates in the system of record for this row (database and enabled integrations).',
+      'Clear narrative back in chat: what changed, what’s pending, and next risks.',
+    ],
+    tool_chain: chain,
+  };
+}
+
 export function buildPlaybookMissionPlan(
   domain: OpsTriageDomain,
   row: Record<string, unknown>,
@@ -121,56 +246,20 @@ export function buildPlaybookMissionPlan(
   const mission_summary = stake;
 
   const orchestration_note =
-    'The orchestrator interprets your goal, routes to the specialists below, and sequences tool calls (read Sheets health and context first, then propose writes or notifications). Sub-agents from each specialist’s config may be spawned for extraction or matching when needed. Human approval in Velo still gates high-impact writes.';
+    buildOrchestrationNote(domain, row);
 
   const agent_plans: MissionAgentPlan[] = resolved.map((a) => {
     const tools = [...new Set(a.tools)].filter((t) => t && t !== 'internal.sub_agent.invoke');
-    const reads = tools.filter(isReadishToolId);
-    const writes = tools.filter(isWriteishToolId);
-    const other = tools.filter((t) => !reads.includes(t) && !writes.includes(t));
-
-    const analyze = [
-      ...reads.slice(0, 12).map(
-        (id) => `${id}: ${toolDesc.get(id) ?? 'Read or probe operational data.'}`
-      ),
-      ...other.slice(0, 4).map((id) => `${id}: ${toolDesc.get(id) ?? 'Supporting capability.'}`),
-    ];
-
-    const transform = writes
-      .slice(0, 10)
-      .map((id) => `${id}: ${toolDesc.get(id) ?? 'Mutate data or send outbound action.'}`);
-
-    const tool_chain: MissionToolStep[] = [
-      ...reads.slice(0, 8).map((tool_id) => ({
-        tool_id,
-        purpose: 'Gather facts and verify current sheet state before changing anything.',
-      })),
-      ...writes.slice(0, 6).map((tool_id) => ({
-        tool_id,
-        purpose: 'Apply updates, create records, or notify — subject to policy and approvals.',
-      })),
-    ];
+    const selected = buildSelectedPlan(domain, row, a.id, tools, toolDesc);
 
     return {
       agent_id: a.id,
       label: a.label,
       mandate: a.description,
-      analyze: analyze.length
-        ? analyze
-        : [
-            'Use orchestrator context and specialist prompts to choose the right sheet reads for this row.',
-          ],
-      transform: transform.length
-        ? transform
-        : [
-            'No direct write tools in config for this agent — work may be advisory or routed via another specialist.',
-          ],
-      deliver_to: [
-        'Accurate updates in the linked Google Sheets workbooks where this row lives.',
-        'Clear narrative back to you in chat (citations, deltas, and next risks).',
-        'Approval requests when autopilot policy requires human sign-off.',
-      ],
-      tool_chain,
+      analyze: selected.analyze,
+      transform: selected.transform,
+      deliver_to: selected.deliver_to,
+      tool_chain: selected.tool_chain,
     };
   });
 
@@ -215,7 +304,7 @@ export function buildApprovedMissionUserPrompt(plan: OperationsMissionPlanRespon
     'Agent delegations:',
     ...agentBlocks,
     '',
-    'Instructions: Act as orchestrator. Execute this mission: validate the row in Sheets where needed, involve the right specialists, chain tools read-first then writes, cite what you changed, and request human approval before any high-impact or policy-gated action.',
+    'Instructions: Act as orchestrator. Execute this mission: validate the row in the system of record, involve the right specialists, chain tools read-first then writes, cite what you changed, and request human approval before any high-impact or policy-gated action.',
   ].join('\n');
 }
 

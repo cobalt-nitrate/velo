@@ -396,7 +396,7 @@ export function playbookFallback(
       return {
         business_context: bc,
         what_it_means:
-          'This row is a gated action proposed by an agent. It is waiting for a human decision before Velo can execute anything in Sheets or downstream tools.',
+          'This row is a gated action proposed by an agent. It is waiting for a human decision before anything executes in the system of record or downstream integrations.',
         recommended_actions: [
           'Read the proposed action and evidence; confirm it matches policy.',
           'Approve or reject in Velo; add resolution notes for audit.',
@@ -413,7 +413,7 @@ export function playbookFallback(
         recommended_actions: [
           'Confirm the period and form type against your compliance calendar.',
           'Assign an owner; gather inputs (ledgers, challans) before the due date.',
-          'Mark done in Sheets when filed / paid so attention items clear.',
+          'Mark done in the system of record when filed / paid so attention items clear.',
         ],
         agent_focus: agentsFor(['compliance', 'orchestrator']),
       };
@@ -425,7 +425,7 @@ export function playbookFallback(
         recommended_actions: [
           'Three-way match (PO / GRN if applicable) and approve for payment.',
           'Verify bank beneficiary and GST before scheduling payout.',
-          'Update payment_status in Sheets when paid.',
+          'Update payment_status in the system of record when paid.',
         ],
         agent_focus: agentsFor(['ap-invoice', 'orchestrator']),
       };

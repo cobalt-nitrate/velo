@@ -234,11 +234,22 @@ export function ChatWorkspace() {
   }, []);
 
   const loadSession = useCallback(async (id: string) => {
-    const res = await fetch(`/api/chat/sessions/${encodeURIComponent(id)}`);
-    const data = (await res.json()) as { session?: ChatSession };
-    if (data.session) {
-      setSession(data.session);
-      setAgentId(data.session.agentId);
+    try {
+      const res = await fetch(`/api/chat/sessions/${encodeURIComponent(id)}`);
+      const data = (await res.json().catch(() => ({}))) as { session?: ChatSession; error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? `Could not load session (HTTP ${res.status}).`);
+      }
+      if (data.session) {
+        setSession(data.session);
+        setAgentId(data.session.agentId);
+      }
+    } catch (e) {
+      setSendError(
+        e instanceof Error
+          ? e.message
+          : 'Could not reach /api/chat/sessions/[id] — is the dev server running?'
+      );
     }
   }, []);
 

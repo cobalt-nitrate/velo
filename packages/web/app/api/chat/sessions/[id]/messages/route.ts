@@ -5,6 +5,7 @@ import {
 } from '@/lib/chat-store';
 import type { ChatArtifact, ChatMessage } from '@/lib/chat-types';
 import { getUpload } from '@/lib/upload-store';
+import { isTrivialUserMessage, trivialAssistantReply } from '@/lib/trivial-chat';
 import { runAgent } from '@velo/agents';
 import type { AgentContext } from '@velo/core/types';
 import { NextResponse } from 'next/server';
@@ -40,6 +41,31 @@ export async function POST(
     }
 
     const agentId = String(body.agentId ?? session.agentId);
+
+    // Fast-path: avoid spinning up full agent loop for trivial messages.
+    if (isTrivialUserMessage(text, { uploadCount: uploadIds.length })) {
+      const now = new Date().toISOString();
+      const userMsg: ChatMessage = {
+        id: nid('usr'),
+        role: 'user',
+        content: text,
+        timestamp: now,
+      };
+      const assistantMsg: ChatMessage = {
+        id: nid('asst'),
+        role: 'assistant',
+        content: trivialAssistantReply(text),
+        timestamp: new Date().toISOString(),
+      };
+      await appendChatExchange({
+        sessionId: session.id,
+        userMessage: userMsg,
+        assistantMessage: assistantMsg,
+      });
+      const updated = await getChatSession(session.id);
+      return NextResponse.json({ ok: true, session: updated, result: { status: 'OK', output: assistantMsg.content } });
+    }
+
     const { block, previews } = await buildAttachmentContext(uploadIds);
     const fullInput = (text || '(see attachments)') + block;
 

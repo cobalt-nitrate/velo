@@ -24,6 +24,8 @@
     "@prisma/client": "^5.22.0",
     "@velo/core": "workspace:*",
     "googleapis": "^140.0.0",
+    "chromium-bidi": "^0.7.1",
+    "playwright": "^1.54.2",
     "resend": "^3.0.0",
     "pdf-parse": "^1.1.1",
     "tesseract.js": "^5.0.0"

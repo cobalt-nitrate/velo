@@ -27,8 +27,7 @@ function PlanBulletLine({ line }: { line: string }) {
     if (/^[a-zA-Z0-9_.-]+$/.test(left) && right.length > 0) {
       return (
         <>
-          <span className="text-velo-text/95">{right}</span>{' '}
-          <code className="rounded bg-velo-inset-deep px-1 py-px text-[10px] text-velo-muted">{left}</code>
+          <span className="text-velo-text/95">{right}</span>
         </>
       );
     }
@@ -80,8 +79,8 @@ export function OperationsMissionBriefing({
               <h2 className="mt-1 text-lg font-semibold text-velo-muted">Preparing mission…</h2>
             )}
             <p className="mt-2 max-w-2xl text-xs leading-relaxed text-velo-muted">
-              We build this from your agents&apos; real configs and tools so the steps match what could run
-              later. Treat it as a signed-off outline you can edit in chat after approval.
+              This is a draft runbook for this specific row — what to verify first, what decisions to make,
+              and what would be executed after approval. You can refine it in chat before running.
             </p>
           </div>
           <button
@@ -131,7 +130,7 @@ export function OperationsMissionBriefing({
 
             <section className="rounded-xl border border-velo-line bg-velo-inset px-4 py-3">
               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-velo-muted">
-                How coordination will work
+                Strategy
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-velo-text/90">{plan.orchestration_note}</p>
             </section>
@@ -203,7 +202,7 @@ export function OperationsMissionBriefing({
                       <summary className="cursor-pointer list-none px-3 py-2.5 text-[11px] font-medium text-velo-muted marker:content-none [&::-webkit-details-marker]:hidden">
                         <span className="inline-flex items-center gap-2">
                           <IconTable size={14} className="text-velo-accent/75" aria-hidden />
-                          Technical steps (tool names)
+                          Technical steps (implementation)
                           <span className="rounded bg-velo-inset-deep px-1.5 py-px text-[10px] text-velo-muted">
                             {a.tool_chain.length}
                           </span>

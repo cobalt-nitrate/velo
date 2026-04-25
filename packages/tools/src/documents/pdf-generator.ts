@@ -9,8 +9,11 @@ import { Readable } from 'stream';
 import {
   ensureVeloDrivePath,
   segmentsForDocumentTool,
+  uploadBufferToDrive,
 } from './drive-folders.js';
 import { recordDocumentOnDriveAndData } from './drive-sheet-cohesion.js';
+import { renderPdfFromHtml } from './renderer.js';
+import { recordDocumentAndVersion, issueAccessToken, findVersionByDriveFileId } from './registry.js';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -441,8 +444,31 @@ export async function generatePdfDocument(
   params: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
   const toolId = String(params.tool_id ?? '');
+  if (toolId.includes('generate_secure_link')) {
+    const fileId = String(params.file_id ?? '').trim();
+    const expiryHours = Number(params.expiry_hours ?? 72);
+    if (!fileId) return { ok: false, error: 'file_id is required' };
+    const found = await findVersionByDriveFileId(fileId);
+    if (!found) return { ok: false, error: 'Document not found for file_id' };
+    const tok = await issueAccessToken({
+      document_id: found.document_id,
+      version_id: found.version_id,
+      expiry_hours: expiryHours,
+      scope: 'preview',
+    });
+    const base = (process.env.NEXTAUTH_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+    return {
+      ok: true,
+      token_id: tok.token_id,
+      expires_at: tok.expires_at,
+      url: `${base}/employee/docs/${encodeURIComponent(tok.token_id)}`,
+    };
+  }
   const { html, filename } = buildHtml(toolId, params);
-  const documentId = `doc_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+  const actor = String(params.actor_id ?? params.actor ?? params.created_by ?? '').trim();
+
+  const pdf = await renderPdfFromHtml(html);
+  const preferPdf = !!pdf;
 
   if (useDrive()) {
     try {
@@ -456,23 +482,44 @@ export async function generatePdfDocument(
         rootId,
         segmentsForDocumentTool(toolId, params)
       );
-      const result = await uploadToDrive(filename, html, leafId);
+      const docFilename = preferPdf ? filename.replace(/\.html$/i, '.pdf') : filename;
+      const mime = preferPdf ? 'application/pdf' : 'text/html';
+
+      const result = preferPdf
+        ? await uploadBufferToDrive(drive, leafId, docFilename, mime, pdf!)
+        : await uploadToDrive(docFilename, html, leafId);
+
+      const doc = await recordDocumentAndVersion({
+        toolId,
+        params,
+        actor,
+        source: toolId,
+        format: preferPdf ? 'pdf' : 'html',
+        mime,
+        bytes: preferPdf ? pdf : null,
+        html: preferPdf ? null : html,
+        storage: 'drive',
+        drive: { fileId: result.file_id, webViewUrl: result.web_view_link },
+        filename: docFilename,
+      });
+
       await recordDocumentOnDriveAndData({
         toolId,
         params,
-        documentId,
-        filename,
-        mime: 'text/html',
+        documentId: doc.document_id,
+        filename: docFilename,
+        mime,
         driveFileId: result.file_id,
         driveWebViewUrl: result.web_view_link,
       });
       return {
         ok: true,
-        document_id: documentId,
+        document_id: doc.document_id,
+        version_id: doc.version_id,
         file_id: result.file_id,
         url: result.web_view_link,
-        download_url: result.download_link,
-        filename,
+        download_url: (result as any).web_content_link ?? (result as any).download_link ?? '',
+        filename: docFilename,
         generated_at: new Date().toISOString(),
         storage: 'google_drive',
         sheets: { file_links_recorded: true },
@@ -482,13 +529,30 @@ export async function generatePdfDocument(
     }
   }
 
-  // Dev fallback — return base64 data URL
-  const b64 = Buffer.from(html).toString('base64');
+  // Fallback: store inline HTML or PDF data-url + record in Postgres registry.
+  const buf = preferPdf ? pdf! : Buffer.from(html);
+  const mime = preferPdf ? 'application/pdf' : 'text/html';
+  const dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
+  const doc = await recordDocumentAndVersion({
+    toolId,
+    params,
+    actor,
+    source: toolId,
+    format: preferPdf ? 'pdf' : 'html',
+    mime,
+    bytes: preferPdf ? buf : null,
+    html: preferPdf ? null : html,
+    storage: 'inline',
+    drive: null,
+    inlineDataUrl: dataUrl,
+    filename: preferPdf ? filename.replace(/\.html$/i, '.pdf') : filename,
+  });
   return {
     ok: true,
-    document_id: documentId,
-    url: `data:text/html;base64,${b64}`,
-    filename,
+    document_id: doc.document_id,
+    version_id: doc.version_id,
+    url: dataUrl,
+    filename: preferPdf ? filename.replace(/\.html$/i, '.pdf') : filename,
     generated_at: new Date().toISOString(),
     storage: 'inline',
     note: 'Set GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY + VELO_DRIVE_FOLDER_ID to upload to Drive',

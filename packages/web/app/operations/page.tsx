@@ -65,10 +65,34 @@ export default function OperationsPage() {
   const [snapshot, setSnapshot] = useState<OperationalSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [runway, setRunway] = useState<{
+    balance_inr: number;
+    as_of_date: string | null;
+    burn_monthly_inr: number;
+    runway_months: number | null;
+  } | null>(null);
+  const [apAging, setApAging] = useState<{
+    buckets: Record<string, { count: number; total_inr: number }>;
+  } | null>(null);
+  const [arCollections, setArCollections] = useState<{
+    total_outstanding_inr: number;
+    avg_days_to_collect: number | null;
+    top_overdue: Array<{ client_name: string; invoice_number: string; total_amount: string; overdue_days: number }>;
+  } | null>(null);
   const [triageOpen, setTriageOpen] = useState(false);
   const [triageRow, setTriageRow] = useState<Record<string, unknown> | null>(null);
   const [approvalModuleFilter, setApprovalModuleFilter] =
     useState<ApprovalModuleFilter>('all');
+  const [bankQuery, setBankQuery] = useState('');
+  const [bankFrom, setBankFrom] = useState('');
+  const [bankTo, setBankTo] = useState('');
+  const [bankType, setBankType] = useState('');
+  const [bankRowsLive, setBankRowsLive] = useState<BankTransactionSummary[] | null>(null);
+  const [bankCursor, setBankCursor] = useState<string | null>(null);
+  const [bankLiveLoading, setBankLiveLoading] = useState(false);
+  const [complianceMonth, setComplianceMonth] = useState<number>(() => new Date().getUTCMonth() + 1);
+  const [complianceYear, setComplianceYear] = useState<number>(() => new Date().getUTCFullYear());
+  const [complianceDays, setComplianceDays] = useState<Record<string, Array<Record<string, string>>> | null>(null);
 
   const openTriage = useCallback((r: Record<string, unknown>) => {
     setTriageRow(r);
@@ -79,20 +103,60 @@ export default function OperationsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/operations/snapshot');
-      const data = (await res.json()) as {
+      const [snapRes, runwayRes, apAgingRes, arCollRes] = await Promise.all([
+        fetch('/api/operations/snapshot'),
+        fetch('/api/operations/runway'),
+        fetch('/api/operations/ap-aging'),
+        fetch('/api/operations/ar-collections'),
+      ]);
+
+      const snapData = (await snapRes.json()) as {
         ok?: boolean;
         operational_snapshot?: OperationalSnapshot;
         error?: string;
       };
-      if (!res.ok || !data.operational_snapshot) {
-        throw new Error(data.error ?? `HTTP ${res.status}`);
+      if (!snapRes.ok || !snapData.operational_snapshot) {
+        throw new Error(snapData.error ?? `HTTP ${snapRes.status}`);
       }
-      setSnapshot(data.operational_snapshot);
+      setSnapshot(snapData.operational_snapshot);
+
+      try {
+        const r = (await runwayRes.json()) as Record<string, unknown>;
+        if (runwayRes.ok && r.ok) {
+          setRunway({
+            balance_inr: Number(r.balance_inr ?? 0),
+            as_of_date: (r.as_of_date as string | null) ?? null,
+            burn_monthly_inr: Number(r.burn_monthly_inr ?? 0),
+            runway_months: (r.runway_months as number | null) ?? null,
+          });
+        } else setRunway(null);
+      } catch {
+        setRunway(null);
+      }
+      try {
+        const a = (await apAgingRes.json()) as Record<string, unknown>;
+        if (apAgingRes.ok && a.ok && a.buckets) {
+          setApAging({ buckets: a.buckets as Record<string, { count: number; total_inr: number }> });
+        } else setApAging(null);
+      } catch {
+        setApAging(null);
+      }
+      try {
+        const c = (await arCollRes.json()) as Record<string, unknown>;
+        if (arCollRes.ok && c.ok) {
+          setArCollections({
+            total_outstanding_inr: Number(c.total_outstanding_inr ?? 0),
+            avg_days_to_collect: (c.avg_days_to_collect as number | null) ?? null,
+            top_overdue: Array.isArray(c.top_overdue) ? (c.top_overdue as any) : [],
+          });
+        } else setArCollections(null);
+      } catch {
+        setArCollections(null);
+      }
       try {
         sessionStorage.setItem(
           OPS_SNAPSHOT_STORAGE_KEY,
-          JSON.stringify({ snapshot: data.operational_snapshot }),
+          JSON.stringify({ snapshot: snapData.operational_snapshot }),
         );
       } catch {
         // ignore quota / private mode
@@ -135,6 +199,54 @@ export default function OperationsPage() {
   const arOpen: ArReceivableSummary[] = snapshot?.ar_receivables_detail ?? [];
   const arOd: ArReceivableSummary[] = snapshot?.ar_overdue_detail ?? [];
   const bankRows: BankTransactionSummary[] = snapshot?.bank_transactions_detail ?? [];
+  const loadBankLive = useCallback(
+    async (cursor: string | null) => {
+      setBankLiveLoading(true);
+      try {
+        const url = new URL('/api/operations/bank-transactions', window.location.origin);
+        if (bankQuery.trim()) url.searchParams.set('query', bankQuery.trim());
+        if (bankFrom.trim()) url.searchParams.set('from', bankFrom.trim());
+        if (bankTo.trim()) url.searchParams.set('to', bankTo.trim());
+        if (bankType.trim()) url.searchParams.set('type', bankType.trim());
+        url.searchParams.set('limit', '50');
+        if (cursor) url.searchParams.set('cursor', cursor);
+        const res = await fetch(url.toString());
+        const data = (await res.json()) as any;
+        if (!res.ok || !data.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+        const mapped: BankTransactionSummary[] = (data.rows ?? []).map((r: any) => ({
+          txn_id: String(r.txn_id ?? ''),
+          date: String(r.date ?? ''),
+          narration: String(r.narration ?? ''),
+          amount: String(r.amount ?? ''),
+          balance: String(r.balance ?? ''),
+          type: String(r.type ?? ''),
+          mode: String(r.mode ?? ''),
+        }));
+        setBankRowsLive(cursor ? [...(bankRowsLive ?? []), ...mapped] : mapped);
+        setBankCursor(data.next_cursor ?? null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setBankLiveLoading(false);
+      }
+    },
+    [bankQuery, bankFrom, bankTo, bankType, bankRowsLive]
+  );
+
+  const loadComplianceCalendar = useCallback(async () => {
+    try {
+      const url = new URL('/api/operations/compliance-calendar', window.location.origin);
+      url.searchParams.set('month', String(complianceMonth));
+      url.searchParams.set('year', String(complianceYear));
+      const res = await fetch(url.toString());
+      const data = (await res.json()) as any;
+      if (!res.ok || !data.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setComplianceDays(data.days ?? {});
+    } catch {
+      setComplianceDays(null);
+    }
+  }, [complianceMonth, complianceYear]);
+
   const teamRows: ActiveEmployeeSummary[] = snapshot?.employees_detail ?? [];
   const hireRows: HrTaskSummary[] = snapshot?.hr_pending_hires_detail ?? [];
   const hrRows: HrTaskSummary[] = snapshot?.hr_blockers_detail ?? [];
@@ -189,6 +301,58 @@ export default function OperationsPage() {
 
       {snapshot && (
         <>
+          <section className="mb-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-velo-line bg-velo-panel p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-velo-muted">Runway</p>
+              <p className="mt-1 text-2xl font-semibold text-velo-text">
+                {runway?.runway_months != null ? `${runway.runway_months.toFixed(1)} mo` : '—'}
+              </p>
+              <p className="mt-1 text-xs text-velo-muted">
+                Balance: {runway?.balance_inr != null ? `₹${Math.round(runway.balance_inr).toLocaleString('en-IN')}` : '—'}
+                {runway?.as_of_date ? ` · as of ${runway.as_of_date}` : ''}
+              </p>
+              <p className="mt-1 text-xs text-velo-muted">
+                Burn (est.): {runway?.burn_monthly_inr != null ? `₹${Math.round(runway.burn_monthly_inr).toLocaleString('en-IN')}/mo` : '—'}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-velo-line bg-velo-panel p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-velo-muted">AP aging (overdue)</p>
+              <div className="mt-2 space-y-1 text-xs text-velo-muted">
+                <div className="flex items-center justify-between">
+                  <span>0–30</span>
+                  <span className="font-mono">{apAging?.buckets?.['0-30']?.count ?? '—'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>31–60</span>
+                  <span className="font-mono">{apAging?.buckets?.['31-60']?.count ?? '—'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>60+</span>
+                  <span className="font-mono">{apAging?.buckets?.['60+']?.count ?? '—'}</span>
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-velo-muted/80">Counts exclude paid/cancelled.</p>
+            </div>
+
+            <div className="rounded-xl border border-velo-line bg-velo-panel p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-velo-muted">AR collections</p>
+              <p className="mt-1 text-2xl font-semibold text-velo-text">
+                {arCollections ? `₹${Math.round(arCollections.total_outstanding_inr).toLocaleString('en-IN')}` : '—'}
+              </p>
+              <p className="mt-1 text-xs text-velo-muted">
+                Avg days to collect: {arCollections?.avg_days_to_collect != null ? arCollections.avg_days_to_collect : '—'}
+              </p>
+              {arCollections?.top_overdue?.length ? (
+                <p className="mt-2 text-[11px] text-velo-muted/80">
+                  Top overdue: {arCollections.top_overdue[0]?.client_name} ({arCollections.top_overdue[0]?.overdue_days}d)
+                </p>
+              ) : (
+                <p className="mt-2 text-[11px] text-velo-muted/80">Top overdue: —</p>
+              )}
+            </div>
+          </section>
+
           <div className="mb-4 flex flex-wrap gap-2 border-b border-velo-line pb-3">
             {(
               [
@@ -326,8 +490,86 @@ export default function OperationsPage() {
           )}
 
           {tab === 'compliance' && (
-            <div className="overflow-x-auto rounded-xl border border-velo-line">
-              <table className="min-w-full divide-y divide-velo-line text-left text-sm">
+            <div>
+              <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-velo-muted">
+                  <span className="font-medium uppercase tracking-wide">Calendar</span>
+                  <input
+                    value={complianceYear}
+                    onChange={(e) => setComplianceYear(Number(e.target.value))}
+                    className="w-20 rounded-md border border-velo-line bg-velo-panel px-2 py-1 font-mono text-xs text-velo-text"
+                  />
+                  <input
+                    value={complianceMonth}
+                    onChange={(e) => setComplianceMonth(Number(e.target.value))}
+                    className="w-14 rounded-md border border-velo-line bg-velo-panel px-2 py-1 font-mono text-xs text-velo-text"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void loadComplianceCalendar()}
+                    className="rounded-md border border-velo-line bg-velo-panel px-2 py-1 text-xs font-semibold text-velo-text hover:bg-velo-inset"
+                  >
+                    Load month
+                  </button>
+                  <a
+                    href={`/api/operations/export?domain=compliance`}
+                    className="rounded-md border border-velo-line bg-velo-panel px-2 py-1 text-xs font-semibold text-velo-text hover:bg-velo-inset"
+                  >
+                    Export CSV
+                  </a>
+                </div>
+              </div>
+
+              {complianceDays && (
+                <div className="mb-4 rounded-xl border border-velo-line bg-velo-panel p-3">
+                  <div className="grid grid-cols-7 gap-2 text-[11px]">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+                      <div key={d} className="font-semibold text-velo-muted">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 grid grid-cols-7 gap-2">
+                    {(() => {
+                      const first = new Date(Date.UTC(complianceYear, complianceMonth - 1, 1));
+                      const startDow = (first.getUTCDay() + 6) % 7; // monday=0
+                      const daysInMonth = new Date(Date.UTC(complianceYear, complianceMonth, 0)).getUTCDate();
+                      const cells: Array<{ day: number | null; key: string }> = [];
+                      for (let i = 0; i < startDow; i++) cells.push({ day: null, key: `pad_${i}` });
+                      for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, key: `d_${d}` });
+                      while (cells.length % 7 !== 0) cells.push({ day: null, key: `pad2_${cells.length}` });
+
+                      return cells.map((c) => {
+                        if (!c.day) return <div key={c.key} className="h-24 rounded-lg border border-velo-line/60 bg-velo-inset/30" />;
+                        const iso = `${complianceYear}-${String(complianceMonth).padStart(2, '0')}-${String(c.day).padStart(2, '0')}`;
+                        const items = complianceDays[iso] ?? [];
+                        return (
+                          <div key={c.key} className="h-24 overflow-hidden rounded-lg border border-velo-line bg-velo-panel p-2">
+                            <div className="text-[10px] font-semibold text-velo-muted">{c.day}</div>
+                            <div className="mt-1 space-y-1">
+                              {items.slice(0, 3).map((it) => (
+                                <div
+                                  key={it.calendar_id}
+                                  title={it.label}
+                                  className="truncate rounded bg-velo-inset px-1.5 py-0.5 text-[10px] text-velo-text"
+                                >
+                                  {it.label}
+                                </div>
+                              ))}
+                              {items.length > 3 && (
+                                <div className="text-[10px] text-velo-muted">+{items.length - 3} more</div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-x-auto rounded-xl border border-velo-line">
+                <table className="min-w-full divide-y divide-velo-line text-left text-sm">
                 <thead className="bg-velo-inset-deep text-[11px] font-semibold uppercase tracking-wider text-velo-muted">
                   <tr>
                     <th className="px-3 py-2.5">Label</th>
@@ -369,11 +611,20 @@ export default function OperationsPage() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 
           {tab === 'ap' && (
             <div className="overflow-x-auto rounded-xl border border-velo-line">
+              <div className="flex items-center justify-end gap-2 border-b border-velo-line bg-velo-panel px-3 py-2">
+                <a
+                  href={`/api/operations/export?domain=ap`}
+                  className="rounded-md border border-velo-line bg-velo-panel px-2 py-1 text-xs font-semibold text-velo-text hover:bg-velo-inset"
+                >
+                  Export CSV
+                </a>
+              </div>
               <table className="min-w-full divide-y divide-velo-line text-left text-sm">
                 <thead className="bg-velo-inset-deep text-[11px] font-semibold uppercase tracking-wider text-velo-muted">
                   <tr>
@@ -421,6 +672,14 @@ export default function OperationsPage() {
 
           {tab === 'ar_open' && (
             <div className="overflow-x-auto rounded-xl border border-velo-line">
+              <div className="flex items-center justify-end gap-2 border-b border-velo-line bg-velo-panel px-3 py-2">
+                <a
+                  href={`/api/operations/export?domain=ar_open`}
+                  className="rounded-md border border-velo-line bg-velo-panel px-2 py-1 text-xs font-semibold text-velo-text hover:bg-velo-inset"
+                >
+                  Export CSV
+                </a>
+              </div>
               <table className="min-w-full divide-y divide-velo-line text-left text-sm">
                 <thead className="bg-velo-inset-deep text-[11px] font-semibold uppercase tracking-wider text-velo-muted">
                   <tr>
@@ -468,6 +727,14 @@ export default function OperationsPage() {
 
           {tab === 'ar_overdue' && (
             <div className="overflow-x-auto rounded-xl border border-velo-line">
+              <div className="flex items-center justify-end gap-2 border-b border-velo-line bg-velo-panel px-3 py-2">
+                <a
+                  href={`/api/operations/export?domain=ar_overdue`}
+                  className="rounded-md border border-velo-line bg-velo-panel px-2 py-1 text-xs font-semibold text-velo-text hover:bg-velo-inset"
+                >
+                  Export CSV
+                </a>
+              </div>
               <table className="min-w-full divide-y divide-velo-line text-left text-sm">
                 <thead className="bg-velo-inset-deep text-[11px] font-semibold uppercase tracking-wider text-velo-muted">
                   <tr>
@@ -509,6 +776,62 @@ export default function OperationsPage() {
 
           {tab === 'bank' && (
             <div className="overflow-x-auto rounded-xl border border-velo-line">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-velo-line bg-velo-panel px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={bankQuery}
+                    onChange={(e) => setBankQuery(e.target.value)}
+                    placeholder="Search narration…"
+                    className="w-48 rounded-md border border-velo-line bg-velo-inset px-2 py-1 text-xs text-velo-text placeholder-velo-muted/60"
+                  />
+                  <input
+                    value={bankFrom}
+                    onChange={(e) => setBankFrom(e.target.value)}
+                    placeholder="From YYYY-MM-DD"
+                    className="w-32 rounded-md border border-velo-line bg-velo-inset px-2 py-1 font-mono text-xs text-velo-text placeholder-velo-muted/60"
+                  />
+                  <input
+                    value={bankTo}
+                    onChange={(e) => setBankTo(e.target.value)}
+                    placeholder="To YYYY-MM-DD"
+                    className="w-32 rounded-md border border-velo-line bg-velo-inset px-2 py-1 font-mono text-xs text-velo-text placeholder-velo-muted/60"
+                  />
+                  <select
+                    value={bankType}
+                    onChange={(e) => setBankType(e.target.value)}
+                    className="rounded-md border border-velo-line bg-velo-inset px-2 py-1 text-xs text-velo-text"
+                  >
+                    <option value="">type:any</option>
+                    <option value="debit">debit</option>
+                    <option value="credit">credit</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => void loadBankLive(null)}
+                    className="rounded-md border border-velo-line bg-velo-panel px-2 py-1 text-xs font-semibold text-velo-text hover:bg-velo-inset"
+                  >
+                    Search
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBankRowsLive(null);
+                      setBankCursor(null);
+                    }}
+                    className="rounded-md border border-velo-line bg-velo-panel px-2 py-1 text-xs font-semibold text-velo-text hover:bg-velo-inset"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`/api/operations/export?domain=bank`}
+                    className="rounded-md border border-velo-line bg-velo-panel px-2 py-1 text-xs font-semibold text-velo-text hover:bg-velo-inset"
+                  >
+                    Export CSV
+                  </a>
+                </div>
+              </div>
               <table className="min-w-full divide-y divide-velo-line text-left text-sm">
                 <thead className="bg-velo-inset-deep text-[11px] font-semibold uppercase tracking-wider text-velo-muted">
                   <tr>
@@ -522,7 +845,7 @@ export default function OperationsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-velo-line/80 text-velo-text">
-                  {bankRows.length === 0 ? (
+                  {(bankRowsLive ?? bankRows).length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-3 py-8 text-center text-velo-muted">
                         No bank transactions in workspace.
@@ -535,7 +858,7 @@ export default function OperationsPage() {
                       </td>
                     </tr>
                   ) : (
-                    bankRows.map((r) => (
+                    (bankRowsLive ?? bankRows).map((r) => (
                       <tr key={r.txn_id} className="hover:bg-velo-inset/70">
                         <td className="whitespace-nowrap px-3 py-2 text-velo-muted">{r.date}</td>
                         <td className="max-w-lg px-3 py-2" title={r.narration}>
@@ -553,6 +876,19 @@ export default function OperationsPage() {
                   )}
                 </tbody>
               </table>
+              {bankRowsLive && (
+                <div className="flex items-center justify-between gap-2 border-t border-velo-line bg-velo-panel px-3 py-2 text-xs text-velo-muted">
+                  <span>{bankRowsLive.length} loaded</span>
+                  <button
+                    type="button"
+                    disabled={bankLiveLoading || !bankCursor}
+                    onClick={() => void loadBankLive(bankCursor)}
+                    className="rounded-md border border-velo-line bg-velo-panel px-2 py-1 text-xs font-semibold text-velo-text disabled:opacity-50"
+                  >
+                    {bankLiveLoading ? 'Loading…' : bankCursor ? 'Load more' : 'No more'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

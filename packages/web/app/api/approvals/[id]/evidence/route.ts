@@ -1,5 +1,5 @@
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { assembleApprovalEvidence } from '@/lib/approvals/evidence';
 import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -7,14 +7,6 @@ export const runtime = 'nodejs';
 
 function canReview(role: string | undefined): boolean {
   return role === 'founder' || role === 'finance_lead' || role === 'hr_lead' || role === 'manager';
-}
-
-function safeJsonParse<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -29,72 +21,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     const approvalId = params.id;
-    const approval = await prisma.approvalRequest.findUnique({
-      where: { approvalId },
-      select: {
-        approvalId: true,
-        agentId: true,
-        actionType: true,
-        actionPayloadJson: true,
-        confidenceScore: true,
-        evidenceJson: true,
-        createdAt: true,
-        status: true,
-      },
-    });
-    if (!approval) {
+    const bundle = await assembleApprovalEvidence(approvalId);
+    if (!bundle) {
       return NextResponse.json({ ok: false, error: `Approval not found: ${approvalId}` }, { status: 404 });
     }
 
-    const signalScores = await prisma.approvalSignalScore.findMany({
-      where: { approvalId },
-      orderBy: { score: 'desc' },
-      take: 50,
-      select: { signal: true, score: true, detail: true },
-    });
-    const storedEvidence = await prisma.approvalEvidenceItem.findMany({
-      where: { approvalId },
-      orderBy: { kind: 'asc' },
-      take: 200,
-      select: { id: true, kind: true, label: true, value: true, source: true, meta: true },
-    });
-
     const includeRaw = (new URL(req.url).searchParams.get('include_raw') ?? '0') === '1';
-    const actionPayload = safeJsonParse<Record<string, unknown>>(approval.actionPayloadJson ?? '{}', {});
-    const evidence = safeJsonParse<unknown[]>(approval.evidenceJson ?? '[]', []);
 
     return NextResponse.json({
       ok: true,
-      approval_id: approval.approvalId,
-      agent_id: approval.agentId,
-      action_type: approval.actionType,
-      status: approval.status,
-      confidence_score: approval.confidenceScore,
-      action_payload: actionPayload,
-      evidence_items:
-        storedEvidence.length > 0
-          ? storedEvidence.map((e) => ({
-              id: e.id,
-              kind: e.kind,
-              label: e.label,
-              value: e.value,
-              source: e.source,
-              meta: e.meta,
-            }))
-          : Array.isArray(evidence)
-            ? evidence
-            : [],
-      signal_scores: signalScores.map((s) => ({
-        signal: s.signal,
-        score: s.score,
-        detail: s.detail,
-      })),
+      approval_id: bundle.approval_id,
+      agent_id: bundle.agent_id,
+      action_type: bundle.action_type,
+      status: bundle.status,
+      confidence_score: bundle.confidence_score,
+      sections: bundle.sections,
+      signal_scores: bundle.signals,
       ...(includeRaw
         ? {
-            raw: {
-              action_payload_json: approval.actionPayloadJson,
-              evidence_json: approval.evidenceJson,
-            },
+            raw: bundle.raw,
           }
         : {}),
     });
