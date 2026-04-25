@@ -16,7 +16,8 @@
     "test": "npx --yes pnpm@9.15.0 -r run test",
     "lint": "npx --yes pnpm@9.15.0 -r run lint",
     "validate-configs": "pnpm --filter @velo/core validate-configs",
-    "verify:ci": "pnpm validate-configs && pnpm exec tsc --noEmit -p packages/core && pnpm exec tsc --noEmit -p packages/agents && pnpm exec tsc --noEmit -p packages/tools && pnpm exec tsc --noEmit -p packages/web && pnpm exec tsc --noEmit -p scripts",
+    "prisma:generate:web": "pnpm --filter @velo/web exec prisma generate --schema prisma/schema.prisma",
+    "verify:ci": "pnpm validate-configs && pnpm prisma:generate:web && pnpm exec tsc --noEmit -p packages/core && pnpm exec tsc --noEmit -p packages/agents && pnpm exec tsc --noEmit -p packages/tools && pnpm exec tsc --noEmit -p packages/web && pnpm exec tsc --noEmit -p scripts",
     "e2e:modules": "pnpm --filter @velo/agents e2e:modules",
     "db:seed": "pnpm --filter @velo/web db:seed"
   },
