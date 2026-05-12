@@ -42,6 +42,9 @@ COPY --from=builder /app/packages/web/.next/standalone ./
 COPY --from=builder /app/packages/web/.next/static     ./packages/web/.next/static
 COPY --from=builder /app/packages/web/public           ./packages/web/public
 
+# Preload hook for connector-env — must be copied separately (not part of standalone output)
+COPY --from=builder /app/packages/web/lib/register-env.cjs ./packages/web/lib/register-env.cjs
+
 # Copy prisma schema + binary so migrate deploy works at boot
 COPY --from=builder /app/packages/web/prisma             ./packages/web/prisma
 COPY --from=builder /app/node_modules/.bin/prisma        ./node_modules/.bin/prisma
