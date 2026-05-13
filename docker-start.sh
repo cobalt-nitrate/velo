@@ -10,4 +10,4 @@ fi
 
 # Start the Next.js standalone server
 echo "Starting Velo server..."
-exec node -r packages/web/lib/register-env.cjs packages/web/server.js
+exec node -r /app/packages/web/lib/register-env.cjs packages/web/server.js
