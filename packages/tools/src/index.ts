@@ -1351,7 +1351,7 @@ const baseToolDefinitions: ToolDefinition[] = [
     id: 'data.runway.get_snapshot',
     description:
       'Fetch all financial data needed for runway calculation in one call: latest bank balance, committed salaries, pending AP payables, pending AR receivables, and active employees with CTC. Use this as the first call for any runway or burn-rate query.',
-    schema: { type: 'object', properties: {}, additionalProperties: false },
+    schema: { type: 'object', properties: {} },
     handler: async () => {
       const [balance, salaries, payables, receivables, employees] = await Promise.all([
         executeDataTool({ tool_id: 'data.bank_transactions.get_latest_balance' }),
