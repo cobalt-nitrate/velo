@@ -51,6 +51,9 @@ COPY --from=builder /app/node_modules/.bin/prisma        ./node_modules/.bin/pri
 COPY --from=builder /app/node_modules/prisma             ./node_modules/prisma
 COPY --from=builder /app/node_modules/.pnpm              ./node_modules/.pnpm
 
+# Agent configs and system prompts (read at runtime by core/config/loader.ts)
+COPY --from=builder /app/configs ./configs
+
 # .velo data dir (uploads, connector-env) — mount as a volume in docker-compose
 RUN mkdir -p /app/.velo/uploads /app/.velo/chats
 

@@ -8,7 +8,7 @@
     "dev:clean": "rm -rf .next && node -r ./lib/register-env.cjs ./node_modules/next/dist/bin/next dev",
     "build": "next build",
     "build:clean": "rm -rf .next && next build",
-    "start": "node -r ./lib/register-env.cjs ./node_modules/next/dist/bin/next start",
+    "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "next lint",
