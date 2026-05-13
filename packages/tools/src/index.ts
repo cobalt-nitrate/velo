@@ -1348,6 +1348,23 @@ const baseToolDefinitions: ToolDefinition[] = [
   },
 
   {
+    id: 'data.runway.get_snapshot',
+    description:
+      'Fetch all financial data needed for runway calculation in one call: latest bank balance, committed salaries, pending AP payables, pending AR receivables, and active employees with CTC. Use this as the first call for any runway or burn-rate query.',
+    schema: { type: 'object', properties: {}, additionalProperties: false },
+    handler: async () => {
+      const [balance, salaries, payables, receivables, employees] = await Promise.all([
+        executeDataTool({ tool_id: 'data.bank_transactions.get_latest_balance' }),
+        executeDataTool({ tool_id: 'data.payroll_runs.get_committed_salaries' }),
+        executeDataTool({ tool_id: 'data.ap_invoices.get_pending_payables' }),
+        executeDataTool({ tool_id: 'data.ar_invoices.get_pending_receivables' }),
+        executeDataTool({ tool_id: 'data.employees.get_active' }),
+      ]);
+      return { ok: true, bank_balance: balance, committed_salaries: salaries, ap_payables: payables, ar_receivables: receivables, employees };
+    },
+  },
+
+  {
     id: 'internal.platform.healthcheck',
     description:
       'Full Velo health: integration probes (Postgres, optional Google Drive, LLM) plus operational snapshot from the database — pending approvals, compliance, AP/AR, bank, employees, HR. Read-only.',

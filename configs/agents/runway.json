@@ -6,15 +6,8 @@
   "system_prompt_file": "configs/prompts/runway.md",
   "sub_agents": [],
   "tools": [
-    "data.bank_transactions.get_latest_balance",
+    "data.runway.get_snapshot",
     "data.bank_transactions.get_by_date_range",
-    "data.bank_transactions.get_recent",
-    "data.payroll_runs.get_committed_salaries",
-    "data.ap_invoices.get_pending_payables",
-    "data.ar_invoices.get_pending_receivables",
-    "data.compliance_calendar.get_upcoming_obligations",
-    "data.employees.get_active_headcount",
-    "data.hr_tasks.get_pending_hires",
     "bank.statement.parse",
     "notifications.send_digest",
     "notifications.send_alert"
@@ -31,6 +24,6 @@
     "digest_day": "monday",
     "digest_time_ist": "09:00"
   },
-  "max_iterations": 8,
-  "timeout_seconds": 45
+  "max_iterations": 6,
+  "timeout_seconds": 90
 }
