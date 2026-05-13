@@ -257,7 +257,7 @@ export async function runAgent(
       ...(useTools
         ? { tools: openaiTools, tool_choice: 'auto' as const }
         : {}),
-    });
+    }, { timeout: 90_000 });
 
     const choice = completion.choices[0];
     if (!choice?.message) {

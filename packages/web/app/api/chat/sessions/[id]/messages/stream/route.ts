@@ -208,6 +208,8 @@ export async function POST(
     headers: {
       'Content-Type': 'application/x-ndjson; charset=utf-8',
       'Cache-Control': 'no-store',
+      // Disable Nginx/Railway proxy buffering so chunks reach the client immediately
+      'X-Accel-Buffering': 'no',
     },
   });
 }
