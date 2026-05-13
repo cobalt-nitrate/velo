@@ -14,8 +14,11 @@ import {
   appendDecisionMemory,
   canonicalVeloDataToolId,
   createAuditEvent,
+  extractMemoryFromObservations,
   registerAuditSheetsFlush,
+  upsertCompanyMemory,
 } from '@velo/core';
+import { matchSkill, recordSkill, executeSkillTools } from './skill-cache.js';
 import { getRuntimeTools } from '@velo/tools';
 import { appendAuditRow, executeDataTool } from '@velo/tools/data';
 import { notifyApprovalRequestOutOfBand } from './approval-notify.js';
@@ -190,9 +193,22 @@ export async function runAgent(
   const openaiTools = buildOpenAITools(mergedToolIds);
   const useTools = openaiTools.length > 0;
 
+  // Trim to last 15 messages to keep context compact
+  const MSG_LIMIT = 15;
+  const rawMessages = context.messages.filter((m) => m.role !== 'system');
+  const trimmedMessages =
+    rawMessages.length > MSG_LIMIT ? rawMessages.slice(-MSG_LIMIT) : rawMessages;
+  const hadTrimming = rawMessages.length > MSG_LIMIT;
+
   const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
-  for (const m of context.messages) {
-    if (m.role === 'system') continue;
+  if (hadTrimming) {
+    chatMessages.push({
+      role: 'user',
+      content: `[Earlier in this session: ${rawMessages.length - MSG_LIMIT} older messages omitted for context.]`,
+    });
+    chatMessages.push({ role: 'assistant', content: 'Understood.' });
+  }
+  for (const m of trimmedMessages) {
     chatMessages.push({
       role: m.role as 'user' | 'assistant',
       content: m.content,
@@ -202,6 +218,64 @@ export async function runAgent(
     role: 'user',
     content: typeof input === 'string' ? input : JSON.stringify(input),
   });
+
+  // Skill cache check — root-level agents only
+  const inputStr = typeof input === 'string' ? input : JSON.stringify(input);
+  if (subAgentDepth === 0) {
+    const skill = matchSkill(inputStr);
+    if (skill) {
+      emitEvent(onEvent, {
+        type: 'run.start',
+        agent_id: agentId,
+        depth: subAgentDepth,
+        model: resolvedModel,
+      });
+      emitEvent(onEvent, { type: 'iteration', agent_id: agentId, iteration: 1 });
+      const startAuditSkill = createAuditEvent({
+        company_id: context.company_id,
+        actor_id: context.actor_id,
+        actor_role: context.actor_role,
+        agent_id: agentId,
+        event_type: 'AGENT_STARTED',
+        payload: { input, session_id: context.session_id, model: resolvedModel, skill_hit: skill.skill_id },
+      });
+      const { observations: skillObs, success: skillSuccess } = await executeSkillTools(
+        skill, context, toolRegistry
+      );
+      context.observations.push(...skillObs);
+      if (skillSuccess && skillObs.length > 0) {
+        const obsBlock = skillObs
+          .map((o) => `${o.tool_id}: ${previewToolJson(o.output, 2000)}`)
+          .join('\n\n');
+        const synthCompletion = await client.chat.completions.create({
+          model: resolvedModel,
+          max_tokens: 4096,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...chatMessages,
+            { role: 'user', content: `Data fetched:\n\n${obsBlock}\n\nAnswer the question above using this data.` },
+          ],
+        }, { timeout: 90_000 });
+        const answer = synthCompletion.choices[0]?.message?.content ?? '';
+        emitEvent(onEvent, { type: 'assistant.delta', agent_id: agentId, text: answer });
+        createAuditEvent({
+          company_id: context.company_id,
+          actor_id: context.actor_id,
+          actor_role: context.actor_role,
+          agent_id: agentId,
+          event_type: 'AGENT_COMPLETED',
+          payload: { iterations: 1, answer, skill_hit: skill.skill_id },
+        });
+        emitEvent(onEvent, { type: 'run.complete', agent_id: agentId, status: 'COMPLETED' });
+        const memPatch = extractMemoryFromObservations(context.observations);
+        if (Object.keys(memPatch).length > 0) {
+          upsertCompanyMemory(context.company_id, memPatch);
+        }
+        return { status: 'COMPLETED', output: answer, audit_entry_id: startAuditSkill.id };
+      }
+      // Skill execution failed — fall through to normal loop
+    }
+  }
 
   let iterations = 0;
   const startAudit = createAuditEvent({
@@ -250,10 +324,19 @@ export async function runAgent(
       iteration: iterations,
     });
 
+    // Inject already-fetched tool results so the LLM avoids re-calling the same tool
+    let effectiveSystemPrompt = systemPrompt;
+    if (context.observations.length > 0) {
+      const obsLines = context.observations
+        .map((o) => `- ${o.tool_id}: ${previewToolJson(o.output, 800)}`)
+        .join('\n');
+      effectiveSystemPrompt += `\n\n## Data already fetched this run (do not re-fetch):\n${obsLines}`;
+    }
+
     const completion = await client.chat.completions.create({
       model: resolvedModel,
       max_tokens: 4096,
-      messages: [{ role: 'system', content: systemPrompt }, ...chatMessages],
+      messages: [{ role: 'system', content: effectiveSystemPrompt }, ...chatMessages],
       ...(useTools
         ? { tools: openaiTools, tool_choice: 'auto' as const }
         : {}),
@@ -310,6 +393,18 @@ export async function runAgent(
         agent_id: agentId,
         status: 'COMPLETED',
       });
+
+      // Post-run: update company memory and record skill for future cache hits
+      if (subAgentDepth === 0) {
+        const memPatch = extractMemoryFromObservations(context.observations);
+        if (Object.keys(memPatch).length > 0) {
+          upsertCompanyMemory(context.company_id, memPatch);
+        }
+        if (context.observations.length > 0) {
+          recordSkill(agentId, inputStr, context.observations, true);
+        }
+      }
+
       return {
         status: 'COMPLETED',
         output: answer,
@@ -647,6 +742,14 @@ export async function runAgent(
           tool_id: item.toolCall.tool_id,
           tool_result: toolResult,
         },
+      });
+
+      // Track observation so subsequent LLM calls know not to re-fetch
+      context.observations.push({
+        tool_id: item.toolCall.tool_id,
+        input: item.toolCall.parameters,
+        output: toolResult,
+        timestamp: new Date().toISOString(),
       });
 
       chatMessages.push({

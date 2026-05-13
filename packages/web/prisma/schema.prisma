@@ -924,3 +924,30 @@ model DocumentAccessToken {
   @@index([expiresAt])
   @@map("document_access_tokens")
 }
+
+model CompanyMemory {
+  id                    String @id @default(cuid())
+  companyId             String @unique @map("company_id")
+  updatedAt             String @default("") @map("updated_at")
+  bankBalance           String @default("") @map("bank_balance")
+  runwayMonths          String @default("") @map("runway_months")
+  headcount             String @default("")
+  pendingApprovalsCount String @default("0") @map("pending_approvals_count")
+  snapshotJson          String @default("") @map("snapshot_json") @db.Text
+
+  @@map("company_memory")
+}
+
+model SkillCache {
+  id               String @id @default(cuid())
+  skillId          String @unique @map("skill_id")
+  agentId          String @default("") @map("agent_id")
+  intentPatterns   String @default("") @map("intent_patterns") @db.Text
+  toolSequenceJson String @default("") @map("tool_sequence_json") @db.Text
+  successCount     Int    @default(0) @map("success_count")
+  failCount        Int    @default(0) @map("fail_count")
+  lastUsedAt       String @default("") @map("last_used_at")
+  createdAt        String @default("") @map("created_at")
+
+  @@map("skill_cache")
+}

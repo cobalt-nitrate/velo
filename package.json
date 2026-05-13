@@ -19,7 +19,8 @@
     "prisma:generate:web": "pnpm --filter @velo/web exec prisma generate --schema prisma/schema.prisma",
     "verify:ci": "pnpm validate-configs && pnpm prisma:generate:web && pnpm exec tsc --noEmit -p packages/core && pnpm exec tsc --noEmit -p packages/agents && pnpm exec tsc --noEmit -p packages/tools && pnpm exec tsc --noEmit -p packages/web && pnpm exec tsc --noEmit -p scripts",
     "e2e:modules": "pnpm --filter @velo/agents e2e:modules",
-    "db:seed": "pnpm --filter @velo/web db:seed"
+    "db:seed": "pnpm --filter @velo/web db:seed",
+    "seed:skills": "npx tsx scripts/seed-skills.ts"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
