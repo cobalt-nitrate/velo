@@ -330,7 +330,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col">
         <SetupBanner />
-        <main className="flex min-h-0 flex-1 overflow-hidden">{children}</main>
+        <main className="flex min-h-0 flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );
