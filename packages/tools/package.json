@@ -18,7 +18,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

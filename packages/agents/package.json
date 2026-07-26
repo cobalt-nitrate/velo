@@ -2,7 +2,7 @@
   "name": "@velo/agents",
   "version": "0.1.0",
   "private": true,
-  "description": "All agent runtime code — OrchestratorAgent and all specialist agents",
+  "description": "All agent runtime code \u2014 OrchestratorAgent and all specialist agents",
   "main": "./src/runner.ts",
   "exports": {
     ".": "./src/runner.ts",
@@ -18,8 +18,9 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest",
-    "e2e:modules": "tsx src/e2e/module-paths.ts"
+    "test": "vitest run --passWithNoTests",
+    "e2e:modules": "tsx src/e2e/module-paths.ts",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@velo/core": "workspace:*",

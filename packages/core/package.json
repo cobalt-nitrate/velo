@@ -15,8 +15,9 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest",
-    "validate-configs": "tsx src/validate-configs-cli.ts"
+    "test": "vitest run",
+    "validate-configs": "tsx src/validate-configs-cli.ts",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "zod": "^3.23.0"
