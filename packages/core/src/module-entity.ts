@@ -1,5 +1,6 @@
 /**
- * Phase 2 — shared entity contract helpers (see docs/v1/module-flows.md).
+ * Phase 2 — shared entity contract helpers (see velo/docs/v1/module-flows.md
+ * in the mindmap repo: https://github.com/cobalt-nitrate/mindmap).
  */
 
 import type { PolicyResult, VeloModuleId, VeloWorkflowEntityBase } from './types/agent.js';

@@ -234,8 +234,11 @@ Chat (**streaming** where enabled), health, uploads, **`PATCH /api/approvals/[id
 
 ## Further Reading
 
-- **`PLATFORM_PLAN.md`** — Deeper product and architecture narrative.
-- **`docs/v1/ux-contracts.md`** — How key UI patterns should behave.
+Product planning, specs and design docs live in the **[`mindmap`](https://github.com/cobalt-nitrate/mindmap)** repo under [`velo/`](https://github.com/cobalt-nitrate/mindmap/tree/main/velo) — not in this repo. Start with `velo/README.md` there.
+
+- **`velo/PLATFORM_PLAN.md`** — Deeper product and architecture narrative.
+- **`velo/docs/v1/ux-contracts.md`** — How key UI patterns should behave.
+- **`velo/notes/`** — Dated brain dumps; the newest thinking lives here.
 
 ---
 

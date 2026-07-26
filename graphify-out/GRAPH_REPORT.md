@@ -1,12 +1,12 @@
-# Graph Report - /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops  (2026-04-25)
+# Graph Report - /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops  (2026-07-26)
 
 ## Corpus Check
-- 182 files · ~150,844 words
+- 185 files · ~186,407 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 657 nodes · 1137 edges · 74 communities detected
-- Extraction: 81% EXTRACTED · 19% INFERRED · 0% AMBIGUOUS · INFERRED: 221 edges (avg confidence: 0.8)
+- 673 nodes · 1177 edges · 74 communities detected
+- Extraction: 80% EXTRACTED · 20% INFERRED · 0% AMBIGUOUS · INFERRED: 230 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -86,9 +86,9 @@
 - [[_COMMUNITY_Community 73|Community 73]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `GET()` - 89 edges
+1. `GET()` - 90 edges
 2. `POST()` - 80 edges
-3. `runAgent()` - 37 edges
+3. `runAgent()` - 42 edges
 4. `parseInvoiceText()` - 16 edges
 5. `PATCH()` - 15 edges
 6. `baseProps()` - 15 edges
@@ -98,122 +98,122 @@
 10. `invokeRegisteredTool()` - 11 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `runAgent()` --calls--> `deriveScoringInputs()`  [INFERRED]
-  /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops/packages/agents/src/runner.ts → packages/core/src/confidence/index.ts
+- `deriveScoringInputs()` --calls--> `runAgent()`  [INFERRED]
+  packages/core/src/confidence/index.ts → /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops/packages/agents/src/runner.ts
+- `GET()` --calls--> `listChatSessions()`  [INFERRED]
+  /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops/packages/web/app/api/onboarding/state/route.ts → packages/web/lib/chat-store.ts
+- `GET()` --calls--> `getAllUsers()`  [INFERRED]
+  /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops/packages/web/app/api/onboarding/state/route.ts → packages/web/lib/users-registry.ts
 - `GET()` --calls--> `listUploads()`  [INFERRED]
   /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops/packages/web/app/api/onboarding/state/route.ts → packages/web/lib/upload-store.ts
-- `deleteInvite()` --calls--> `DELETE()`  [INFERRED]
-  packages/web/lib/invites-store.ts → /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops/packages/web/app/api/team/members/route.ts
-- `POST()` --calls--> `parseBankStatement()`  [INFERRED]
-  /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops/packages/web/app/api/cron/escalate-approvals/route.ts → packages/tools/src/bank/statement-parser.ts
-- `fetchFileBuffer()` --calls--> `GET()`  [INFERRED]
-  packages/tools/src/ocr/invoice-parser.ts → /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops/packages/web/app/api/onboarding/state/route.ts
+- `parseBankStatement()` --calls--> `POST()`  [INFERRED]
+  packages/tools/src/bank/statement-parser.ts → /Users/harshitsingh/Documents/Novaforge/Projects/Fun/Back Office Ops/packages/web/app/api/cron/escalate-approvals/route.ts
 
 ## Communities
 
 ### Community 0 - "Community 0"
-Cohesion: 0.04
-Nodes (31): appendChatExchange(), createChatSession(), deleteChatSession(), getChatSession(), listChatSessions(), rowToSession(), updateChatSessionMeta(), listDataTable() (+23 more)
+Cohesion: 0.05
+Nodes (36): appendChatExchange(), createChatSession(), getChatSession(), listChatSessions(), rowToSession(), updateChatSessionMeta(), testGoogleDriveConnect(), testLlmConnect() (+28 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.05
-Nodes (40): buildAgentContextFromBody(), testGoogleDriveConnect(), testLlmConnect(), testPostgresConnect(), testResendConnect(), testSlackConnect(), consumeInvite(), createInvite() (+32 more)
+Cohesion: 0.06
+Nodes (15): listDataTable(), getDrive(), listDriveFolder(), canReview(), canView(), clamp(), daysOverdue(), founderOnly() (+7 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.08
-Nodes (41): mergeAttachmentRefs(), mergeFileLinkRowsIntoApprovalAttachmentsJson(), parseAttachmentDriveUrlsJson(), stringifyAttachmentRefs(), isApprovalApprovedStatus(), isApprovalPendingStatus(), ApprovalArtifactBlock(), allowInMemoryDataFallback() (+33 more)
+Cohesion: 0.07
+Nodes (33): adjustConfidenceForPolicyRisk(), riskCaps(), runApInvoiceAgent(), runArCollectionsAgent(), runComplianceAgent(), runHelpdeskAgent(), runHrAgent(), runOrchestrator() (+25 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.06
-Nodes (29): adjustConfidenceForPolicyRisk(), riskCaps(), isReadOnlyVeloDataTool(), PolicyEngine, runApInvoiceAgent(), runArCollectionsAgent(), runComplianceAgent(), runHelpdeskAgent() (+21 more)
+Cohesion: 0.1
+Nodes (38): mergeAttachmentRefs(), mergeFileLinkRowsIntoApprovalAttachmentsJson(), parseAttachmentDriveUrlsJson(), stringifyAttachmentRefs(), allowInMemoryDataFallback(), appendApprovalEvent(), appendAuditRow(), camelToSnake() (+30 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.1
-Nodes (32): ensureVeloDrivePath(), escapeDriveQueryValue(), sanitizeSegment(), segmentsForDocumentTool(), segmentsForUploadedFile(), uploadBufferToDrive(), yearMonth(), mirrorEnabled() (+24 more)
-
-### Community 5 - "Community 5"
 Cohesion: 0.09
 Nodes (28): resolve(), appendDecisionMemory(), decisionSignature(), flush(), listDecisionMemoryRecent(), memoryBoostForTool(), readAll(), storeFile() (+20 more)
 
+### Community 5 - "Community 5"
+Cohesion: 0.11
+Nodes (31): ensureVeloDrivePath(), escapeDriveQueryValue(), sanitizeSegment(), segmentsForDocumentTool(), segmentsForUploadedFile(), uploadBufferToDrive(), yearMonth(), mirrorEnabled() (+23 more)
+
 ### Community 6 - "Community 6"
-Cohesion: 0.22
-Nodes (20): drainWorkflowRun(), evaluateCondition(), getPath(), parseLiteral(), resolveInputFrom(), resumeWorkflowAfterApproval(), runSingleWorkflowStep(), runWorkflowLinear() (+12 more)
+Cohesion: 0.09
+Nodes (19): deleteChatSession(), createAuditEvent(), evictOldestAuditEvents(), flushToSheets(), getAuditEvent(), consumeInvite(), createInvite(), deleteInvite() (+11 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.13
-Nodes (16): buildOrchestrationNote(), buildPlaybookMissionPlan(), buildSelectedPlan(), domainToAgentIds(), inferApprovalKind(), pickFirstByPrefix(), pickTool(), toolSet() (+8 more)
+Nodes (23): getRuntimeTools(), fromDb(), getOnboardingState(), patchOnboardingState(), OnboardingPage(), buildIntegrationChecks(), daysUntilDue(), foldOverall() (+15 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.16
-Nodes (14): applyStoredConnectorEnvAtStartup(), connectorEnvPath(), getStoredConnectorEnv(), keyStatus(), patchStoredConnectorEnv(), readRaw(), RootLayout(), getUiSettings() (+6 more)
+Cohesion: 0.12
+Nodes (13): buildAgentContextFromBody(), extractMemoryFromObservations(), flushStore(), getCompanyMemory(), readStore(), storeFile(), upsertCompanyMemory(), isReadOnlyVeloDataTool() (+5 more)
 
 ### Community 9 - "Community 9"
 Cohesion: 0.22
-Nodes (18): buildIntegrationChecks(), daysUntilDue(), foldOverall(), gatherOperationalSnapshot(), getGoogleDriveClient(), isPostgresReachable(), mapApPayableRow(), mapArReceivableRow() (+10 more)
+Nodes (20): drainWorkflowRun(), evaluateCondition(), getPath(), parseLiteral(), resolveInputFrom(), resumeWorkflowAfterApproval(), runSingleWorkflowStep(), runWorkflowLinear() (+12 more)
 
 ### Community 10 - "Community 10"
+Cohesion: 0.13
+Nodes (16): buildOrchestrationNote(), buildPlaybookMissionPlan(), buildSelectedPlan(), domainToAgentIds(), inferApprovalKind(), pickFirstByPrefix(), pickTool(), toolSet() (+8 more)
+
+### Community 11 - "Community 11"
+Cohesion: 0.27
+Nodes (15): isApprovalApprovedStatus(), isApprovalPendingStatus(), ApprovalArtifactBlock(), assertToolOk(), baseToolPayload(), moduleAp(), moduleAr(), moduleCompliance() (+7 more)
+
+### Community 12 - "Community 12"
+Cohesion: 0.16
+Nodes (14): applyStoredConnectorEnvAtStartup(), connectorEnvPath(), getStoredConnectorEnv(), keyStatus(), patchStoredConnectorEnv(), readRaw(), RootLayout(), getUiSettings() (+6 more)
+
+### Community 13 - "Community 13"
 Cohesion: 0.2
 Nodes (16): notifyApprovalRequestOutOfBand(), approvalBlocks(), buildEmailHtml(), complianceAlertBlocks(), digestBlocks(), escapeHtml(), followupEmailHtml(), genericEmailHtml() (+8 more)
 
-### Community 11 - "Community 11"
+### Community 14 - "Community 14"
 Cohesion: 0.22
 Nodes (17): computeConfidence(), extractAmounts(), extractDates(), extractGstComponents(), extractGstins(), extractHsnSac(), extractInvoiceNumber(), extractPaymentTerms() (+9 more)
 
-### Community 12 - "Community 12"
+### Community 15 - "Community 15"
 Cohesion: 0.24
 Nodes (15): baseProps(), IconChevronLeft(), IconChevronRight(), IconDatabase(), IconInfo(), IconLink(), IconLoader(), IconPaperclip() (+7 more)
 
-### Community 13 - "Community 13"
-Cohesion: 0.51
-Nodes (12): assertToolOk(), baseToolPayload(), moduleAp(), moduleAr(), moduleCompliance(), moduleHelpdesk(), moduleHr(), modulePayroll() (+4 more)
-
-### Community 14 - "Community 14"
+### Community 16 - "Community 16"
 Cohesion: 0.23
 Nodes (9): buildAttachmentContext(), absUploadPath(), getUpload(), listUploads(), saveUploadedFile(), toRecord(), chatsDir(), uploadsDir() (+1 more)
 
-### Community 15 - "Community 15"
+### Community 17 - "Community 17"
 Cohesion: 0.21
 Nodes (4): handleNext(), saveCreds(), testGoogle(), verifyDatabase()
 
-### Community 16 - "Community 16"
+### Community 18 - "Community 18"
 Cohesion: 0.42
 Nodes (9): detectBankProfile(), detectMode(), normalizeDate(), parseAmount(), parseBankStatement(), parseCsv(), parseCSVStatement(), parseOFXStatement() (+1 more)
 
-### Community 17 - "Community 17"
-Cohesion: 0.28
-Nodes (4): createAuditEvent(), evictOldestAuditEvents(), flushToSheets(), getAuditEvent()
-
-### Community 18 - "Community 18"
+### Community 19 - "Community 19"
 Cohesion: 0.43
 Nodes (6): bcryptHash(), day(), dt(), main(), money(), wipeAll()
 
-### Community 19 - "Community 19"
+### Community 20 - "Community 20"
 Cohesion: 0.36
 Nodes (3): isSeparatorRow(), parseGfmTable(), parseRowCells()
 
-### Community 20 - "Community 20"
+### Community 21 - "Community 21"
 Cohesion: 0.43
 Nodes (6): asNumber01(), assembleApprovalEvidence(), computeApVendorHistory(), extractSignalsFromLegacyEvidence(), fmtInr(), safeJsonParse()
 
-### Community 21 - "Community 21"
+### Community 22 - "Community 22"
 Cohesion: 0.29
 Nodes (2): bulkApprove(), load()
 
-### Community 22 - "Community 22"
+### Community 23 - "Community 23"
 Cohesion: 0.47
 Nodes (3): buildConnectorPutBody(), saveConnectors(), setFormFromConnectors()
 
-### Community 23 - "Community 23"
+### Community 24 - "Community 24"
 Cohesion: 0.33
 Nodes (0): 
 
-### Community 24 - "Community 24"
-Cohesion: 0.4
-Nodes (1): handleSubmit()
-
 ### Community 25 - "Community 25"
 Cohesion: 0.4
-Nodes (0): 
+Nodes (1): handleSubmit()
 
 ### Community 26 - "Community 26"
 Cohesion: 0.4
@@ -224,8 +224,8 @@ Cohesion: 0.4
 Nodes (0): 
 
 ### Community 28 - "Community 28"
-Cohesion: 0.83
-Nodes (3): buildWorkflowEntityStub(), inferModuleFromAgentId(), mapPolicyToEntityStatus()
+Cohesion: 0.4
+Nodes (0): 
 
 ### Community 29 - "Community 29"
 Cohesion: 0.5
@@ -492,17 +492,17 @@ Nodes (0):
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `POST()` connect `Community 1` to `Community 0`, `Community 2`, `Community 3`, `Community 4`, `Community 5`, `Community 6`, `Community 7`, `Community 8`, `Community 9`, `Community 10`, `Community 14`, `Community 16`?**
-  _High betweenness centrality (0.297) - this node is a cross-community bridge._
-- **Why does `GET()` connect `Community 0` to `Community 1`, `Community 2`, `Community 3`, `Community 5`, `Community 6`, `Community 7`, `Community 8`, `Community 9`, `Community 11`, `Community 13`, `Community 14`, `Community 17`, `Community 20`?**
-  _High betweenness centrality (0.250) - this node is a cross-community bridge._
-- **Why does `runAgent()` connect `Community 3` to `Community 0`, `Community 1`, `Community 5`, `Community 6`, `Community 10`, `Community 17`?**
-  _High betweenness centrality (0.106) - this node is a cross-community bridge._
-- **Are the 44 inferred relationships involving `GET()` (e.g. with `probeDriveFolder()` and `fetchFileBuffer()`) actually correct?**
-  _`GET()` has 44 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `POST()` connect `Community 0` to `Community 1`, `Community 2`, `Community 3`, `Community 4`, `Community 5`, `Community 6`, `Community 7`, `Community 8`, `Community 9`, `Community 10`, `Community 12`, `Community 13`, `Community 16`, `Community 18`?**
+  _High betweenness centrality (0.299) - this node is a cross-community bridge._
+- **Why does `GET()` connect `Community 1` to `Community 0`, `Community 2`, `Community 3`, `Community 4`, `Community 6`, `Community 7`, `Community 9`, `Community 10`, `Community 11`, `Community 12`, `Community 14`, `Community 16`, `Community 21`?**
+  _High betweenness centrality (0.256) - this node is a cross-community bridge._
+- **Why does `runAgent()` connect `Community 2` to `Community 0`, `Community 1`, `Community 4`, `Community 6`, `Community 8`, `Community 9`, `Community 13`?**
+  _High betweenness centrality (0.128) - this node is a cross-community bridge._
+- **Are the 45 inferred relationships involving `GET()` (e.g. with `probeDriveFolder()` and `fetchFileBuffer()`) actually correct?**
+  _`GET()` has 45 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 44 inferred relationships involving `POST()` (e.g. with `appendDecisionMemory()` and `runAgent()`) actually correct?**
   _`POST()` has 44 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 22 inferred relationships involving `runAgent()` (e.g. with `POST()` and `loadAgentConfig()`) actually correct?**
-  _`runAgent()` has 22 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 27 inferred relationships involving `runAgent()` (e.g. with `POST()` and `loadAgentConfig()`) actually correct?**
+  _`runAgent()` has 27 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 9 inferred relationships involving `PATCH()` (e.g. with `updateChatSessionMeta()` and `findApprovalById()`) actually correct?**
   _`PATCH()` has 9 INFERRED edges - model-reasoned connections that need verification._
