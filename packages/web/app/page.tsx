@@ -1,7 +1,13 @@
+import { getServerSession } from 'next-auth';
+import { Handled } from '../components/handled';
 import { NeedsYou } from '../components/needs-you';
+import { authOptions } from '../lib/auth';
+import { getHandledSummary } from '../lib/home/activity';
 import { collectQueueItems } from '../lib/home/collect';
 import { formatInrShort } from '../lib/home/format';
-import { rankQueue } from '../lib/home/rank';
+import { getNextHorizonItem } from '../lib/home/horizon';
+import { filterByRole, rankQueue } from '../lib/home/rank';
+import { seesEverything, toQueueRole } from '../lib/home/roles';
 import { getRunway } from '../lib/home/runway';
 
 export const dynamic = 'force-dynamic';
@@ -17,19 +23,32 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 export default async function HomePage() {
   const now = new Date();
+  const session = await getServerSession(authOptions);
+  const role = toQueueRole((session?.user as { actor_role?: string } | undefined)?.actor_role);
 
-  const [queue, runway] = await Promise.all([
+  // Each of these degrades to nothing rather than taking the page down with it.
+  const [queue, runway, nextUp, handled] = await Promise.all([
     collectQueueItems(now),
     getRunway().catch(() => null),
+    getNextHorizonItem(now).catch(() => null),
+    getHandledSummary(now).catch(() => null),
   ]);
 
-  const { visible, overflowCount } = rankQueue(queue.items);
+  // UX-003: a founder owns every consequence, so they are never filtered.
+  // Everyone else sees only what is addressed to them.
+  const scoped = seesEverything(role) ? queue.items : filterByRole(queue.items, role);
+  const { visible, overflowCount } = rankQueue(scoped);
+
+  // Cash position is a founder/finance concern, not something an employee needs.
+  const showMoney = role === 'founder' || role === 'finance';
 
   return (
     <main className="mx-auto grid max-w-3xl gap-6 p-6">
-      <NeedsYou items={visible} overflowCount={overflowCount} />
+      <NeedsYou items={visible} overflowCount={overflowCount} nextUp={nextUp} />
 
-      {runway && runway.runway_months !== null && (
+      <Handled summary={handled} />
+
+      {showMoney && runway && runway.runway_months !== null && (
         <section className="rounded-xl border border-velo-line bg-velo-panel px-5 py-4 shadow-soft">
           <dl className="flex flex-wrap gap-x-10 gap-y-4">
             <Stat label="Runway" value={`${runway.runway_months} months`} />

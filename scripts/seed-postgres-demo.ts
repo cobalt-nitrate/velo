@@ -50,11 +50,57 @@ const FORCE =
   process.argv.includes('--force') ||
   process.argv.some((arg: string) => /^--?force$/i.test(arg.trim()));
 
-const day = (y: number, m: number, d: number) =>
-  `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+/**
+ * The notional "today" this dataset was written around.
+ *
+ * Inferred from the data itself: GSTR-1 (due 04-11) is `upcoming`, PF (due
+ * 04-15) is `completed`, GSTR-3B (due 04-20) is `not_started`, and the oldest
+ * agent activity is 04-09. So "today" sat just before 2026-04-11.
+ */
+const DATASET_ANCHOR = new Date(2026, 3, 10);
+
+/** Local midnight, so a shift never lands a date half a day off. */
+function startOfToday(): Date {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+
+/**
+ * Slide the whole dataset forward so it stays as old as it was on the day it
+ * was written.
+ *
+ * Every date here used to be a calendar literal, which meant the demo rotted:
+ * by August, a bill "due in 3 days" read as "due 5 months ago" and the home
+ * queue was nothing but stale overdue items. Shifting by a single offset keeps
+ * every *relative* gap intact — an invoice issued 15 days before its due date
+ * still is — while making the dataset look alive whenever it is seeded.
+ *
+ * Set `VELO_SEED_ABSOLUTE_DATES=1` to opt out and reproduce the original
+ * fixed-calendar dataset (useful for tests that assert on exact dates).
+ */
+const SHIFT_MS =
+  process.env.VELO_SEED_ABSOLUTE_DATES === '1'
+    ? 0
+    : startOfToday().getTime() - DATASET_ANCHOR.getTime();
+
+const shifted = (d: Date) => new Date(d.getTime() + SHIFT_MS);
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const day = (y: number, m: number, d: number) => {
+  const s = shifted(new Date(y, m - 1, d));
+  return `${s.getFullYear()}-${pad2(s.getMonth() + 1)}-${pad2(s.getDate())}`;
+};
 /** ISO timestamp for string-backed log fields */
 const dt = (y: number, m: number, d: number, hh = 0, mm = 0, ss = 0, ms = 0) =>
-  new Date(y, m - 1, d, hh, mm, ss, ms).toISOString();
+  shifted(new Date(y, m - 1, d, hh, mm, ss, ms)).toISOString();
+
+/** ISO timestamp `n` days before now — for activity that must always look recent. */
+const daysAgoDt = (n: number, hh = 10, mm = 0) => {
+  const d = startOfToday();
+  d.setDate(d.getDate() - n);
+  d.setHours(hh, mm, 0, 0);
+  return d.toISOString();
+};
 
 const NAMES = [
   ['Aarav', 'Mehta'],
@@ -1689,6 +1735,66 @@ async function main() {
         sessionId: '',
       },
     ],
+  });
+
+  /**
+   * Recent autonomous agent activity — the evidence behind "Velo handled N
+   * things" (UX-002).
+   *
+   * Without this the home page cannot make the product's central claim. The
+   * 244 audit rows that existed before came from real app usage in April and
+   * were wiped by every reseed, so the always-on story silently disappeared.
+   * These are anchored to `daysAgoDt` rather than the dataset shift so they
+   * stay inside the 7-day window no matter when the seed is run.
+   *
+   * Only AGENT_COMPLETED is counted as "a thing handled" — see
+   * packages/web/lib/home/activity.ts for why the other action types are not.
+   */
+  const RECENT_RUNS: { agent: string; daysAgo: number; hour: number }[] = [
+    { agent: 'ar-collections', daysAgo: 0, hour: 9 },
+    { agent: 'ar-collections', daysAgo: 1, hour: 9 },
+    { agent: 'ar-collections', daysAgo: 3, hour: 9 },
+    { agent: 'ar-collections', daysAgo: 5, hour: 9 },
+    { agent: 'ap-invoice', daysAgo: 0, hour: 11 },
+    { agent: 'ap-invoice', daysAgo: 2, hour: 11 },
+    { agent: 'ap-invoice', daysAgo: 4, hour: 11 },
+    { agent: 'runway', daysAgo: 1, hour: 7 },
+    { agent: 'runway', daysAgo: 4, hour: 7 },
+    { agent: 'runway', daysAgo: 6, hour: 7 },
+    { agent: 'compliance', daysAgo: 2, hour: 8 },
+    { agent: 'compliance', daysAgo: 6, hour: 8 },
+  ];
+
+  await prisma.auditTrailEntry.createMany({
+    data: RECENT_RUNS.flatMap((run, i) => {
+      const started = daysAgoDt(run.daysAgo, run.hour, 0);
+      const finished = daysAgoDt(run.daysAgo, run.hour, 2);
+      const base = {
+        actorId: 'system',
+        actorRole: 'system',
+        agentId: run.agent,
+        module: run.agent,
+        recordId: '',
+        oldValueJson: '{}',
+        newValueJson: '{}',
+        status: 'OK',
+        sessionId: '',
+      };
+      return [
+        {
+          ...base,
+          entryId: `AT-9${String(i * 2).padStart(4, '0')}`,
+          timestamp: started,
+          actionType: 'AGENT_STARTED',
+        },
+        {
+          ...base,
+          entryId: `AT-9${String(i * 2 + 1).padStart(4, '0')}`,
+          timestamp: finished,
+          actionType: 'AGENT_COMPLETED',
+        },
+      ];
+    }),
   });
 
   await prisma.chatLog.createMany({

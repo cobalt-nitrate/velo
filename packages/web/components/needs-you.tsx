@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { HorizonItem } from '../lib/home/horizon';
 import type { QueueBand, QueueItem } from '../lib/home/types';
 
 const BAND_LABEL: Record<QueueBand, string> = {
@@ -43,17 +44,48 @@ function QueueRow({ item }: { item: QueueItem }) {
 export function NeedsYou({
   items,
   overflowCount,
+  nextUp = null,
 }: {
   items: QueueItem[];
   overflowCount: number;
+  /** The soonest thing beyond the queue, so "all clear" can prove it is watching. */
+  nextUp?: HorizonItem | null;
 }) {
   if (items.length === 0) {
     return (
       <section className="rounded-xl border border-velo-line bg-velo-panel p-8 text-center shadow-card">
+        <div
+          className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 ring-1 ring-emerald-200"
+          aria-hidden
+        >
+          <svg
+            className="h-4 w-4 text-emerald-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </div>
+
         <h2 className="text-lg font-semibold text-velo-text">You&rsquo;re all clear</h2>
         <p className="mt-1 text-sm text-velo-muted">
-          Nothing needs a decision from you right now. Velo is still watching.
+          Nothing needs a decision from you right now.
         </p>
+
+        {nextUp ? (
+          <p className="mt-4 border-t border-velo-line pt-4 text-sm text-velo-text/80">
+            Next up: <span className="font-medium text-velo-text">{nextUp.label}</span>,{' '}
+            {nextUp.whenText}. Velo is watching it.
+          </p>
+        ) : (
+          <p className="mt-4 border-t border-velo-line pt-4 text-sm text-velo-muted">
+            Nothing on the calendar ahead either. Velo is still watching.
+          </p>
+        )}
       </section>
     );
   }

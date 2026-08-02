@@ -50,12 +50,32 @@ export function formatDay(date: Date, now: Date = new Date()): string {
   });
 }
 
+/** Midnight UTC on the calendar day a date falls in. */
+function utcMidnight(d: Date): number {
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+/**
+ * Whole calendar days from `from` to `to`, counted in UTC.
+ *
+ * Counting *days*, not elapsed hours, is the whole point. Rounding the raw
+ * millisecond gap gets deadlines wrong by a day: a filing due at UTC midnight
+ * tomorrow is only ~11 hours away at 13:00 today, which rounds to zero and
+ * renders as "today". In a product where a missed statutory date carries a
+ * penalty, that is not a cosmetic bug.
+ *
+ * UTC matches `formatDay`, which already pins these date-only columns to UTC.
+ */
+function calendarDaysBetween(from: Date, to: Date): number {
+  return Math.round((utcMidnight(to) - utcMidnight(from)) / (24 * 60 * 60 * 1000));
+}
+
 /**
  * Human elapsed/remaining phrasing: "3 months ago", "in 2 days", "today".
  * Deliberately coarse — precision here reads as clutter.
  */
 export function relativeDay(date: Date, now: Date = new Date()): string {
-  const days = Math.round((date.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  const days = calendarDaysBetween(now, date);
 
   if (days === 0) return 'today';
   if (days === 1) return 'tomorrow';
